@@ -1,0 +1,11 @@
+CARTELLA DEL MARCHIO
+
+Metti qui il logo, nominato esattamente:
+  logo.png
+
+Se il file c'è, compare in tutte le testate e nella schermata di
+apertura al posto della scritta MAVI.
+Se non c'è, resta la scritta disegnata.
+
+Formato consigliato: PNG con sfondo trasparente, altezza almeno
+200 pixel. Va bene anche una versione orizzontale.

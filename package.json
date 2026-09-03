@@ -1,0 +1,23 @@
+{
+  "name": "mavi-portale",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "predev": "node -e \"console.log('\\n\\x1b[45m\\x1b[97m\\x1b[1m  MAVI PORTALE  \\x1b[0m \\x1b[35mCaricamento dei moduli e avviamento ambiente dev...\\x1b[0m\\n')\"",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "file-saver": "^2.0.5",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.1.0",
+    "vite": "^8.2.2"
+  }
+}
