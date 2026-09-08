@@ -1,0 +1,45 @@
+CARTELLA DELLE FOTOGRAFIE DEI PIATTI
+
+Metti qui un'immagine per piatto, nominata con il codice del piatto.
+Formati accettati: jpg, jpeg, png, webp.
+
+Esempi:
+  pas_pom.jpg   Penne al pomodoro e basilico
+  ris_fun.jpg   Risotto ai funghi porcini
+  las_bol.jpg   Lasagne alla bolognese
+
+L'elenco completo dei codici si trova nel portale MAVI, alla voce
+Catalogo piatti, colonna Codice.
+
+Se la foto non c'è, il portale mostra l'illustrazione disegnata.
+Non serve riavviare nulla, basta ricaricare la pagina.
+
+Formato consigliato: quadrata, almeno 600 per 600 pixel, soggetto
+centrato, sfondo chiaro e uniforme.
+
+ELENCO COMPLETO DEI CODICI
+
+pas_pom    Penne al pomodoro e basilico
+ris_fun    Risotto ai funghi porcini
+las_bol    Lasagne alla bolognese
+pas_pes    Pasta integrale al pesto
+min_orz    Minestra di orzo e verdure
+vel_zuc    Vellutata di zucca e carote
+ins_far    Insalata di farro e verdure
+ins_qui    Insalata di quinoa e ceci
+pol_gri    Petto di pollo alla griglia
+sal_for    Salmone al forno con erbe
+pol_sug    Polpette di manzo al sugo
+tac_lim    Tacchino al limone
+tof_pia    Tofu alla piastra con verdure
+bur_leg    Burger di legumi
+fri_zuc    Frittata alle zucchine
+for_mis    Piatto di formaggi misti
+ver_gri    Verdure grigliate
+ins_mis    Insalata mista
+pat_for    Patate al forno
+fag_vap    Fagiolini al vapore
+uni_ris    Riso alla cantonese
+uni_pia    Piadina con squacquerone e verdure
+uni_ins    Insalatona proteica del giorno
+uni_las    Lasagna vegetariana con insalata

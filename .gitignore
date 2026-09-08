@@ -1,0 +1,22 @@
+# dipendenze
+node_modules/
+
+# build
+dist/
+dist-ssr/
+.vite/
+
+# configurazione locale e segreti
+.env
+.env.local
+.env.*.local
+
+# log e file temporanei
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
