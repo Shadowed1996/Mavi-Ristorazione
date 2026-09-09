@@ -1,0 +1,50 @@
+# Normalizzazione dei fine riga: testo con LF nel repository.
+* text=auto eol=lf
+
+# File di controllo, sempre testo.
+.gitattributes text
+.gitignore     text
+.editorconfig  text
+
+# Sorgenti e configurazioni del progetto.
+*.js   text
+*.jsx  text
+*.css  text
+*.html text
+*.json text
+*.md   text
+*.txt  text
+*.yml  text
+*.yaml text
+
+# Lockfile: testo, ma escluso dalle statistiche del linguaggio e dalle diff rumorose.
+package-lock.json text linguist-generated=true -diff
+
+# Immagini e risorse binarie.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.pdf   binary
+*.zip   binary
+*.mp4   binary
+*.xlsx  binary
+
+# Font.
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+*.eot   binary
+
+# Eseguibili e librerie.
+*.dll binary
+*.exe binary
+*.so  binary
+
+# Classificazione per le statistiche del repository.
+LEGGIMI.md            linguist-documentation
+public/foto/LEGGIMI.txt    linguist-documentation
+public/marchio/LEGGIMI.txt linguist-documentation

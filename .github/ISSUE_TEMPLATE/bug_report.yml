@@ -1,0 +1,116 @@
+name: Segnalazione di bug
+description: Segnala un malfunzionamento del portale
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Grazie per la segnalazione. Compila i campi seguenti: più il quadro è completo,
+        prima si riesce a riprodurre e correggere il problema.
+
+        Per le vulnerabilità di sicurezza **non usare questo modulo**: segui le indicazioni
+        di `SECURITY.md`.
+
+  - type: textarea
+    id: descrizione
+    attributes:
+      label: Descrizione del problema
+      description: Che cosa non funziona, in poche righe.
+      placeholder: Nel portale RSA, confermando l'ordine del nucleo, il totale dei pasti resta a zero.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: portale
+    attributes:
+      label: Portale interessato
+      description: Da quale profilo si è entrati quando è comparso il problema.
+      options:
+        - Accesso
+        - Portale azienda, ruolo dipendente
+        - Portale azienda, ruolo referente
+        - Portale RSA
+        - Portale comunità
+        - Portale scuola
+        - Portale MAVI (cucina)
+        - Non so o riguarda più portali
+    validations:
+      required: true
+
+  - type: textarea
+    id: passi
+    attributes:
+      label: Passi per riprodurre
+      description: Elenco numerato dei passaggi, a partire dall'accesso.
+      placeholder: |
+        1. Entrare con il profilo operatore di nucleo
+        2. Aprire la pagina Ordine del nucleo
+        3. Inserire 12 pasti nella dieta iposodica
+        4. Premere Trasmetti
+    validations:
+      required: true
+
+  - type: textarea
+    id: atteso
+    attributes:
+      label: Comportamento atteso
+      description: Che cosa sarebbe dovuto succedere.
+    validations:
+      required: true
+
+  - type: textarea
+    id: ottenuto
+    attributes:
+      label: Comportamento ottenuto
+      description: Che cosa è successo invece. Se utile, allega uno screenshot.
+    validations:
+      required: true
+
+  - type: input
+    id: ambiente
+    attributes:
+      label: Ambiente
+      description: Sistema operativo, browser e versione, versione di Node.js.
+      placeholder: Windows 11, Chrome 141, Node 22.14
+    validations:
+      required: true
+
+  - type: dropdown
+    id: modalita
+    attributes:
+      label: Come è stato avviato il portale
+      options:
+        - npm run dev (server di sviluppo)
+        - npm run build seguito da npm run preview
+        - Apertura diretta di dist/index.html
+    validations:
+      required: true
+
+  - type: input
+    id: versione
+    attributes:
+      label: Versione o commit
+      description: Versione indicata in package.json oppure hash del commit.
+      placeholder: 0.1.0 oppure 437b234
+    validations:
+      required: false
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Log ed errori
+      description: Messaggi della console del browser o del terminale. Vengono formattati automaticamente.
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: verifiche
+    attributes:
+      label: Verifiche preliminari
+      options:
+        - label: Ho controllato che non esista già una issue aperta sullo stesso problema
+          required: true
+        - label: Nella segnalazione non ci sono dati personali reali né credenziali
+          required: true

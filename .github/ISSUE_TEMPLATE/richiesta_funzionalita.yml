@@ -1,0 +1,85 @@
+name: Richiesta di funzionalità
+description: Proponi una nuova funzionalità o un miglioramento del portale
+title: "[Funzionalità]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Grazie per la proposta. Descrivi prima il problema da risolvere e solo dopo la
+        soluzione che hai in mente: spesso la strada migliore emerge dal problema.
+
+  - type: textarea
+    id: problema
+    attributes:
+      label: Problema da risolvere
+      description: Quale difficoltà concreta si incontra oggi, e chi la incontra.
+      placeholder: La cucina deve ricontare a mano i pasti per giro di consegna, perché la distinta li aggrega solo per struttura.
+    validations:
+      required: true
+
+  - type: textarea
+    id: soluzione
+    attributes:
+      label: Soluzione proposta
+      description: Come dovrebbe funzionare. Se riguarda l'interfaccia, indica in quale portale e in quale pagina.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: ambito
+    attributes:
+      label: Ambito
+      description: Dove interverrebbe la funzionalità.
+      options:
+        - Accesso e instradamento
+        - Portale azienda
+        - Portale RSA
+        - Portale comunità
+        - Portale scuola
+        - Portale MAVI (cucina)
+        - Esportazioni Excel e proforma
+        - Dati, menu e catalogo piatti
+        - Interfaccia e sistema visivo
+        - Documentazione
+        - Altro
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternative
+    attributes:
+      label: Alternative valutate
+      description: Altre soluzioni prese in considerazione e perché sono state scartate. Scrivi "nessuna" se non ne hai valutate.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priorita
+    attributes:
+      label: Priorità
+      options:
+        - Bassa, sarebbe comodo
+        - Media, migliora il lavoro quotidiano
+        - Alta, oggi il lavoro si fa a mano
+        - Bloccante, senza questa il portale non è utilizzabile
+    validations:
+      required: true
+
+  - type: textarea
+    id: note
+    attributes:
+      label: Note aggiuntive
+      description: Riferimenti, schizzi, esempi o vincoli normativi da tenere presenti.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: verifiche
+    attributes:
+      label: Verifiche preliminari
+      options:
+        - label: Ho controllato che non esista già una richiesta simile
+          required: true
+        - label: So che il progetto è proprietario e che le pull request si accettano solo su invito
+          required: true

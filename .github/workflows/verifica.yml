@@ -1,0 +1,86 @@
+name: Verifica
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verifica:
+    name: Verifica del repository
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Scarica il codice
+        uses: actions/checkout@v4
+
+      - name: Controlla i file standard
+        id: standard
+        continue-on-error: true
+        run: |
+          mancanti=0
+          for f in README.md LICENSE SECURITY.md CONTRIBUTING.md CODE_OF_CONDUCT.md CHANGELOG.md; do
+            if [ -f "$f" ]; then
+              echo "presente: $f"
+            else
+              echo "MANCANTE: $f"
+              mancanti=$((mancanti + 1))
+            fi
+          done
+          echo "mancanti=$mancanti" >> "$GITHUB_OUTPUT"
+          [ "$mancanti" -eq 0 ]
+
+      - name: Valida i file JSON
+        id: json
+        continue-on-error: true
+        run: |
+          errori=0
+          while IFS= read -r f; do
+            if jq empty "$f" >/dev/null 2>&1; then
+              echo "valido: $f"
+            else
+              echo "NON valido: $f"
+              errori=$((errori + 1))
+            fi
+          done < <(find . -type f -name '*.json' -not -path './node_modules/*' -not -path './.git/*')
+          echo "errori=$errori" >> "$GITHUB_OUTPUT"
+          [ "$errori" -eq 0 ]
+
+      - name: Prepara Node.js
+        continue-on-error: true
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Installa le dipendenze
+        id: install
+        continue-on-error: true
+        run: npm ci
+
+      - name: Compila il progetto
+        id: build
+        continue-on-error: true
+        run: npm run build
+
+      - name: Riepilogo
+        if: always()
+        run: |
+          {
+            echo "## Esito della verifica"
+            echo ""
+            echo "| Controllo | Esito |"
+            echo "| --- | --- |"
+            echo "| File standard | ${{ steps.standard.outcome == 'success' && 'tutti presenti' || 'qualcuno manca' }} |"
+            echo "| Sintassi JSON | ${{ steps.json.outcome == 'success' && 'corretta' || 'da controllare' }} |"
+            echo "| Installazione dipendenze (npm ci) | ${{ steps.install.outcome == 'success' && 'riuscita' || 'non riuscita' }} |"
+            echo "| Compilazione (npm run build) | ${{ steps.build.outcome == 'success' && 'riuscita' || 'non riuscita' }} |"
+            echo ""
+            echo "Questa verifica è informativa e non blocca mai il lavoro:"
+            echo "ogni passo è eseguito con \`continue-on-error\`."
+          } >> "$GITHUB_STEP_SUMMARY"

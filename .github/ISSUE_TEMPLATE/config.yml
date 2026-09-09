@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentazione del progetto
+    url: https://github.com/Shadowed1996/Mavi-Ristorazione#readme
+    about: Prima di aprire una issue, controlla il README e il manuale LEGGIMI.md.
+  - name: Segnalazione di sicurezza
+    url: https://github.com/Shadowed1996/Mavi-Ristorazione/security/advisories/new
+    about: Le vulnerabilità si segnalano in privato, non con una issue pubblica.
+  - name: Contatto con il referente del progetto
+    url: https://github.com/Shadowed1996
+    about: Per richieste di licenza, autorizzazioni o collaborazioni.
