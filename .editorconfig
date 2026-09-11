@@ -1,0 +1,25 @@
+# Convenzioni di scrittura dei file, applicate dall'editor.
+# Rispecchiano quello che i sorgenti già fanno: 2 spazi, LF, UTF-8.
+# Vedi CONTRIBUTING.md, sezione «Stile del codice».
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# Nel Markdown due spazi in coda a una riga sono un a capo voluto.
+[*.md]
+trim_trailing_whitespace = false
+
+# dist/ la scrive Vite: l'editor non la deve riformattare.
+[dist/**]
+charset = unset
+end_of_line = unset
+insert_final_newline = unset
+trim_trailing_whitespace = unset
+indent_style = unset
+indent_size = unset

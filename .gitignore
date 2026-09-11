@@ -1,8 +1,31 @@
+# dipendenze
 node_modules/
+
+# cache di Vite. dist/ invece si versiona: è la copia da aprire con un doppio
+# clic il giorno della presentazione (vedi CONTRIBUTING.md)
+.vite/
+dist-ssr/
+
+# configurazione locale e segreti
+.env
+.env.local
+.env.*.local
+
+# log
+*.log
+npm-debug.log*
+
+# sistema operativo
 .DS_Store
 Thumbs.db
 desktop.ini
-*.log
-.env
-.env.local
-.vite/
+
+# editor
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+
+# archivi preparati per il cliente
+*.zip

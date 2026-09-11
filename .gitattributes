@@ -1,0 +1,53 @@
+# Normalizzazione delle fini riga: nel repository si conserva sempre LF.
+# Il progetto nasce su Windows, ma i file versionati sono già tutti a LF e
+# devono restarci anche quando core.autocrlf è acceso sulla macchina di chi
+# lavora. Così anche la build rigenerata coincide con dist/ versionata.
+* text=auto eol=lf
+
+# File di controllo: testo, sempre.
+.gitattributes text
+.gitignore     text
+.editorconfig  text
+
+# Testo esplicito, per non lasciarlo indovinare.
+*.md   text
+*.txt  text
+*.html text
+*.css  text
+*.js   text
+*.jsx  text
+*.json text
+*.svg  text
+*.yml  text
+*.yaml text
+
+# Lockfile: testo, ma fuori dalle statistiche e compresso nei diff.
+package-lock.json text linguist-generated -diff
+
+# --- Binari: niente diff, niente normalizzazione delle fini riga ----------
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.pdf   binary
+*.xlsx  binary
+*.zip   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+
+# --- Statistiche di GitHub (linguist) -------------------------------------
+# La build è scritta da Vite, non a mano: fuori dalle statistiche e compressa
+# nei diff, dove è solo rumore.
+dist/** linguist-generated
+
+# La documentazione lunga non deve contare come "linguaggio del progetto".
+file.md/**                 linguist-documentation
+CLAUDE.md                  linguist-documentation
+LEGGIMI.md                 linguist-documentation
+MAVI_Stato_Progetto.md     linguist-documentation
+public/foto/LEGGIMI.txt    linguist-documentation
+public/marchio/LEGGIMI.txt linguist-documentation

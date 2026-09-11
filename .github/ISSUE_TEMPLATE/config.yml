@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Segnalazione di sicurezza
+    url: https://github.com/Shadowed1996/Mavi-Ristorazione/security/advisories/new
+    about: I problemi di sicurezza non si aprono come issue. Usa una segnalazione privata.
+  - name: Manuale del prototipo
+    url: https://github.com/Shadowed1996/Mavi-Ristorazione/blob/main/LEGGIMI.md
+    about: Prima di aprire una issue, controlla se la risposta è già nel manuale — avvio, portali, fotografie e logo.
+  - name: Contatta l'autore
+    url: https://github.com/Shadowed1996
+    about: Per richieste di licenza, autorizzazioni o collaborazioni.

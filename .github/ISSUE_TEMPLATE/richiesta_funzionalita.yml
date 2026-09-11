@@ -1,0 +1,86 @@
+name: Richiesta di funzionalità
+description: Proponi un'aggiunta o un miglioramento a uno dei portali o alla documentazione.
+title: "[Funzionalità]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Il progetto è proprietario e i contributi esterni non sono aperti
+        (vedi [`CONTRIBUTING.md`](https://github.com/Shadowed1996/Mavi-Ristorazione/blob/main/CONTRIBUTING.md)), ma le proposte
+        sono benvenute: si discutono **qui**, prima di scrivere codice.
+
+        Tieni presente che è un prototipo di presentazione: niente backend,
+        niente salvataggio, stack volutamente minimale.
+
+  - type: textarea
+    id: problema
+    attributes:
+      label: Il problema da risolvere
+      description: Parti da cosa non funziona oggi, e da chi lo incontra, non dalla soluzione.
+      placeholder: La cucina deve ricontare a mano i pasti per giro di consegna, perché la distinta li aggrega solo per struttura.
+    validations:
+      required: true
+
+  - type: textarea
+    id: soluzione
+    attributes:
+      label: Soluzione proposta
+      description: Cosa dovrebbe succedere, dal punto di vista di chi usa il portale. Indica portale e pagina.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: ambito
+    attributes:
+      label: Quale parte riguarda
+      options:
+        - Accesso e instradamento
+        - Portale azienda
+        - Portale comunità
+        - Portale MAVI (cucina)
+        - Moduli RSA e scuola (da riattivare)
+        - Esportazioni Excel, template diete e proforma
+        - Dati, menu e catalogo piatti
+        - Interfaccia, tema e sistema visivo
+        - Documentazione
+        - Altro
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternative
+    attributes:
+      label: Alternative valutate
+      description: Altre strade considerate, e perché sono state scartate. Anche «si può già fare a mano, ma...» è una risposta utile.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priorita
+    attributes:
+      label: Priorità
+      options:
+        - Bassa — sarebbe comodo
+        - Media — serve per la prossima demo
+        - Alta — senza, il cliente non vede un flusso che si aspetta
+    validations:
+      required: true
+
+  - type: textarea
+    id: contesto
+    attributes:
+      label: Contesto aggiuntivo
+      description: Schizzi, riferimenti, vincoli normativi, esempi di come lo risolvono altri gestionali.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: verifiche
+    attributes:
+      label: Verifiche fatte
+      options:
+        - label: Ho controllato che non esista già una richiesta simile
+          required: true
+        - label: Nella proposta non ci sono dati personali reali
+          required: true

@@ -60,7 +60,7 @@ componenti, classi CSS e commenti sono in italiano. Mantenere questa convenzione
 ## 2. Comandi
 
 ```
-npm install       installazione dipendenze (Node 18+)
+npm install       installazione dipendenze (Node 20.19+, lo richiede Vite 8)
 npm run dev       server di sviluppo su http://localhost:5173, apre il browser
 npm run build     build statica in dist/
 npm run preview   anteprima della build su porta 4173
@@ -82,6 +82,14 @@ PROTOTIPO/
   MAVI_Stato_Progetto.md    diario di progetto, va aggiornato a fine task
   CLAUDE.md                 questo file
   file.md/                  documentazione tematica per Claude
+  README.md                 presentazione del repository su GitHub
+  LICENSE                   licenza proprietaria, tutti i diritti riservati
+  CHANGELOG.md              registro delle modifiche, sezione Non rilasciato
+  CONTRIBUTING.md           vincoli, flusso di lavoro, commit, checklist PR
+  SECURITY.md               segnalazioni di sicurezza, punti sensibili noti
+  CODE_OF_CONDUCT.md        codice di condotta
+  .github/                  template issue e PR, CODEOWNERS, Dependabot,
+                            workflow Verifica (build e dist/ allineata)
   public/
     documenti/              PDF scaricabili dal portale
     foto/                   fotografie dei piatti, nominate <codice>.jpg
@@ -138,7 +146,8 @@ quello che serve al task in corso.
 1. **Prima di modificare, leggere il documento tematico** corrispondente in
    `file.md/`. Contiene i vincoli già decisi con il cliente.
 2. **A fine task, aggiornare `MAVI_Stato_Progetto.md`** e, se la modifica
-   cambia struttura o comportamento documentato, il file in `file.md/`.
+   cambia struttura o comportamento documentato, il file in `file.md/`. Se la
+   modifica si vede, anche una voce in `CHANGELOG.md` sotto *Non rilasciato*.
 3. Non introdurre dipendenze nuove senza motivo forte. Lo stack è
    deliberatamente minimale: React, React Router, ExcelJS, file-saver.
 4. Non aggiungere TypeScript, test runner, linter o build step: il progetto
@@ -148,6 +157,9 @@ quello che serve al task in corso.
 6. `ExcelJS` si importa con `import()` dinamico, per non appesantire il bundle.
 7. Le stringhe JSX contengono `://` (URL, orari): **non usare `sed`** o
    sostituzioni cieche su questi file.
+8. `dist/` è versionata: dopo una modifica a `src/` o `public/` si rigenera con
+   `npm run build` e si committa insieme. Il workflow Verifica su GitHub
+   ricompila i sorgenti e segnala se `dist/` è rimasta indietro.
 
 ## 6. Profili di accesso
 

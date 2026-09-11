@@ -2,8 +2,9 @@
 
 ## Requisiti
 
-Node 18 o superiore. Nessun altro prerequisito: niente database, niente
-servizi esterni, niente variabili d'ambiente.
+Node 20.19 o superiore (per la serie 22, dalla 22.12): è il minimo dichiarato
+da Vite 8 e da `@vitejs/plugin-react`. Nessun altro prerequisito: niente
+database, niente servizi esterni, niente variabili d'ambiente.
 
 ## Comandi
 
@@ -54,16 +55,23 @@ della presentazione**, perché non dipende da Node né dalla rete.
 Regola: se si tocca qualcosa in `src/`, **rigenerare `dist/`** prima di
 consegnare. Altrimenti il cliente vede la versione vecchia.
 
+Nel repository `dist/` è versionata, quindi va committata insieme alla modifica
+dei sorgenti. Il workflow **Verifica** su GitHub (`.github/workflows/verifica.yml`)
+a ogni push esegue `npm ci` e `npm run build` e segnala se la build ottenuta non
+coincide con `dist/`. È informativo: non blocca niente.
+
 ## Consegna
 
 Quando si prepara uno zip per il cliente vanno inclusi:
 
 ```
-src/  dist/  public/  index.html  package.json  vite.config.js  LEGGIMI.md
+src/  dist/  public/  index.html  package.json  vite.config.js  LEGGIMI.md  LICENSE
 ```
 
 `node_modules/` no. `MAVI_Stato_Progetto.md`, `CLAUDE.md` e `file.md/` sono
-documenti interni, non vanno nello zip del cliente.
+documenti interni, non vanno nello zip del cliente. Nemmeno i file che
+riguardano solo il repository: `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`,
+`SECURITY.md`, `CODE_OF_CONDUCT.md` e `.github/`.
 
 Va sempre riestratto in una cartella nuova, mai sovrapposto a una precedente:
 i file rimasti da una versione vecchia hanno già causato confusione.

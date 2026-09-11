@@ -1,0 +1,114 @@
+name: Segnalazione di bug
+description: Qualcosa non funziona come dovrebbe in uno dei portali.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Grazie per la segnalazione. Prima di aprirla, due controlli veloci:
+
+        - se il problema riguarda la **sicurezza**, non usare le issue: segui [`SECURITY.md`](https://github.com/Shadowed1996/Mavi-Ristorazione/blob/main/SECURITY.md);
+        - il prototipo **non salva niente**: ricaricare la pagina azzera ordini, presenze e modifiche. Se qualcosa è sparito dopo un ricaricamento, è il comportamento previsto.
+
+  - type: textarea
+    id: descrizione
+    attributes:
+      label: Cosa succede
+      description: Il problema in poche righe, senza interpretazioni.
+      placeholder: Caricando la dieta compilata dal dietista, l'anteprima mostra il lunedì vuoto anche se nel file è compilato.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: portale
+    attributes:
+      label: Portale interessato
+      description: Con quale profilo si era entrati quando è comparso il problema.
+      options:
+        - Accesso o preloader
+        - Portale azienda — dipendente
+        - Portale azienda — referente
+        - Portale comunità — educatore
+        - Portale comunità — responsabile
+        - Portale MAVI (cucina)
+        - Più portali, o non so
+    validations:
+      required: true
+
+  - type: textarea
+    id: passi
+    attributes:
+      label: Passi per riprodurre
+      description: Nell'ordine, a partire dall'accesso, con i valori usati davvero.
+      placeholder: |
+        1. Entro come ilaria.gatti
+        2. Pazienti → Beatrice Comi → Carica dieta
+        3. Scelgo il file compilato partendo da «Scarica template»
+        4. L'anteprima mostra...
+    validations:
+      required: true
+
+  - type: textarea
+    id: atteso
+    attributes:
+      label: Comportamento atteso
+      description: Cosa ti aspettavi che succedesse.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: modalita
+    attributes:
+      label: Come era avviato il portale
+      options:
+        - Doppio clic su dist/index.html
+        - npm run dev (server di sviluppo)
+        - npm run build seguito da npm run preview
+    validations:
+      required: true
+
+  - type: input
+    id: ambiente
+    attributes:
+      label: Sistema operativo e browser
+      placeholder: Windows 11, Chrome 141
+    validations:
+      required: true
+
+  - type: input
+    id: node
+    attributes:
+      label: Versione di Node.js
+      description: Il risultato di `node --version`. Serve solo se il portale era avviato con npm.
+      placeholder: v24.19.0
+    validations:
+      required: false
+
+  - type: input
+    id: versione
+    attributes:
+      label: Versione o commit
+      description: La versione indicata in package.json oppure l'hash del commit.
+      placeholder: 0.1.0 oppure bf9edda
+    validations:
+      required: false
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Log ed errori
+      description: Console del browser o uscita del terminale. Verranno formattati come codice.
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: verifiche
+    attributes:
+      label: Verifiche fatte
+      options:
+        - label: Ho controllato che non esista già una issue sullo stesso problema
+          required: true
+        - label: Nella segnalazione non ci sono dati personali reali né credenziali
+          required: true

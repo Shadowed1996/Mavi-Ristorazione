@@ -2,7 +2,9 @@
 
 Documento vivo. Va riletto all'inizio di ogni nuova sessione e aggiornato alla fine di ogni task.
 
-**Ultimo aggiornamento**: 1 settembre 2026 — sessione ridisegno selezione piatti, committenti, rotazione menu.
+**Ultimo aggiornamento**: 11 settembre 2026 — repository GitHub allineato agli altri progetti: documentazione standard, licenza, file di controllo, lockfile corretto (sezione 15).
+
+**Precedente**: 3 settembre 2026 — revisione del codice (sezione 14).
 
 ---
 
@@ -319,3 +321,52 @@ codice morto), con build di controllo e `dist/` ricostruito.
 tabella "Quantità da produrre" con intestazioni sfasate, `Extra.jsx` interamente
 codice morto, CSS morto su larga scala in `styles.css`, box "Rotazione menu" non
 collegato a `CICLICO`.
+
+---
+
+## 15. Repository GitHub e documentazione standard — 11 settembre 2026
+
+Il repository `Shadowed1996/Mavi-Ristorazione` è stato allineato agli altri
+progetti di Filippo.
+
+**Storia**
+
+Resta un unico commit iniziale, con Filippo unico autore. Dal messaggio è stata
+tolta la riga `Co-Authored-By`, che faceva comparire Claude fra i contributori:
+contenuto, autore e date del commit sono invariati.
+
+**File aggiunti**
+
+- `README.md`, `LICENSE` (proprietaria, tutti i diritti riservati),
+  `CHANGELOG.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`.
+- `.editorconfig` e `.gitattributes` (fine riga LF, `dist/` segnata come
+  generata, documentazione esclusa dalle statistiche dei linguaggi).
+- In `.github/`: template di issue e pull request, `CODEOWNERS`,
+  `dependabot.yml` per npm e GitHub Actions, workflow `verifica.yml`.
+
+**Workflow Verifica**
+
+Informativo, non blocca niente. A ogni push su `main` controlla che i file
+standard ci siano, che i JSON siano validi, che `npm ci` e `npm run build`
+riescano e che la build ottenuta coincida con `dist/` versionata. Se qualcuno
+tocca `src/` senza rigenerare `dist/`, lo segnala.
+
+**Correzioni**
+
+- `package-lock.json` era disallineato da `package.json`: conteneva ancora
+  `typescript`, `@types/react` e `@types/react-dom`, e mancava `uuid` annidato
+  sotto `exceljs`. `npm ci` falliva. Rigenerato con `npm install`, senza
+  cambiare le versioni dichiarate.
+- Il requisito di Node.js scritto in `LEGGIMI.md`, `CLAUDE.md` e
+  `file.md/01-avvio-e-build.md` era Node 18, ma Vite 8 e `@vitejs/plugin-react`
+  dichiarano `^20.19.0 || >=22.12.0`. Corretto ovunque.
+- `.gitignore` esteso (editor, archivi zip); `dist/` resta versionata.
+- `LICENSE` entra nello zip per il cliente; i file che riguardano solo il
+  repository no (`file.md/01-avvio-e-build.md`).
+
+**Da sapere**
+
+La cartella `Desktop\Prototipo` sul PC non è un repository git e non coincide
+con quello pubblicato: il `MAVI_Stato_Progetto.md` lì dentro racconta una
+sezione Committenti con CRUD completo che su GitHub non c'è. Prima di lavorarci
+va deciso quale delle due versioni è quella buona.

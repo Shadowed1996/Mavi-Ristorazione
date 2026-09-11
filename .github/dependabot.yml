@@ -1,0 +1,40 @@
+# Aggiornamenti proposti come pull request, mai applicati da soli.
+# Minori e patch di npm arrivano raggruppate in una PR sola; le versioni major
+# arrivano una per volta, perché vanno provate con npm run build e una demo
+# completa prima di unirle. Ricordarsi di rigenerare dist/ (CONTRIBUTING.md)
+# e di non lanciare mai npm audit fix --force (CLAUDE.md).
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Rome"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels:
+      - "dependencies"
+    groups:
+      dipendenze-minori:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Rome"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore"
+    labels:
+      - "dependencies"

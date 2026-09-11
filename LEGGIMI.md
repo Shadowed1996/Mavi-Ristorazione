@@ -13,7 +13,7 @@ consigliata il giorno della presentazione.
 
 ### Modo sviluppo
 
-Serve Node 18 o superiore.
+Serve Node 20.19 o superiore (per la serie 22, dalla 22.12).
 
 ```
 npm install

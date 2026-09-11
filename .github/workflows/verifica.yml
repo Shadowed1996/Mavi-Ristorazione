@@ -1,0 +1,110 @@
+# Verifica informativa del repository.
+#
+# Non blocca niente e non deve bloccare niente: ogni passo ha
+# continue-on-error, e il riepilogo finale racconta cosa ha trovato.
+# Serve ad accorgersi di un lockfile disallineato, di una build che non parte
+# o di una dist/ dimenticata prima della consegna, non a fare da guardiano.
+name: Verifica
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verifica:
+    name: Verifica del repository
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Scarica il repository
+        uses: actions/checkout@v4
+
+      - name: Prepara Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: File standard presenti
+        id: standard
+        continue-on-error: true
+        run: |
+          mancanti=0
+          for f in README.md LICENSE SECURITY.md CONTRIBUTING.md CODE_OF_CONDUCT.md \
+                   CHANGELOG.md LEGGIMI.md .editorconfig .gitattributes .gitignore \
+                   .github/CODEOWNERS .github/PULL_REQUEST_TEMPLATE.md \
+                   .github/dependabot.yml \
+                   .github/ISSUE_TEMPLATE/config.yml \
+                   .github/ISSUE_TEMPLATE/bug_report.yml \
+                   .github/ISSUE_TEMPLATE/richiesta_funzionalita.yml; do
+            if [ -f "$f" ]; then
+              echo "presente: $f"
+            else
+              echo "MANCANTE: $f"
+              mancanti=$((mancanti + 1))
+            fi
+          done
+          [ "$mancanti" -eq 0 ]
+
+      - name: Sintassi dei file JSON
+        id: json
+        continue-on-error: true
+        run: |
+          errori=0
+          while IFS= read -r f; do
+            if jq empty "$f" >/dev/null 2>&1; then
+              echo "ok:      $f"
+            else
+              echo "ERRORE:  $f"
+              errori=$((errori + 1))
+            fi
+          done < <(git ls-files '*.json')
+          [ "$errori" -eq 0 ]
+
+      - name: Installazione delle dipendenze
+        id: install
+        continue-on-error: true
+        run: npm ci --no-audit --no-fund
+
+      - name: Compilazione
+        id: build
+        continue-on-error: true
+        run: npm run build
+
+      - name: dist/ allineata ai sorgenti
+        id: dist
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
+        run: |
+          # dist/ è versionata: se la build appena fatta la cambia, qualcuno
+          # ha toccato i sorgenti senza rigenerarla.
+          cambiati=$(git status --porcelain -- dist)
+          if [ -n "$cambiati" ]; then
+            echo "La build dei sorgenti non coincide con dist/ versionata:"
+            echo "$cambiati"
+            exit 1
+          fi
+          echo "dist/ coincide con la build dei sorgenti"
+
+      - name: Riepilogo
+        if: always()
+        run: |
+          {
+            echo "## Verifica del repository"
+            echo ""
+            echo "| Controllo | Esito |"
+            echo "|---|---|"
+            echo "| File standard | ${{ steps.standard.outcome == 'success' && 'tutti presenti' || 'qualcosa manca' }} |"
+            echo "| Sintassi JSON | ${{ steps.json.outcome == 'success' && 'valida' || 'errori rilevati' }} |"
+            echo "| Installazione (\`npm ci\`) | ${{ steps.install.outcome == 'success' && 'riuscita' || 'non riuscita' }} |"
+            echo "| Compilazione (\`npm run build\`) | ${{ steps.build.outcome == 'success' && 'riuscita' || 'non riuscita' }} |"
+            echo "| \`dist/\` allineata ai sorgenti | ${{ steps.dist.outcome == 'success' && 'sì' || (steps.dist.outcome == 'skipped' && 'non controllata: la build non è riuscita' || 'da rigenerare e committare') }} |"
+            echo ""
+            echo "I controlli sono **informativi**: non bloccano né il push né la pull request."
+          } >> "$GITHUB_STEP_SUMMARY"
