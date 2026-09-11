@@ -1,4 +1,8 @@
-/* proforma.js — genera proforma stile WHMCS, apre in iframe per stampa/salva */
+/* proforma.js — genera proforma stile WHMCS, apre in una nuova scheda per stampa/salva */
+
+/* i nomi arrivano dall'anagrafica, modificabile dal portale: nel documento vanno come testo, non come HTML */
+const testoHtml = (v) =>
+  String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 export function generaProformaPDF(strutture, prezzoUnitario) {
   const totPasti = strutture.reduce((s, r) => s + r.pasti, 0);
@@ -11,8 +15,8 @@ export function generaProformaPDF(strutture, prezzoUnitario) {
 
   const righe = strutture.map(s => `
     <tr>
-      <td style="padding:10px 16px;border-bottom:1px solid #eee;font-size:13px;">${s.nome}<br><span style="color:#999;font-size:11px;">${s.tipo} — ${s.mese}</span></td>
-      <td style="padding:10px 16px;border-bottom:1px solid #eee;text-align:center;font-size:13px;">${s.pasti}</td>
+      <td style="padding:10px 16px;border-bottom:1px solid #eee;font-size:13px;">${testoHtml(s.nome)}<br><span style="color:#999;font-size:11px;">${testoHtml(s.tipo)} — ${testoHtml(s.mese)}</span></td>
+      <td style="padding:10px 16px;border-bottom:1px solid #eee;text-align:center;font-size:13px;">${testoHtml(s.pasti)}</td>
       <td style="padding:10px 16px;border-bottom:1px solid #eee;text-align:right;font-size:13px;">€ ${eur(prezzoUnitario)}</td>
       <td style="padding:10px 16px;border-bottom:1px solid #eee;text-align:right;font-size:13px;font-weight:600;">€ ${eur(s.pasti * prezzoUnitario)}</td>
     </tr>`).join("");
@@ -86,7 +90,7 @@ thead th:last-child{text-align:right;border-radius:0 6px 0 0}
   <div class="inv-meta-box">
     <h4>A</h4>
     <p>
-      <strong>${strutture.map(s => s.nome).join(" / ")}</strong>
+      <strong>${strutture.map(s => testoHtml(s.nome)).join(" / ")}</strong>
       <span class="ph">[Indirizzo committente]</span><br>
       <span class="ph">[P.IVA committente]</span><br>
       <span class="ph">[Referente / Email]</span>

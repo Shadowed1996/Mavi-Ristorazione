@@ -1,10 +1,10 @@
-function e(e,t){let n=e.reduce((e,t)=>e+t.pasti,0)*t,r=n*.1,i=n+r,a=e=>e.toLocaleString(`it-IT`,{minimumFractionDigits:2,maximumFractionDigits:2}),o=new Date().toLocaleDateString(`it-IT`,{day:`2-digit`,month:`long`,year:`numeric`}),s=`PRO-2026/`+String(Math.floor(Math.random()*900)+100),c=e.map(e=>`
+var e=e=>String(e??``).replace(/[&<>"']/g,e=>({"&":`&amp;`,"<":`&lt;`,">":`&gt;`,'"':`&quot;`,"'":`&#39;`})[e]);function t(t,n){let r=t.reduce((e,t)=>e+t.pasti,0)*n,i=r*.1,a=r+i,o=e=>e.toLocaleString(`it-IT`,{minimumFractionDigits:2,maximumFractionDigits:2}),s=new Date().toLocaleDateString(`it-IT`,{day:`2-digit`,month:`long`,year:`numeric`}),c=`PRO-2026/`+String(Math.floor(Math.random()*900)+100),l=t.map(t=>`
     <tr>
-      <td style="padding:10px 16px;border-bottom:1px solid #eee;font-size:13px;">${e.nome}<br><span style="color:#999;font-size:11px;">${e.tipo} — ${e.mese}</span></td>
-      <td style="padding:10px 16px;border-bottom:1px solid #eee;text-align:center;font-size:13px;">${e.pasti}</td>
-      <td style="padding:10px 16px;border-bottom:1px solid #eee;text-align:right;font-size:13px;">€ ${a(t)}</td>
-      <td style="padding:10px 16px;border-bottom:1px solid #eee;text-align:right;font-size:13px;font-weight:600;">€ ${a(e.pasti*t)}</td>
-    </tr>`).join(``),l=`<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>Proforma ${s}</title>
+      <td style="padding:10px 16px;border-bottom:1px solid #eee;font-size:13px;">${e(t.nome)}<br><span style="color:#999;font-size:11px;">${e(t.tipo)} — ${e(t.mese)}</span></td>
+      <td style="padding:10px 16px;border-bottom:1px solid #eee;text-align:center;font-size:13px;">${e(t.pasti)}</td>
+      <td style="padding:10px 16px;border-bottom:1px solid #eee;text-align:right;font-size:13px;">€ ${o(n)}</td>
+      <td style="padding:10px 16px;border-bottom:1px solid #eee;text-align:right;font-size:13px;font-weight:600;">€ ${o(t.pasti*n)}</td>
+    </tr>`).join(``),u=`<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>Proforma ${c}</title>
 <style>
 @page{size:A4;margin:15mm}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -54,8 +54,8 @@ thead th:last-child{text-align:right;border-radius:0 6px 0 0}
 </div>
 
 <div class="inv-info">
-  <div class="inv-info-item"><label>Documento n.</label><span>${s}</span></div>
-  <div class="inv-info-item"><label>Data emissione</label><span>${o}</span></div>
+  <div class="inv-info-item"><label>Documento n.</label><span>${c}</span></div>
+  <div class="inv-info-item"><label>Data emissione</label><span>${s}</span></div>
   <div class="inv-info-item"><label>Periodo</label><span>Agosto 2026</span></div>
   <div class="inv-info-item"><label>Scadenza</label><span class="ph">[30 gg d.f.]</span></div>
 </div>
@@ -73,7 +73,7 @@ thead th:last-child{text-align:right;border-radius:0 6px 0 0}
   <div class="inv-meta-box">
     <h4>A</h4>
     <p>
-      <strong>${e.map(e=>e.nome).join(` / `)}</strong>
+      <strong>${t.map(t=>e(t.nome)).join(` / `)}</strong>
       <span class="ph">[Indirizzo committente]</span><br>
       <span class="ph">[P.IVA committente]</span><br>
       <span class="ph">[Referente / Email]</span>
@@ -90,13 +90,13 @@ thead th:last-child{text-align:right;border-radius:0 6px 0 0}
       <th style="text-align:right">Importo</th>
     </tr>
   </thead>
-  <tbody>${c}</tbody>
+  <tbody>${l}</tbody>
 </table>
 
 <div class="inv-totals"><table>
-  <tr><td class="label">Subtotale</td><td class="val">€ ${a(n)}</td></tr>
-  <tr><td class="label">IVA 10%</td><td class="val">€ ${a(r)}</td></tr>
-  <tr class="grand"><td style="padding:10px 16px">Totale</td><td style="padding:10px 16px;text-align:right">€ ${a(i)}</td></tr>
+  <tr><td class="label">Subtotale</td><td class="val">€ ${o(r)}</td></tr>
+  <tr><td class="label">IVA 10%</td><td class="val">€ ${o(i)}</td></tr>
+  <tr class="grand"><td style="padding:10px 16px">Totale</td><td style="padding:10px 16px;text-align:right">€ ${o(a)}</td></tr>
 </table></div>
 
 <div class="inv-notes">
@@ -115,6 +115,6 @@ thead th:last-child{text-align:right;border-radius:0 6px 0 0}
 </div>
 
 <div class="inv-footer">
-  Documento generato dal portale MAVI Ristorazione il ${o}
+  Documento generato dal portale MAVI Ristorazione il ${s}
 </div>
-</body></html>`,u=window.open(`about:blank`,`_blank`);if(u)u.document.write(l),u.document.close();else{let e=new Blob([l],{type:`text/html;charset=utf-8`}),t=URL.createObjectURL(e),n=document.createElement(`a`);n.href=t,n.download=`Proforma_MAVI.html`,document.body.appendChild(n),n.click(),document.body.removeChild(n),URL.revokeObjectURL(t)}}export{e as generaProformaPDF};
+</body></html>`,d=window.open(`about:blank`,`_blank`);if(d)d.document.write(u),d.document.close();else{let e=new Blob([u],{type:`text/html;charset=utf-8`}),t=URL.createObjectURL(e),n=document.createElement(`a`);n.href=t,n.download=`Proforma_MAVI.html`,document.body.appendChild(n),n.click(),document.body.removeChild(n),URL.revokeObjectURL(t)}}export{t as generaProformaPDF};

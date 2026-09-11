@@ -71,12 +71,16 @@ riconosciuto nella nota della correzione.
 Nel prototipo non sono sfruttabili da nessuno che non abbia già il portale aperto
 davanti, ma sono le parti da rifare, o da presidiare, prima di un uso reale.
 
-- **Proforma.** `src/proforma.js` compone l'intero documento come stringa HTML e
-  lo scrive con `document.write` in una nuova scheda, che ha la stessa origine
-  del portale. I nomi delle strutture vengono inseriti **senza escape**: un
-  nome che contenesse del markup verrebbe interpretato come HTML. Prima della
-  produzione ogni valore va sottoposto a escape, oppure il documento va
-  costruito senza concatenare stringhe.
+- **Documenti stampabili.** La proforma (`src/proforma.js`) e la scheda del
+  piatto (`schedaPdf` in `src/ui.jsx`) sono composte come stringhe HTML e
+  scritte con `document.write` in una nuova scheda, che ha la stessa origine
+  del portale. Nomi delle strutture e campi del catalogo si modificano dal
+  portale, quindi ogni valore passa da `testoHtml`, che lo inserisce come testo.
+  Un valore aggiunto a quei documenti senza passare da lì è una vulnerabilità
+  (XSS).
+- **HTML nei componenti.** L'unico `dangerouslySetInnerHTML` è in `Accesso`
+  (`src/ui.jsx`) e riceve solo frasi fisse scritte nel codice. Deve restare
+  così: mai un valore che arrivi dall'utente o dallo stato.
 - **Import delle diete.** `parsaDietaExcel` in `src/diete.js` legge con ExcelJS
   un file scelto dall'utente, cioè un input non fidato. Il risultato non viene
   mai applicato direttamente: passa prima dal modale di anteprima.

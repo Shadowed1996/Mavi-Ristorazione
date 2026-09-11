@@ -73,6 +73,18 @@ Gli SVG delle illustrazioni vanno sempre vincolati con `width` e `height`
 espliciti. Senza, si espandono a riempire il contenitore e sfondano il layout
 della card piatto.
 
+### HTML composto come stringa
+
+La proforma (`proforma.js`) e la scheda stampabile del piatto (`schedaPdf` in
+`ui.jsx`) sono stringhe HTML scritte con `document.write` in una nuova scheda,
+che ha la stessa origine del portale. I valori arrivano da dati modificabili dal
+portale (anagrafica, catalogo), quindi **ogni valore passa da `testoHtml`**, che
+lo inserisce come testo. Un `${valore}` aggiunto senza, in quei documenti,
+diventa HTML interpretato.
+
+Per lo stesso motivo `dangerouslySetInnerHTML`, oggi usato solo in `Accesso` per
+il corsivo delle frasi fisse, non riceve mai valori che vengano dallo stato.
+
 ### `PIATTI` mutato fuori da React
 
 `salvaPiatto` ed `eliminaPiatto` scrivono direttamente sull'oggetto `PIATTI`

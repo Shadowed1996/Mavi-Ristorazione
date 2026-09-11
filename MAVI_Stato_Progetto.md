@@ -2,7 +2,7 @@
 
 Documento vivo. Va riletto all'inizio di ogni nuova sessione e aggiornato alla fine di ogni task.
 
-**Ultimo aggiornamento**: 11 settembre 2026 — repository GitHub allineato agli altri progetti: documentazione standard, licenza, file di controllo, lockfile corretto (sezione 15).
+**Ultimo aggiornamento**: 11 settembre 2026 — repository GitHub allineato agli altri progetti: documentazione standard, licenza, file di controllo, lockfile corretto, escape nei documenti stampabili (sezione 15).
 
 **Precedente**: 3 settembre 2026 — revisione del codice (sezione 14).
 
@@ -363,6 +363,16 @@ tocca `src/` senza rigenerare `dist/`, lo segnala.
 - `.gitignore` esteso (editor, archivi zip); `dist/` resta versionata.
 - `LICENSE` entra nello zip per il cliente; i file che riguardano solo il
   repository no (`file.md/01-avvio-e-build.md`).
+
+**Correzione di sicurezza**
+
+`proforma.js` e `schedaPdf` in `ui.jsx` componevano l'HTML inserendo i nomi
+delle strutture e i campi del catalogo così com'erano: un valore con del markup
+veniva interpretato nella nuova scheda. Ora ogni valore passa da `testoHtml`.
+Corretti anche il commento in testa a `proforma.js`, che parlava di iframe, e
+`file.md/10-export-e-documenti.md`, che diceva che la proforma lancia la stampa
+da sola. `dist/` rigenerata. Nuova trappola annotata in
+`file.md/11-convenzioni.md`.
 
 **Da sapere**
 

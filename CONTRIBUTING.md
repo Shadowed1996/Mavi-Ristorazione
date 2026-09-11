@@ -141,7 +141,9 @@ introdurne di nuove, guarda come è scritto il file che stai toccando.
   nuovo**;
 - ExcelJS e file-saver si importano con `import()` dinamico, per non
   appesantire il bundle iniziale;
-- gli SVG delle illustrazioni hanno sempre `width` e `height` espliciti.
+- gli SVG delle illustrazioni hanno sempre `width` e `height` espliciti;
+- l'HTML composto come stringa (proforma, scheda stampabile del piatto)
+  inserisce ogni valore con `testoHtml`, mai così com'è.
 
 ### CSS
 

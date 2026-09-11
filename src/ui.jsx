@@ -536,13 +536,17 @@ export function Velo({ children, onChiudi, largo }) {
   );
 }
 
+/* i campi del catalogo si modificano dal portale: nella scheda vanno come testo, non come HTML */
+const testoHtml = (v) =>
+  String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
 /* scheda stampabile, il browser la salva in PDF */
 export function schedaPdf(id) {
   const p = PIATTI[id];
   const w = window.open("", "_blank", "width=820,height=920");
   if (!w) { alert("Consenti le finestre popup per scaricare la scheda."); return; }
   const nutrienti = nutrientiDi(p);
-  w.document.write(`<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>Scheda, ${p.n}</title>
+  w.document.write(`<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>Scheda, ${testoHtml(p.n)}</title>
 <style>
 body{font-family:Georgia,"Times New Roman",serif;color:#1C1917;max-width:690px;margin:38px auto;padding:0 28px;line-height:1.65}
 .testa{display:flex;justify-content:space-between;align-items:baseline;border-bottom:3px solid #B4531F;padding-bottom:10px;margin-bottom:24px}
@@ -561,16 +565,16 @@ td:last-child{text-align:right;font-weight:700}
 @media print{body{margin:0}}
 </style></head><body>
 <div class="testa"><div class="marchio">MAVI<span>Ristorazione</span></div><div class="data">Scheda prodotto</div></div>
-<h1>${p.n}</h1>
-<div>${p.so ? `<span class="tag">Piatto unico, ${sostituisce(id)}</span>` : ""}${(p.mk || []).map((k) => `<span class="tag">${MARCATORI[k]}</span>`).join("")}</div>
-<p>${p.de}</p>
-<h2>Ingredienti</h2><p>${p.ing}</p>
+<h1>${testoHtml(p.n)}</h1>
+<div>${p.so ? `<span class="tag">Piatto unico, ${testoHtml(sostituisce(id))}</span>` : ""}${(p.mk || []).map((k) => `<span class="tag">${testoHtml(MARCATORI[k])}</span>`).join("")}</div>
+<p>${testoHtml(p.de)}</p>
+<h2>Ingredienti</h2><p>${testoHtml(p.ing)}</p>
 <h2>Allergeni, Regolamento UE 1169/2011</h2>
-<p class="alle">${p.a.length ? p.a.map((n) => `<b>${n}</b> ${ALLERGENI[n]}`).join(" &nbsp;·&nbsp; ") : "Nessun allergene dichiarato fra i quattordici previsti dalla normativa."}</p>
+<p class="alle">${p.a.length ? p.a.map((n) => `<b>${testoHtml(n)}</b> ${testoHtml(ALLERGENI[n])}`).join(" &nbsp;·&nbsp; ") : "Nessun allergene dichiarato fra i quattordici previsti dalla normativa."}</p>
 <h2>Valori nutrizionali per porzione</h2>
-<table><tbody>${nutrienti.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join("")}</tbody></table>
-<h2>Riscaldamento</h2><p>${p.ris}</p>
-<h2>Consiglio di consumo</h2><p>${p.con}</p>
+<table><tbody>${nutrienti.map(([a, b]) => `<tr><td>${testoHtml(a)}</td><td>${testoHtml(b)}</td></tr>`).join("")}</tbody></table>
+<h2>Riscaldamento</h2><p>${testoHtml(p.ris)}</p>
+<h2>Consiglio di consumo</h2><p>${testoHtml(p.con)}</p>
 <div class="piede">MAVI Ristorazione. Documento generato dal portale pasti. I valori nutrizionali sono indicativi e riferiti alla porzione standard. Per informazioni su eventuali contaminazioni crociate rivolgersi al servizio.</div>
 </body></html>`);
   w.document.close();

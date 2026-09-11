@@ -91,9 +91,14 @@ generaProformaPDF(strutture, prezzoUnitario)
 
 `strutture` è un array di `{ nome, tipo, mese, pasti }`.
 
-Costruisce una stringa HTML completa e la apre in una nuova finestra, poi
-lancia la stampa. Non è un PDF generato lato server: è HTML impaginato per la
-stampa, che il browser salva in PDF.
+Costruisce una stringa HTML completa e la scrive in una nuova scheda; la stampa
+parte dal pulsante in cima al documento. Non è un PDF generato lato server: è
+HTML impaginato per la stampa, che il browser salva in PDF. Se il browser blocca
+la nuova scheda, il documento viene scaricato come `Proforma_MAVI.html`.
+
+Nome, tipo, periodo e pasti delle strutture passano da `testoHtml`, che li
+inserisce come testo e non come HTML: vedi «HTML composto come stringa» in
+`11-convenzioni.md`.
 
 Calcoli: imponibile = pasti totali × prezzo unitario, **IVA al 10 %**, totale.
 Il numero documento è `PRO-2026/` più tre cifre casuali; la data è quella

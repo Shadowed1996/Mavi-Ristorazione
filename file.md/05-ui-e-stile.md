@@ -63,7 +63,9 @@ Se `allergeniUtente` contiene un allergene del piatto, la scheda mostra un
 avviso di conflitto.
 
 `schedaPdf(id)` apre una nuova finestra con la scheda impaginata e lancia
-`print()` dopo 400 ms.
+`print()` dopo 400 ms. Il documento è una stringa HTML: ogni campo del piatto
+passa da `testoHtml`, perché il catalogo si modifica dal portale (vedi «HTML
+composto come stringa» in `11-convenzioni.md`).
 
 ### `Illustrazione`
 

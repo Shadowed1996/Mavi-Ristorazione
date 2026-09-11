@@ -36,6 +36,15 @@ e il progetto adotta il [Versionamento Semantico](https://semver.org/lang/it/).
 - `package-lock.json` riallineato a `package.json`: dichiarava ancora
   `typescript`, `@types/react` e `@types/react-dom` e non conteneva `uuid`
   annidato sotto `exceljs`, per cui `npm ci` si fermava con un errore.
+- `file.md/10-export-e-documenti.md` diceva che la proforma lancia la stampa da
+  sola: la stampa parte dal pulsante in cima al documento.
+
+### Sicurezza
+- La proforma (`src/proforma.js`) e la scheda stampabile del piatto
+  (`schedaPdf` in `src/ui.jsx`) inserivano nell'HTML i nomi delle strutture e i
+  campi del catalogo senza escape: un valore contenente markup veniva
+  interpretato nella nuova scheda, che ha la stessa origine del portale. Ora
+  ogni valore passa da `testoHtml`. `dist/` rigenerata.
 
 ## [0.1.0] - 2026-09-03
 
