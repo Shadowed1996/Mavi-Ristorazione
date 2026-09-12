@@ -1345,11 +1345,202 @@ function GiriConsegna() {
 }
 
 /* ==================== etichette pasto stampabili ==================== */
+/* raggruppa le etichette azienda per piatto (anonime, con contatore) */
+function raggruppaAzienda(lista) {
+  const perPiatto = {};
+  lista.forEach((e) => {
+    const k = e.piatto;
+    if (!perPiatto[k]) perPiatto[k] = { piatto: e.piatto, portata: e.portata, kcal: e.kcal, ing: e.ing, allergeni: e.allergeni, riscaldamento: e.riscaldamento, giorno: e.giorno, pasto: e.pasto, count: 0, chiavi: [] };
+    perPiatto[k].count++;
+    perPiatto[k].chiavi.push(e.chiave);
+  });
+  return Object.values(perPiatto);
+}
+/* raggruppa le etichette comunità per reparto, poi per paziente: senza il
+   reparto come primo livello, molte comunità con molti pazienti tornano a
+   essere uno scroll unico enorme, lo stesso problema di partenza */
+function raggruppaComunita(lista) {
+  const perReparto = {};
+  lista.forEach((e) => {
+    const reparto = e.stanza || "Senza reparto";
+    if (!perReparto[reparto]) perReparto[reparto] = {};
+    if (!perReparto[reparto][e.nome]) perReparto[reparto][e.nome] = { nome: e.nome, stanza: e.stanza, tipoDieta: e.tipoDieta, note: e.note, pranzo: [], cena: [] };
+    const pasto = e.pasto === "cena" ? "cena" : "pranzo";
+    perReparto[reparto][e.nome][pasto].push(e);
+  });
+  return Object.entries(perReparto).map(([reparto, pazienti]) => ({ reparto, pazienti: Object.values(pazienti) }));
+}
+
+function CardEtichettaAzienda({ g, onElimina }) {
+  return (
+    <div>
+      <div className="etichetta">
+        <div className="etichetta-testa">
+          <span className="marchio-t" style={{ fontSize: 14 }}>MAVI</span>
+          <span className="et-data">{g.giorno}, {g.pasto}</span>
+        </div>
+        <div style={{ padding: "10px 0" }}>
+          <span className="so-lab">{g.portata}</span>
+          <p style={{ margin: "4px 0 0", fontSize: 17, fontWeight: 600 }}>{g.piatto}</p>
+          <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--inchiostro-2)" }}>
+            <b style={{ fontSize: 20 }}>×{g.count}</b> <span style={{ color: "var(--muto)" }}>etichette</span>
+          </p>
+          {g.ing && <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--muto)", lineHeight: 1.4 }}>Ingredienti: {g.ing}</p>}
+          {g.allergeni && g.allergeni.length > 0 && (
+            <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--acc)" }}>Allergeni: {g.allergeni.join(", ")}</p>
+          )}
+          <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--muto)" }}>{g.kcal} kcal</p>
+        </div>
+        <div className="etichetta-piede">
+          <span>{g.riscaldamento}</span>
+        </div>
+      </div>
+      {onElimina && (
+        <button className="btn-rimuovi-et" onClick={onElimina}>
+          <Icone.x size={12} /> Elimina gruppo
+        </button>
+      )}
+    </div>
+  );
+}
+
+function CardEtichettaComunita({ e, onElimina }) {
+  return (
+    <div>
+      <div className="etichetta">
+        <div className="etichetta-testa">
+          <span className="marchio-t" style={{ fontSize: 14 }}>MAVI</span>
+          <span className="et-data">{e.giorno}, {e.pasto}</span>
+        </div>
+        <div className="etichetta-corpo">
+          <span className="et-struttura">Comunità Il Ponte</span>
+          <b>{e.nome}</b>
+          <span className="et-unita">{e.stanza}</span>
+        </div>
+        <div style={{ padding: "8px 0" }}>
+          <span className="so-lab">{e.portata}</span>
+          <p style={{ margin: "4px 0 0", fontSize: 15, fontWeight: 600 }}>{e.piatto}</p>
+          {e.nota && <p className="nota-prep" style={{ margin: "6px 0 0" }}>⚠ {e.nota}</p>}
+          {e.ing && <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--muto)", lineHeight: 1.4 }}>Ingredienti: {e.ing}</p>}
+          {e.allergeni && e.allergeni.length > 0 && (
+            <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--acc)" }}>Allergeni: {e.allergeni.join(", ")}</p>
+          )}
+          {e.kcal && <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--muto)" }}>{e.kcal} kcal</p>}
+        </div>
+        <div className="etichetta-allergeni">
+          <span className="so-lab">Note</span>
+          <p>{e.note}</p>
+        </div>
+        <div className="etichetta-piede">
+          <span>Riscaldare 800 W, 2 min</span>
+          <span className="et-cod">{e.chiave}</span>
+        </div>
+      </div>
+      {onElimina && (
+        <button className="btn-rimuovi-et" onClick={onElimina}>
+          <Icone.x size={12} /> Elimina etichetta
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* Sezione azienda: griglia di card, una per piatto. onElimina assente = vista
+   di stampa, niente bottoni di rimozione fra le etichette. */
+function SezioneAzienda({ gruppi, onElimina }) {
+  if (!gruppi.length) return <p style={{ fontSize: 13, color: "var(--muto)" }}>Nessuna etichetta con questo filtro.</p>;
+  return (
+    <div className="etichette-griglia">
+      {gruppi.map((g) => (
+        <CardEtichettaAzienda key={g.piatto} g={g} onElimina={onElimina && (() => onElimina(g.chiavi[0], g.piatto, g.portata))} />
+      ))}
+    </div>
+  );
+}
+
+/* Sezione comunità: reparto come primo livello, poi paziente, poi pasto.
+   Senza il reparto, una comunità con molti pazienti torna a essere un unico
+   scroll enorme — lo stesso problema che questa riscrittura vuole evitare. */
+function SezioneComunita({ gruppi, onElimina }) {
+  if (!gruppi.length) return <p style={{ fontSize: 13, color: "var(--muto)" }}>Nessuna etichetta con questo filtro.</p>;
+  return (
+    <>
+      {gruppi.map(({ reparto, pazienti }) => (
+        <div key={reparto} style={{ marginBottom: 28 }}>
+          <h3 style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muto)", margin: "0 0 14px", paddingBottom: 8, borderBottom: "1px solid var(--linea)" }}>
+            {reparto} <span style={{ fontWeight: 400, textTransform: "none" }}>· {pazienti.length} {pazienti.length === 1 ? "paziente" : "pazienti"}</span>
+          </h3>
+          {pazienti.map((paz) => (
+            <div key={paz.nome} style={{ marginBottom: 20 }}>
+              <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 10, color: "var(--inchiostro-2)", fontFamily: "var(--serif)" }}>
+                {paz.nome}
+                {paz.tipoDieta && paz.tipoDieta !== "Standard" && (
+                  <span className="tag-dieta terap" style={{ marginLeft: 10, fontSize: 11 }}>{paz.tipoDieta}</span>
+                )}
+              </h4>
+              {["pranzo", "cena"].map((pasto) => {
+                const lista = paz[pasto];
+                if (!lista.length) return null;
+                return (
+                  <div key={pasto} style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muto)", marginBottom: 8 }}>{pasto}</div>
+                    <div className="etichette-griglia">
+                      {lista.map((e) => (
+                        <CardEtichettaComunita key={e.chiave} e={e} onElimina={onElimina && (() => onElimina(e.chiave, e.nome, e.portata))} />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      ))}
+    </>
+  );
+}
+
+/* Vista di stampa dedicata: una sola struttura, senza numeri/tabella/altre
+   strutture intorno. window.print() qui stampa solo questo, non 3000
+   etichette di altre venti aziende insieme. */
+function VistaStampaEtichette({ struttura, gruppiAzienda, gruppiComunita, onIndietro }) {
+  return (
+    <>
+      <Intestazione
+        occhiello={struttura.nome}
+        titolo="Etichette pronte per la stampa"
+        sotto={gruppiAzienda ? "Anonime, raggruppate per piatto" : "Nominative, per reparto e paziente"}
+        azioni={<>
+          <button className="btn linea piccolo" onClick={onIndietro}><Icone.sx size={16} /> Torna all'elenco</button>
+          <button className="btn piccolo" onClick={() => window.print()}><Icone.stampa size={16} /> Stampa</button>
+        </>}
+      />
+      <div className="tela">
+        {gruppiAzienda && <SezioneAzienda gruppi={gruppiAzienda} />}
+        {gruppiComunita && <SezioneComunita gruppi={gruppiComunita} />}
+      </div>
+    </>
+  );
+}
+
 function EtichettePasto() {
   const st = usaStato();
+  const committenti = st.committenti;
   const trasmessi = st.presenzeTrasmesse || [];
   const [rimossi, setRimossi] = React.useState([]);
   const [conferma, setConferma] = React.useState(null);
+  /* Riscritta il 12 settembre 2026: con più committenti (20 aziende, 30
+     comunità...) uno scroll unico con tutte le etichette diventa
+     ingestibile. Ora si apre una struttura alla volta (stesso drill-down di
+     "Ordini in arrivo"), con ricerca dentro, e si stampa quella sola
+     struttura in una vista dedicata — mai "tutto insieme". */
+  const [aperto, setAperto] = React.useState(null);
+  const [cerca, setCerca] = React.useState("");
+  const [stampaStruttura, setStampaStruttura] = React.useState(null);
+  /* quante etichette aveva questa struttura l'ultima volta che è stata
+     aperta: se il conteggio attuale è più alto, sono arrivate etichette
+     nuove da quando nessuno guardava, e lo segnaliamo con il pallino. */
+  const [visti, setVisti] = React.useState({});
 
   /* etichette azienda: solo da prenotazioni confermate nella sessione demo */
   const etichetteAzienda = React.useMemo(() => {
@@ -1416,10 +1607,41 @@ function EtichettePasto() {
   const totale = azFiltrate.length + comFiltrate.length;
   const vuoto = totale === 0;
 
+  const righe = React.useMemo(() => committenti.map((c) => ({
+    c,
+    conteggio: c.id === "azienda" ? azFiltrate.length : c.id === "comunita" ? comFiltrate.length : 0,
+  })), [committenti, azFiltrate, comFiltrate]);
+
+  const cercaAzienda = (lista) => cerca ? lista.filter((e) => e.piatto.toLowerCase().includes(cerca.toLowerCase())) : lista;
+  const cercaComunita = (lista) => cerca ? lista.filter((e) => e.nome.toLowerCase().includes(cerca.toLowerCase())) : lista;
+
+  const nuovoArrivo = (r) => r.conteggio > 0 && (visti[r.c.id] ?? 0) < r.conteggio;
+  function apriStruttura(id, conteggio) {
+    setAperto((prec) => (prec === id ? null : id));
+    setCerca("");
+    setVisti((v) => ({ ...v, [id]: conteggio }));
+  }
+
+  const righeAzienda = righe.filter((r) => r.c.tipo === "Azienda");
+  const righeComunita = righe.filter((r) => r.c.tipo === "Comunità");
+  const righeAltro = righe.filter((r) => r.c.tipo !== "Azienda" && r.c.tipo !== "Comunità");
+
   function rimuovi(chiave) {
     setRimossi((p) => [...p, chiave]);
     st.avvisa("Etichetta rimossa");
     setConferma(null);
+  }
+
+  if (stampaStruttura) {
+    const c = committenti.find((x) => x.id === stampaStruttura);
+    return (
+      <VistaStampaEtichette
+        struttura={c}
+        gruppiAzienda={stampaStruttura === "azienda" ? raggruppaAzienda(azFiltrate) : null}
+        gruppiComunita={stampaStruttura === "comunita" ? raggruppaComunita(comFiltrate) : null}
+        onIndietro={() => setStampaStruttura(null)}
+      />
+    );
   }
 
   return (
@@ -1427,10 +1649,7 @@ function EtichettePasto() {
       <Intestazione
         occhiello="Cucina centrale"
         titolo="Etichette pasto"
-        sotto="Etichette azienda (anonime, solo piatto) e comunità (nominative). Si generano dalle prenotazioni confermate e dalle presenze trasmesse."
-        azioni={
-          totale > 0 && <button className="btn piccolo" onClick={() => window.print()}><Icone.stampa size={16} /> Stampa tutte</button>
-        }
+        sotto="Apri una struttura per vedere le sue etichette e stamparle: azienda anonime per piatto, comunità nominative per reparto e paziente"
       />
       <div className="tela">
         {vuoto ? (
@@ -1451,131 +1670,75 @@ function EtichettePasto() {
               <div className="numero"><div className="n-lab">Pasto</div><div className="n-val" style={{ fontSize: 20 }}>Pranzo</div><div className="n-nota">mer 16 set 2026</div></div>
             </div>
 
-            {/* ---- SEZIONE AZIENDA (etichette anonime, raggruppate per piatto) ---- */}
-            {azFiltrate.length > 0 && (() => {
-              const perPiatto = {};
-              azFiltrate.forEach((e) => {
-                const k = e.piatto;
-                if (!perPiatto[k]) perPiatto[k] = { piatto: e.piatto, portata: e.portata, kcal: e.kcal, ing: e.ing, allergeni: e.allergeni, riscaldamento: e.riscaldamento, giorno: e.giorno, pasto: e.pasto, count: 0, chiavi: [] };
-                perPiatto[k].count++;
-                perPiatto[k].chiavi.push(e.chiave);
-              });
-              return (
-                <>
-                  <h2 style={{ fontSize: 18, fontWeight: 600, margin: "28px 0 16px", fontFamily: "var(--serif)" }}>
-                    <span className="pastiglia p-ok" style={{ marginRight: 10 }}>Azienda</span>
-                    Rossi Manifatture Spa — etichette anonime
-                  </h2>
-                  <div className="etichette-griglia">
-                    {Object.values(perPiatto).map((g) => (
-                      <div key={g.piatto}>
-                        <div className="etichetta">
-                          <div className="etichetta-testa">
-                            <span className="marchio-t" style={{ fontSize: 14 }}>MAVI</span>
-                            <span className="et-data">{g.giorno}, {g.pasto}</span>
-                          </div>
-                          <div style={{ padding: "10px 0" }}>
-                            <span className="so-lab">{g.portata}</span>
-                            <p style={{ margin: "4px 0 0", fontSize: 17, fontWeight: 600 }}>{g.piatto}</p>
-                            <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--inchiostro-2)" }}>
-                              <b style={{ fontSize: 20 }}>×{g.count}</b> <span style={{ color: "var(--muto)" }}>etichette</span>
-                            </p>
-                            {g.ing && <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--muto)", lineHeight: 1.4 }}>Ingredienti: {g.ing}</p>}
-                            {g.allergeni && g.allergeni.length > 0 && (
-                              <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--acc)" }}>
-                                Allergeni: {g.allergeni.join(", ")}
-                              </p>
-                            )}
-                            <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--muto)" }}>{g.kcal} kcal</p>
-                          </div>
-                          <div className="etichetta-piede">
-                            <span>{g.riscaldamento}</span>
-                          </div>
-                        </div>
-                        <button className="btn-rimuovi-et" onClick={() => setConferma({ chiave: g.chiavi[0], nome: g.piatto, portata: g.portata })}>
-                          <Icone.x size={12} /> Elimina gruppo
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              );
-            })()}
-
-            {/* ---- SEZIONE COMUNITÀ (etichette nominative, per paziente > pasto) ---- */}
-            {comFiltrate.length > 0 && (() => {
-              const perPaziente = {};
-              comFiltrate.forEach((e) => {
-                if (!perPaziente[e.nome]) perPaziente[e.nome] = { nome: e.nome, stanza: e.stanza, tipoDieta: e.tipoDieta, note: e.note, pranzo: [], cena: [] };
-                const pasto = e.pasto === "cena" ? "cena" : "pranzo";
-                perPaziente[e.nome][pasto].push(e);
-              });
-              return (
-                <>
-                  <h2 style={{ fontSize: 18, fontWeight: 600, margin: "28px 0 16px", fontFamily: "var(--serif)" }}>
-                    <span className="pastiglia p-ok" style={{ marginRight: 10 }}>Comunità</span>
-                    Comunità Il Ponte — etichette nominative
-                  </h2>
-                  {Object.values(perPaziente).map((paz) => (
-                    <div key={paz.nome} style={{ marginBottom: 24 }}>
-                      <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 10, color: "var(--inchiostro-2)" }}>
-                        {paz.nome} · {paz.stanza}
-                        {paz.tipoDieta && paz.tipoDieta !== "Standard" && (
-                          <span className="tag-dieta terap" style={{ marginLeft: 10, fontSize: 11 }}>{paz.tipoDieta}</span>
-                        )}
-                      </h3>
-                      {["pranzo", "cena"].map((pasto) => {
-                        const lista = paz[pasto];
-                        if (!lista.length) return null;
-                        return (
-                          <div key={pasto} style={{ marginBottom: 12 }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muto)", marginBottom: 8 }}>{pasto}</div>
-                            <div className="etichette-griglia">
-                              {lista.map((e) => (
-                                <div key={e.chiave}>
-                                  <div className="etichetta">
-                                    <div className="etichetta-testa">
-                                      <span className="marchio-t" style={{ fontSize: 14 }}>MAVI</span>
-                                      <span className="et-data">{e.giorno}, {e.pasto}</span>
-                                    </div>
-                                    <div className="etichetta-corpo">
-                                      <span className="et-struttura">Comunità Il Ponte</span>
-                                      <b>{e.nome}</b>
-                                      <span className="et-unita">{e.stanza}</span>
-                                    </div>
-                                    <div style={{ padding: "8px 0" }}>
-                                      <span className="so-lab">{e.portata}</span>
-                                      <p style={{ margin: "4px 0 0", fontSize: 15, fontWeight: 600 }}>{e.piatto}</p>
-                                      {e.nota && <p className="nota-prep" style={{ margin: "6px 0 0" }}>⚠ {e.nota}</p>}
-                                      {e.ing && <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--muto)", lineHeight: 1.4 }}>Ingredienti: {e.ing}</p>}
-                                      {e.allergeni && e.allergeni.length > 0 && (
-                                        <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--acc)" }}>Allergeni: {e.allergeni.join(", ")}</p>
-                                      )}
-                                      {e.kcal && <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--muto)" }}>{e.kcal} kcal</p>}
-                                    </div>
-                                    <div className="etichetta-allergeni">
-                                      <span className="so-lab">Note</span>
-                                      <p>{e.note}</p>
-                                    </div>
-                                    <div className="etichetta-piede">
-                                      <span>Riscaldare 800 W, 2 min</span>
-                                      <span className="et-cod">{e.chiave}</span>
-                                    </div>
-                                  </div>
-                                  <button className="btn-rimuovi-et" onClick={() => setConferma({ chiave: e.chiave, nome: e.nome, portata: e.portata })}>
-                                    <Icone.x size={12} /> Elimina etichetta
+            {[["Aziende", righeAzienda], ["Comunità", righeComunita], ["Altri committenti", righeAltro]].map(([titolo, sottoinsieme]) => sottoinsieme.length > 0 && (
+              <div className="pannello" key={titolo}>
+                <div className="pannello-testa">
+                  <h2>{titolo}</h2>
+                  <span className="conta-piatti">
+                    {sottoinsieme.some(nuovoArrivo) ? <><span className="pallino-nuovo" />etichette arrivate</> : "clicca per aprire il dettaglio"}
+                  </span>
+                </div>
+                <div className="scorri">
+                  <table className="dati">
+                    <thead><tr><th>Struttura</th><th>Etichette</th><th /></tr></thead>
+                    <tbody>
+                      {sottoinsieme.map((r) => (
+                        <React.Fragment key={r.c.id}>
+                          <tr>
+                            <td>
+                              {nuovoArrivo(r) && <span className="pallino-nuovo" title="Etichette arrivate" />}
+                              <b>{r.c.nome}</b>
+                            </td>
+                            <td className="quantita">{r.conteggio}</td>
+                            <td>
+                              <button className={"btn piccolo" + (aperto === r.c.id ? "" : " linea")}
+                                disabled={r.conteggio === 0}
+                                onClick={() => apriStruttura(r.c.id, r.conteggio)}>
+                                {aperto === r.c.id ? "Chiudi" : nuovoArrivo(r) ? "Visualizza etichette arrivate" : "Apri dettaglio"}
+                              </button>
+                            </td>
+                          </tr>
+                          {aperto === r.c.id && (
+                            <tr>
+                              <td colSpan={3} style={{ background: "var(--carta)", padding: "18px 20px" }}>
+                                <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 18, flexWrap: "wrap" }}>
+                                  <input type="text" value={cerca} onChange={(e) => setCerca(e.target.value)}
+                                    placeholder={r.c.id === "azienda" ? "Cerca per piatto…" : "Cerca per nominativo…"}
+                                    style={{ flex: 1, minWidth: 200, padding: "8px 12px", border: "1px solid var(--linea-forte)", borderRadius: "var(--r-s)", fontFamily: "var(--sans)", fontSize: 13 }} />
+                                  <button className="btn piccolo" onClick={() => setStampaStruttura(r.c.id)}>
+                                    <Icone.stampa size={16} /> Stampa etichette di {r.c.nome}
                                   </button>
                                 </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </>
-              );
-            })()}
+                                {r.c.id === "azienda" && (
+                                  <SezioneAzienda gruppi={raggruppaAzienda(cercaAzienda(azFiltrate))}
+                                    onElimina={(chiave, nome, portata) => setConferma({ chiave, nome, portata })} />
+                                )}
+                                {r.c.id === "comunita" && (
+                                  <SezioneComunita gruppi={raggruppaComunita(cercaComunita(comFiltrate))}
+                                    onElimina={(chiave, nome, portata) => setConferma({ chiave, nome, portata })} />
+                                )}
+                                {r.c.id !== "azienda" && r.c.id !== "comunita" && (
+                                  <p style={{ fontSize: 13, color: "var(--muto)" }}>Nessuna fonte di etichette collegata ancora per questo committente.</p>
+                                )}
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="pannello-piede">
+                  {titolo === "Aziende"
+                    ? "Etichette anonime, raggruppate per piatto."
+                    : titolo === "Comunità"
+                      ? "Etichette nominative, raggruppate per reparto e poi per paziente."
+                      : "Nessuna fonte di etichette collegata ancora per questi committenti."}{" "}
+                  Il pallino rosso segnala una struttura con etichette arrivate da quando non la aprivi:
+                  sparisce non appena apri il dettaglio.
+                </div>
+              </div>
+            ))}
           </>
         )}
       </div>

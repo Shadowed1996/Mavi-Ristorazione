@@ -59,22 +59,44 @@ operative (citofono, ritiro vaschette, fermata breve).
 
 ## Etichette pasto — `EtichettePasto`
 
-Due sezioni, con logiche diverse di proposito.
+Riscritta il 12 settembre 2026 su segnalazione di Filippo: con 20 aziende e 30
+comunità, uno scroll unico con tutte le etichette di tutte le strutture
+sarebbe ingestibile (letteralmente migliaia di card). Ora:
 
-**Azienda** — etichette **anonime**, raggruppate per piatto con contatore `×N`.
-Mostrano portata, nome piatto, ingredienti, allergeni, kcal e riscaldamento.
-Nessun nome di dipendente: in cucina non serve e sarebbe un dato inutile da
-far circolare. Si generano solo quando un dipendente conferma la prenotazione.
+- **Raggruppata per tipo di committente**: un pannello "Aziende" e uno
+  "Comunità" (`righeAzienda`/`righeComunita`, filtrati da `st.committenti` su
+  `c.tipo`), ciascuno con una riga per struttura e il conteggio etichette.
+- **Una struttura alla volta**: "Apri dettaglio" espande solo quella riga;
+  dentro, un campo di ricerca (per piatto in azienda, per nominativo in
+  comunità) e un bottone "Stampa etichette di [struttura]" che apre una vista
+  di stampa dedicata (`VistaStampaEtichette`) — mai la pagina intera.
+- **Pallino "etichette arrivate"**: un pallino rosso lampeggiante (CSS
+  `.pallino-nuovo`, animazione `lampeggia`) segnala una struttura il cui
+  conteggio etichette è salito da quando non la si apriva (stato locale
+  `visti`, `{ [committenteId]: conteggioUltimaApertura }`). Aprire il
+  dettaglio (`apriStruttura`) lo fa sparire; il bottone stesso diventa
+  "Visualizza etichette arrivate" finché c'è qualcosa di nuovo da vedere.
 
-**Comunità** — etichette **nominative**, raggruppate per paziente e poi divise
-per Pranzo e Cena. Mostrano nome paziente, stanza, tipo dieta, portata, piatto,
-note di preparazione, ingredienti, allergeni, kcal e note dieta. Qui il nome
-serve, perché il pasto è personalizzato.
+**Azienda** — etichette **anonime**, raggruppate per piatto con contatore `×N`
+(`raggruppaAzienda`). Mostrano portata, nome piatto, ingredienti, allergeni,
+kcal e riscaldamento. Nessun nome di dipendente: in cucina non serve e sarebbe
+un dato inutile da far circolare. Si generano solo quando un dipendente
+conferma la prenotazione.
+
+**Comunità** — etichette **nominative**, raggruppate prima per **reparto**
+poi per paziente e infine per Pranzo/Cena (`raggruppaComunita`) — senza il
+livello reparto, una comunità con molti pazienti torna a essere uno scroll
+enorme, lo stesso problema di partenza. Mostrano nome paziente, stanza, tipo
+dieta, portata, piatto, note di preparazione, ingredienti, allergeni, kcal e
+note dieta.
 
 Gli ingredienti dei piatti delle diete arrivano da `INGREDIENTI_DIETE`, che
 mappa i nomi in chiaro (non ci sono codici piatto nelle diete).
 
-Sotto ogni card c'è "Elimina etichetta", con modale di conferma.
+Sotto ogni card c'è "Elimina etichetta", con modale di conferma — solo nella
+vista a elenco, non nella vista di stampa: `CardEtichettaAzienda` e
+`CardEtichettaComunita` accettano un `onElimina` opzionale, che
+`VistaStampaEtichette` non passa, quindi lì il bottone non compare.
 
 ## Committenti — `ModelliServizio` (`Modelli.jsx`)
 

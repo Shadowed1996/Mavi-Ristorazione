@@ -1787,6 +1787,18 @@ table.settimanale {
   }
 }
 
+/* pallino "etichette arrivate", per la pagina Etichette pasto */
+@keyframes lampeggia { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+.pallino-nuovo {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--err, #c0392b);
+  margin-right: 7px;
+  animation: lampeggia 1.1s ease-in-out infinite;
+}
+
 @media print {
   .nastro,
   .fianco,

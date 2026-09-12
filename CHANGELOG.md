@@ -13,6 +13,22 @@ e il progetto adotta il [Versionamento Semantico](https://semver.org/lang/it/).
 
 ## [Non rilasciato]
 
+### Aggiunto — 12 settembre 2026, quarta sessione
+- **Etichette pasto** riscritta per reggere molte strutture (Filippo: "se io
+  avessi 20 aziende e 30 comunità dovrei scrollare 3000 etichette"): pannelli
+  separati "Aziende"/"Comunità", una struttura alla volta con ricerca dentro,
+  vista di stampa dedicata per singola struttura (mai la pagina intera),
+  raggruppamento aggiuntivo per reparto nella comunità.
+- **Pallino "etichette arrivate"**: indicatore lampeggiante (`.pallino-nuovo`)
+  su una struttura le cui etichette sono aumentate dall'ultima apertura;
+  sparisce aprendo il dettaglio.
+
+### Modificato — 12 settembre 2026, quarta sessione
+- `EtichettePasto` (`Fornitore.jsx`): card azienda/comunità estratte in
+  componenti riusabili (`CardEtichettaAzienda`, `CardEtichettaComunita`,
+  `SezioneAzienda`, `SezioneComunita`) condivisi fra la vista a elenco e la
+  vista di stampa, invece di essere duplicati.
+
 ### Aggiunto — 12 settembre 2026, terza sessione
 - **Reparti gestibili**: pannello "Reparti" in Impostazioni per committente
   (sostituisce "Rotazione menu", rimossa perché non dipendeva nemmeno dal

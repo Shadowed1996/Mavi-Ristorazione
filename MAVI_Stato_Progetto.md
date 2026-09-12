@@ -2,9 +2,9 @@
 
 Documento vivo. Va riletto all'inizio di ogni nuova sessione e aggiornato alla fine di ogni task.
 
-**Ultimo aggiornamento**: 12 settembre 2026 — rifinitura del lavoro della sessione precedente: reparti gestibili con tendina al posto del testo libero, tolti i toggle frutta/monoporzione, "Rotazione menu" sostituita dai Reparti, CSS dell'IVA sistemato, Fatturazione riscritta una seconda volta a schede per struttura (sezione 19).
+**Ultimo aggiornamento**: 12 settembre 2026 — Etichette pasto riscritta per reggere molte strutture: raggruppata per Aziende/Comunità, una struttura alla volta con ricerca e stampa dedicata, pallino "etichette arrivate" (sezione 20).
 
-**Precedente**: 12 settembre 2026 — sei punti del TO DO di Filippo: nuovo committente, fatturazione diversificata, permessi comunità per reparto, ordini in arrivo riscritti con manifesto nominativo, modifica profilo (sezione 18).
+**Precedente**: 12 settembre 2026 — rifinitura del lavoro della sessione precedente: reparti gestibili con tendina al posto del testo libero, tolti i toggle frutta/monoporzione, "Rotazione menu" sostituita dai Reparti, CSS dell'IVA sistemato, Fatturazione riscritta una seconda volta a schede per struttura (sezione 19).
 
 ---
 
@@ -740,5 +740,47 @@ committente di "Impostazioni per committente": si sceglie la struttura, si
 vedono solo i suoi numeri, "Genera proforma PDF" e "Scarica Excel" agiscono
 solo su quella. Il riepilogo di tutte le strutture e il documento combinato
 restano disponibili in un pannello sotto, non più persi.
+
+---
+
+## 20. Etichette pasto, ripensata per la scala — 12 settembre 2026
+
+Mentre verificavo dal vivo il lavoro della sezione 18, Filippo ha fatto
+notare un problema di fondo nella pagina Etichette pasto (portale MAVI): con
+20 aziende e 30 comunità, uno scroll unico con tutte le etichette di tutte le
+strutture significherebbe scorrere letteralmente migliaia di card. Aveva
+ragione: la pagina di partenza mostrava "Rossi Manifatture Spa" e "Comunità
+Il Ponte" con intestazioni scritte a mano, un'unica sezione dopo l'altra,
+senza alcun modo di isolare una struttura.
+
+**Primo passaggio**: stesso drill-down già usato per "Ordini in arrivo" —
+una riga per committente, "Apri dettaglio" per espandere solo quella, un
+campo di ricerca dentro (per piatto in azienda, per nominativo in comunità),
+e una vista di stampa dedicata (`VistaStampaEtichette`) che mostra solo la
+struttura scelta, non l'intera pagina: si stampa un lotto alla volta, mai
+tremila etichette insieme. Per la comunità, raggruppamento aggiuntivo per
+reparto sopra al paziente, altrimenti una sola comunità con molti pazienti
+tornerebbe a essere uno scroll enorme.
+
+**Secondo passaggio**, su ulteriore indicazione di Filippo mentre verificavo
+il primo: "raggruppiamole proprio per comunità e aziende, con un pallino che
+lampeggia con 'Etichette arrivate'". Le strutture non stanno più in un'unica
+tabella mista: un pannello "Aziende" e uno "Comunità", ciascuno con le sue
+righe. Aggiunto anche il pallino rosso lampeggiante (`.pallino-nuovo` in
+`styles.css`): appare su una struttura quando le sue etichette sono aumentate
+da quando non veniva aperta (stato locale `visti`, un contatore per
+committente), sia sulla singola riga sia come badge di riepilogo nell'intestazione
+del pannello; sparisce non appena si apre il dettaglio. Il bottone stesso
+cambia testo in "Visualizza etichette arrivate" quando c'è qualcosa di nuovo.
+
+Verificato dal vivo con dati reali: prenotazione confermata come Antonella
+Rossi, presenze trasmesse come Ilaria Gatti, poi login Cucina MAVI — entrambi
+i pannelli mostravano il pallino, la ricerca per nominativo filtrava
+correttamente ("Marco" → solo Marco Bellini, reparto CSS Sole Luna aggiornato
+a "1 paziente"), la vista di stampa mostrava solo Comunità Il Ponte con tutti
+i suoi pazienti (la ricerca a schermo non la restringe: si stampa sempre
+tutto quello che appartiene alla struttura), e aprire il dettaglio di Rossi
+Manifatture Spa faceva sparire il suo pallino lasciando intatto quello di
+Comunità Il Ponte.
 
 ---
