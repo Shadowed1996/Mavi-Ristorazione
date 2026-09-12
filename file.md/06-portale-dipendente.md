@@ -22,7 +22,11 @@ nome, data breve e stato:
 | `in corso` | ci sono scelte non confermate, pallino giallo |
 | `da fare` | nessuna scelta |
 
-Il giorno di partenza è l'indice 2, mercoledì, il primo aperto.
+Il giorno di partenza è l'indice 0, lunedì. Con la settimana di `GIORNI`
+interamente futura rispetto a "oggi" nessun giorno è `chiuso` di default: lo
+stato `chiuso` in tabella resta un valore possibile del campo (impostabile
+per mostrare il cutoff quando la settimana demo è a cavallo di "oggi"), non
+un giorno fisso della settimana corrente.
 
 Le frecce settimana sopra il selettore sono decorative: mostrano solo un toast.
 

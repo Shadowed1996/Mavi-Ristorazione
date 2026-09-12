@@ -504,4 +504,18 @@ profilo Antonella Rossi e poi tutti gli altri) prima e dopo la correzione.
   esteso: oggi la settimana reale coincide con l'ultima della lista, quindi non
   si può più scorrere in avanti; da estendere se si vuole tenere un margine.
 
+**Correzione dello stesso giorno**: Filippo ha fatto notare che lunedì 14 non
+deve risultare bloccato, perché oggi è il 12 settembre e l'intera settimana
+14-18 è ancora futura — il cutoff non è passato per nessun giorno. `chiuso`
+in `GIORNI` (`data.js`) era rimasto `true` su lunedì e martedì per abitudine,
+copiato dal pattern della vecchia settimana (dove invece lunedì/martedì erano
+già passati). Rimesso a `false` su tutti e cinque i giorni; il giorno di
+apertura di default di "Menu del giorno" è tornato a essere il primo aperto,
+ora lunedì (indice 0, prima 2/mercoledì). Rimossa anche la voce di log in
+`store.jsx` ("Cutoff prenotazioni applicato... chiusi") che non corrispondeva
+più a un evento realmente accaduto. Documentato in
+`file.md/04-dati.md`/`06-portale-dipendente.md` che `chiuso` va rimesso a
+`true` sui primi giorni solo quando `GIORNI` punta a una settimana già
+iniziata rispetto a "oggi".
+
 ---

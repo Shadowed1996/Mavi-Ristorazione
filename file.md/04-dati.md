@@ -90,8 +90,11 @@ giorno, poi i fissi non già presenti. È la funzione da usare sempre per
 ottenere l'elenco di una portata: non leggere le liste a mano.
 
 `GIORNI` è la settimana della demo, cinque voci con `n` (nome), `d` (data),
-`breve` e `chiuso`. Lunedì e martedì sono `chiuso: true`: servono a mostrare
-il cutoff, la selezione su quei giorni viene rifiutata.
+`breve` e `chiuso`. `chiuso: true` simula il cutoff già passato: la selezione
+su quel giorno viene rifiutata (vedi `store.jsx`). La settimana attuale è
+interamente futura rispetto a "oggi", quindi nessun giorno è `chiuso`; il
+flag va rimesso a `true` sui primi giorni quando si aggiorna `GIORNI` a una
+settimana già iniziata.
 
 ## Anagrafiche e committenti
 

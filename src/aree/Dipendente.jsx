@@ -92,7 +92,7 @@ export default function Dipendente({ onEsci, utente }) {
 /* ==================== menu del giorno ==================== */
 function MenuGiorno() {
   const st = usaStato();
-  const [giorno, setGiorno] = React.useState(2);
+  const [giorno, setGiorno] = React.useState(0);
   const [scheda, setScheda] = React.useState(null);
   const [avviso, setAvviso] = React.useState(null);
   const [vistaCol, setVistaCol] = React.useState({ primo: "base", secondo: "base" });

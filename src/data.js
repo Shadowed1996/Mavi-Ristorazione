@@ -444,8 +444,8 @@ export const VARIABILI = [
 ];
 
 export const GIORNI = [
-  { n: "Lunedì", d: "14 settembre", breve: "14 set", chiuso: true },
-  { n: "Martedì", d: "15 settembre", breve: "15 set", chiuso: true },
+  { n: "Lunedì", d: "14 settembre", breve: "14 set", chiuso: false },
+  { n: "Martedì", d: "15 settembre", breve: "15 set", chiuso: false },
   { n: "Mercoledì", d: "16 settembre", breve: "16 set", chiuso: false },
   { n: "Giovedì", d: "17 settembre", breve: "17 set", chiuso: false },
   { n: "Venerdì", d: "18 settembre", breve: "18 set", chiuso: false },

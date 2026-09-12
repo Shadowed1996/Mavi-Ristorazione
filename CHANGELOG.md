@@ -47,7 +47,11 @@ e il progetto adotta il [Versionamento Semantico](https://semver.org/lang/it/).
   il prototipo. Aggiornate tutte le intestazioni "Settimana 36"/date fisse nei
   portali dipendente, referente, comunità e MAVI; l'indice di default di
   "Menu della settimana" e "Griglia della settimana" ora punta alla settimana
-  reale invece che alla prima della lista.
+  reale invece che alla prima della lista. Con la settimana reale interamente
+  futura rispetto a "oggi" (12 settembre), lunedì e martedì non sono più
+  `chiuso: true`: nessun giorno ha ancora superato il cutoff, quindi nessuno
+  va bloccato. Il "Menu del giorno" apre di default su lunedì (prima apriva
+  su mercoledì, il primo giorno aperto quando lunedì/martedì erano chiusi).
 
 ### Aggiunto
 - Documentazione e file di controllo standard del repository: `README.md`,
