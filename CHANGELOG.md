@@ -13,6 +13,34 @@ e il progetto adotta il [Versionamento Semantico](https://semver.org/lang/it/).
 
 ## [Non rilasciato]
 
+### Aggiunto — 12 settembre 2026, terza sessione
+- **Reparti gestibili**: pannello "Reparti" in Impostazioni per committente
+  (sostituisce "Rotazione menu", rimossa perché non dipendeva nemmeno dal
+  committente selezionato) per aggiungere o togliere reparti/unità
+  (`c.unita`). Alimenta due nuovi menu a tendina: "Stanza / struttura" nel
+  modulo paziente e "Reparto assegnato" per l'Educatore in Gestione portale →
+  Utenti — prima erano testo libero.
+- **Fatturazione**, seconda riscrittura: un tab per committente come azione
+  principale ("Genera proforma PDF"/"Scarica Excel" per quella sola
+  struttura, con il suo listino), più un pannello "Tutte le strutture" per il
+  riepilogo e il documento combinato.
+
+### Modificato — 12 settembre 2026, terza sessione
+- "Frutta a ogni pasto" e "Consegna in monoporzione nominativa" non sono più
+  toggle editabili in Impostazioni per committente ("sono già decise"):
+  restano campi fissi sul committente.
+- CSS: `input[type="number"]` e `select` dentro `.impo-riga` avevano lo stile
+  di default del browser (nessuna delle regole esistenti li copriva, solo
+  `input[type="text"]`) — il campo IVA ne era l'esempio più visibile.
+  Allineati alla stessa styling, spinner nativi del number nascosti, freccia
+  disegnata per le select. Aggiunta anche `.campo select` per il nuovo menu a
+  tendina del modulo paziente.
+- I due reparti/case demo della comunità sono stati rinominati ovunque da
+  "Casa Aurora"/"Casa Ulivo" (nome di un vecchio modello di ordinazione mai
+  collegato ai pazienti reali) a "Spazio Giovani SGA"/"CSS Sole Luna, Desio",
+  gli stessi nomi già usati come `stanza` dei pazienti: `COMMITTENTI.unita`,
+  `ORDINI_UNITA.comunita`, i due giri di consegna in `GIRI`.
+
 ### Aggiunto — 12 settembre 2026, seconda sessione
 - **Nuovo committente**: modulo completo in Committenti (`ModaleCommittente`,
   `Modelli.jsx`) che crea una struttura vera, visibile subito in Committenti,

@@ -2,9 +2,9 @@
 
 Documento vivo. Va riletto all'inizio di ogni nuova sessione e aggiornato alla fine di ogni task.
 
-**Ultimo aggiornamento**: 12 settembre 2026 — sei punti del TO DO di Filippo: nuovo committente, fatturazione diversificata, permessi comunità per reparto, ordini in arrivo riscritti con manifesto nominativo, modifica profilo (sezione 18).
+**Ultimo aggiornamento**: 12 settembre 2026 — rifinitura del lavoro della sessione precedente: reparti gestibili con tendina al posto del testo libero, tolti i toggle frutta/monoporzione, "Rotazione menu" sostituita dai Reparti, CSS dell'IVA sistemato, Fatturazione riscritta una seconda volta a schede per struttura (sezione 19).
 
-**Precedente**: 12 settembre 2026 — scheda piatto senza foto per l'attesa sulle estensioni, settimana della demo ferma al 31 agosto: entrambe corrette (sezione 17).
+**Precedente**: 12 settembre 2026 — sei punti del TO DO di Filippo: nuovo committente, fatturazione diversificata, permessi comunità per reparto, ordini in arrivo riscritti con manifesto nominativo, modifica profilo (sezione 18).
 
 ---
 
@@ -673,5 +673,72 @@ nelle sezioni precedenti, uno strumento dimostrativo scollegato dal login
 reale: il campo Reparto aggiunto lì per l'Educatore è coerente con
 `UTENTI`/`data.js` ma non lo scrive. Un vero sistema di permessi configurabili
 da interfaccia resta fuori perimetro per questo prototipo.
+
+---
+
+## 19. Rifiniture dopo la prima prova — 12 settembre 2026
+
+Filippo ha provato dal vivo il lavoro della sezione 18 e ha lasciato cinque
+osservazioni puntuali. Le prime quattro sono state affrontate direttamente,
+la quinta (Fatturazione) è stata proposta come domanda di chiarimento — non
+voluta, Filippo ha chiesto di procedere lo stesso con giudizio e di pensarci
+io: la sessione è quindi proseguita a mia discrezione anche su quel punto.
+
+### Reparti come tendina, gestibili dalla struttura
+
+"La struttura/reparto di appartenenza, preferenza un menu a tendina —
+ovviamente si possono aggiungere o togliere reparti dalla gestione della
+struttura." Il campo `unita` del committente (già esistente, prima solo per
+azienda/comunità di partenza e non modificabile da interfaccia) è diventato
+il catalogo dei reparti: un pannello **Reparti** in Impostazioni per
+committente permette di aggiungerne o toglierne, e sia "Stanza / struttura"
+nel modulo paziente sia "Reparto assegnato" per l'Educatore in Gestione
+Utenti sono ora tendine che pescano da lì, non più testo libero.
+
+Nel farlo è emersa un'incoerenza lasciata dalla sessione precedente: `unita`
+della comunità diceva ancora "Casa Aurora"/"Casa Ulivo" (nomi di un vecchio
+modello di ordinazione per unità, mai collegato ai pazienti reali), mentre i
+pazienti e il reparto di Samuele Ferri usavano "Spazio Giovani SGA"/"CSS Sole
+Luna, Desio". Allineati ovunque su questi ultimi (anche `ORDINI_UNITA` e i
+Giri di consegna), altrimenti la nuova tendina avrebbe offerto reparti che
+nessun paziente ha mai avuto.
+
+### Frutta e monoporzione: tolte, sono già decise
+
+"Togliamo il frutta a ogni pasto e consegna in monoporzione nominativa,
+quelle sono già decise." I due toggle sono spariti da Impostazioni per
+committente. I campi restano sul committente (`frutta` serve ancora a
+`equilibrio()` per l'indicatore del pasto equilibrato) ma non sono più
+presentati come una scelta aperta nell'interfaccia.
+
+### Rotazione menu tolta da qui, sostituita dai Reparti
+
+"Il rotazione menu via, mettiamoci altro di più utile." Il pannello non
+dipendeva nemmeno dal committente selezionato — stessa timeline
+indipendentemente dal tab, quindi era nel posto sbagliato. Rimosso da questa
+pagina (`CICLICO` resta descritto in `data.js`, senza un pannello dedicato:
+era comunque scollegato, come già annotato prima) e sostituito dal pannello
+Reparti, che invece varia davvero per committente.
+
+### CSS dell'IVA
+
+"Il CSS dell'IVA nelle impostazioni non mi piace, da fixare." Causa trovata:
+la regola CSS copriva solo `input[type="text"]`, mentre i campi Prezzo
+unitario e IVA sono `type="number"` — restavano con lo stile di default del
+browser, spinner compresi, in un modulo dove tutto il resto è curato.
+Allineati alla stessa styling (bordo, raggio, padding), spinner nativi
+nascosti, e aggiunta una freccia disegnata per le nuove select.
+
+### Fatturazione, riscritta una seconda volta
+
+"Fatturazione è da rifare perché bisogna poter creare la fattura proforma per
+ogni struttura in base alle loro impostazioni." La versione precedente aveva
+già prezzo/IVA per riga e un bottone PDF per riga, ma dentro un'unica tabella
+con tutte le strutture insieme — la creazione della proforma non era
+l'azione principale della pagina. Riscritta con lo stesso schema a tab per
+committente di "Impostazioni per committente": si sceglie la struttura, si
+vedono solo i suoi numeri, "Genera proforma PDF" e "Scarica Excel" agiscono
+solo su quella. Il riepilogo di tutte le strutture e il documento combinato
+restano disponibili in un pannello sotto, non più persi.
 
 ---

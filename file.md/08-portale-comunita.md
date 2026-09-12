@@ -61,8 +61,11 @@ dieta. In cima un avviso ricorda che nomi e dettagli sono di fantasia e che a
 regime si tratterebbero dati personali con consenso e responsabilità precise.
 
 CRUD completo per il responsabile: "Nuovo paziente" apre `ModuloPaziente`
-(nome, stanza, note), che alla creazione genera una dieta vuota con
-`dietaVuota()`.
+(nome, stanza/reparto — un menu a tendina sui reparti censiti in Impostazioni
+per committente, non più testo libero, dal 12 settembre 2026 — note), che alla
+creazione genera una dieta vuota con `dietaVuota()`. Se il paziente ha già una
+stanza non più tra i reparti censiti (rimosso nel frattempo), la select la
+include comunque in cima, per non perderla in silenzio.
 
 L'elenco vive in uno stato locale inizializzato da `PAZIENTI_COMUNITA` (filtrato
 per `stanza === reparto` se l'educatore ha un reparto). Creazione ed

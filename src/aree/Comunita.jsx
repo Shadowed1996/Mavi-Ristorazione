@@ -14,6 +14,7 @@ function Pazienti({ soloLettura, reparto }) {
   const [scheda, setScheda] = React.useState(null);
   const [modulo, setModulo] = React.useState(null); // null | "nuovo" | paziente per modifica
   const [giornoVista, setGiornoVista] = React.useState("lunedì");
+  const repartiComunita = st.committenti.find((c) => c.id === "comunita")?.unita || [];
 
   /* Nuovo paziente ed eliminazione mutano anche l'elenco condiviso
      PAZIENTI_COMUNITA (stessa scorciatoia del catalogo piatti in store.jsx):
@@ -106,6 +107,7 @@ function Pazienti({ soloLettura, reparto }) {
       {modulo && (
         <ModuloPaziente
           paziente={modulo === "nuovo" ? null : modulo}
+          reparti={repartiComunita}
           onChiudi={() => setModulo(null)}
           onSalva={salva}
         />
@@ -298,18 +300,23 @@ function SchedaPaziente({ paziente, onChiudi, onModifica, onElimina, soloLettura
 }
 
 /* ==================== modulo crea/modifica paziente ==================== */
-function ModuloPaziente({ paziente, onChiudi, onSalva }) {
+function ModuloPaziente({ paziente, reparti, onChiudi, onSalva }) {
   const [nome, setNome] = React.useState(paziente?.nome || "");
-  const [stanza, setStanza] = React.useState(paziente?.stanza || "");
+  /* se il paziente ha già una stanza che non è (più) nell'elenco reparti
+     (dato storico, o reparto nel frattempo rimosso), la teniamo comunque in
+     lista così la select non la cancella in silenzio */
+  const opzioni = paziente?.stanza && !reparti.includes(paziente.stanza)
+    ? [paziente.stanza, ...reparti] : reparti;
+  const [stanza, setStanza] = React.useState(paziente?.stanza || reparti[0] || "");
   const [note, setNote] = React.useState(paziente?.note || "");
 
   function invia(e) {
     e.preventDefault();
-    if (!nome.trim()) return;
+    if (!nome.trim() || !stanza) return;
     onSalva({
       ...(paziente || {}),
       nome: nome.trim(),
-      stanza: stanza.trim() || "Da assegnare",
+      stanza,
       note: note.trim(),
       dieta: paziente?.dieta || dietaVuota(),
     });
@@ -329,7 +336,15 @@ function ModuloPaziente({ paziente, onChiudi, onSalva }) {
         </div>
         <div className="campo">
           <label>Stanza / struttura</label>
-          <input type="text" value={stanza} onChange={(e) => setStanza(e.target.value)} placeholder="es. Spazio Giovani SGA" />
+          {opzioni.length === 0 ? (
+            <p style={{ fontSize: 12.5, color: "var(--muto)" }}>
+              Nessun reparto ancora censito. Aggiungine uno da Impostazioni per committente → Comunità Il Ponte.
+            </p>
+          ) : (
+            <select value={stanza} onChange={(e) => setStanza(e.target.value)}>
+              {opzioni.map((o) => (<option key={o} value={o}>{o}</option>))}
+            </select>
+          )}
           <p style={{ fontSize: 11, color: "var(--muto)", margin: "4px 0 0" }}>
             Determina anche il reparto: solo l'educatore assegnato a questo valore vedrà il paziente.
           </p>
@@ -340,7 +355,7 @@ function ModuloPaziente({ paziente, onChiudi, onSalva }) {
         </div>
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", paddingTop: 10 }}>
           <button type="button" className="btn linea" onClick={onChiudi}>Annulla</button>
-          <button type="submit" className="btn" disabled={!nome.trim()}>
+          <button type="submit" className="btn" disabled={!nome.trim() || !stanza}>
             {paziente ? "Salva modifiche" : "Crea paziente"}
           </button>
         </div>

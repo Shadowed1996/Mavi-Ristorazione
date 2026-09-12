@@ -16,7 +16,7 @@ const ORDINI_IN_CODA = [
   { id: "o1", struttura: "azienda", strutturaNome: "Rossi Manifatture Spa", mittente: "Roberto Manzi", ruoloMittente: "Referente", unita: "Amministrazione", pasti: 28, note: "3 vegetariani, 2 senza glutine", stato: "approvato", ora: "13:42", oraApprov: "14:05" },
   { id: "o2", struttura: "rsa", strutturaNome: "RSA Villa Serena", mittente: "Marco Pallino", ruoloMittente: "Operatore", unita: "Nucleo Glicine", pasti: 34, note: "6 tritati, 3 frullati, 4 iposodica", stato: "in_attesa", ora: "07:18" },
   { id: "o3", struttura: "rsa", strutturaNome: "RSA Villa Serena", mittente: "Elena Vergani", ruoloMittente: "Operatore", unita: "Nucleo Magnolia", pasti: 27, note: "4 tritati, 2 frullati, 3 iposodica", stato: "approvato", ora: "07:22", oraApprov: "07:45" },
-  { id: "o4", struttura: "comunita", strutturaNome: "Comunità Il Ponte", mittente: "Samuele Ferri", ruoloMittente: "Educatore", unita: "Casa Aurora", pasti: 19, note: "1 senza glutine", stato: "in_attesa", ora: "08:31" },
+  { id: "o4", struttura: "comunita", strutturaNome: "Comunità Il Ponte", mittente: "Samuele Ferri", ruoloMittente: "Educatore", unita: "Spazio Giovani SGA", pasti: 19, note: "1 senza glutine", stato: "in_attesa", ora: "08:31" },
   { id: "o5", struttura: "scuola", strutturaNome: "Istituto Sant'Anna", mittente: "Chiara Beltrami", ruoloMittente: "Insegnante", unita: "Primaria 1", pasti: 24, note: "1 dieta certificata", stato: "approvato", ora: "09:12", oraApprov: "09:18" },
 ];
 

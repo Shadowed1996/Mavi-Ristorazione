@@ -64,10 +64,12 @@ utente.
 16. **Committenti** → "Nuovo committente": creare una struttura di prova e far
     notare che compare subito anche in Impostazioni, Fatturazione, Produzione
     e Ordini in arrivo.
-17. **Impostazioni** → Rotazione menu, con la timeline a quattro settimane; far
-    notare il prezzo unitario e l'IVA per committente.
-18. **Fatturazione** → riga per struttura con prezzo e IVA propri → "PDF" sulla
-    singola riga per un documento separato, poi "Genera proforma unica PDF".
+17. **Impostazioni** → prezzo unitario e IVA per committente, e il pannello
+    Reparti (aggiungere un reparto, farlo comparire subito nella tendina di
+    "Nuovo paziente").
+18. **Fatturazione** → tab per struttura, "Genera proforma PDF" usa il listino
+    di quella sola struttura; in fondo "Tutte le strutture" per il riepilogo e
+    la proforma unica.
 19. **Modifica profilo** (icona matita accanto al nome, in fondo alla barra
     laterale, in qualsiasi portale) → cambiare foto e telefono.
 20. **Gestione portale** → Aspetto → provare il tema scuro. Utenti → aprire

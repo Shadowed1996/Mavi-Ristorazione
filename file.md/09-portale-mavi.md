@@ -136,39 +136,62 @@ Creazione e modifica passano da `st.salvaPiatto`, l'eliminazione da
 
 Un tab per committente (`st.committenti`, non più un dizionario a parte).
 Cutoff, listino (etichetta libera), **prezzo unitario a pasto e IVA**
-(campi strutturati, usati da Fatturazione), regola pasto, toggle frutta e
-monoporzione. Ogni modifica passa da `st.aggiornaCommittente` e si vede subito
-anche nella pagina Fatturazione.
+(campi strutturati, usati da Fatturazione), regola pasto. Ogni modifica passa
+da `st.aggiornaCommittente` e si vede subito anche nella pagina Fatturazione.
 
-### Rotazione menu
+"Frutta a ogni pasto" e "Consegna in monoporzione nominativa" (12 settembre
+2026, tolte su indicazione di Filippo: "quelle sono già decise") non sono più
+toggle editabili qui — restano campi fissi (`c.frutta`, `c.monoporzione`) sul
+committente, letti da `equilibrio()` in `data.js` per l'indicatore del pasto
+equilibrato. Per cambiarli serve modificare il seed in `COMMITTENTI`
+(`data.js`), non più l'interfaccia.
 
-Box terracotta con "Settimana N" in grande, data di decorrenza, quando ruota e
-il bottone "Forza rotazione". Sotto, una timeline a quattro passi cliccabili
-con lo stato: attiva, prossima, programmata. I testi sono in stato locale nel
-componente, non in `CICLICO`: la costante in `data.js` descrive la stessa cosa
-ma non è collegata alla pagina.
+### Reparti — sostituisce "Rotazione menu" (12 settembre 2026)
 
-Questa sezione **non compone i piatti**: dice solo quale settimana del ciclo è
-in vigore. I piatti si compongono in Menu della settimana.
+Al posto del pannello "Rotazione menu" (rimosso: non dipendeva nemmeno dal
+committente selezionato, era sempre lo stesso indipendentemente dal tab —
+posto sbagliato per un'informazione globale), qui si gestisce l'elenco
+`c.unita` del committente attivo: chip con la "×" per rimuovere, campo +
+bottone "Aggiungi" per aggiungerne uno. Scrive con `st.aggiornaCommittente(id,
+{ unita: [...] })`.
+
+Questo stesso elenco alimenta:
+- il menu a tendina "Stanza / struttura" in `ModuloPaziente` (`Comunita.jsx`),
+  che decide anche il reparto del paziente;
+- il menu a tendina "Reparto assegnato" per il ruolo Educatore nel modale
+  Utenti di Gestione portale.
+
+Rimuovere un reparto **non sposta** i pazienti o gli utenti già assegnati a
+quel valore: restano con la stringa vecchia finché qualcuno non la cambia a
+mano (`ModuloPaziente` include comunque il valore corrente in lista anche se
+non è più fra i reparti censiti, per non perderlo in silenzio).
+
+La rotazione menu (`CICLICO` in `data.js`, la timeline a quattro settimane)
+non ha più una pagina propria: il ciclo resta descritto nella costante ma senza
+un pannello dedicato, coerente con quanto era già segnalato — non componeva i
+piatti né era collegata a `CICLICO`, lo faceva comunque "Menu della
+settimana".
 
 ## Fatturazione — `Fatturazione`
 
-Riscritta il 12 settembre 2026: **listino diversificato per committente**,
-non più un prezzo fisso per tutti. Tabella dei pasti per struttura con prezzo
-unitario e IVA propri (da `st.committenti`), imponibile, IVA e totale per riga
-più il totale documento.
+Riscritta due volte il 12 settembre 2026. Prima versione: tabella unica con
+tutte le strutture, prezzo e IVA propri per riga. Seconda versione, su
+richiesta di Filippo ("bisogna poter creare la fattura proforma per ogni
+struttura in base alle loro impostazioni"): **una struttura alla volta come
+azione principale**, sullo stesso schema a tab per committente di
+"Impostazioni per committente".
 
-- **Export Excel** con `scaricaExcel`, un rigo per committente più il totale,
-  con prezzo e IVA di ciascuno.
-- **Genera proforma unica PDF** con `generaProformaPDF`, un solo documento con
-  tutte le strutture (stile WHMCS: badge PROFORMA, info-box, box Da/A, tabella
-  degli item, totali e note; dati mancanti come placeholder in corsivo
-  terracotta).
-- **PDF per riga** — proforma separata per quella sola struttura, stesso
-  generatore con un array di una riga. `generaProformaPDF(strutture, prezzoDefault)`
-  ora legge `prezzo`/`ivaPercentuale` da ogni riga; il secondo parametro resta
-  come ripiego per chi passa un solo prezzo (`FattureStruttura` in
-  `Struttura.jsx`).
+- **Tab per committente** in cima (`st.committenti`). La struttura scelta
+  mostra i suoi numeri (pasti nel mese, prezzo unitario, imponibile, IVA,
+  totale) e due azioni dirette: **Genera proforma PDF** e **Scarica Excel**,
+  entrambe per quella sola struttura, con il suo listino.
+- **Tutte le strutture** — pannello sotto, tabella riassuntiva di tutti i
+  committenti con "Apri" per passare al tab di quella riga; in fondo "Excel di
+  tutte" e "Proforma unica PDF" per un solo documento con tutte le strutture
+  insieme, quando serve un riepilogo complessivo invece che per struttura.
+- `generaProformaPDF(strutture, prezzoDefault)` legge `prezzo`/`ivaPercentuale`
+  da ogni riga dell'array; il secondo parametro resta come ripiego per chi
+  passa un solo prezzo (`FattureStruttura` in `Struttura.jsx`).
 
 I dati del mittente arrivano da `st.datiAziendali`, che si compila nella
 Gestione portale.

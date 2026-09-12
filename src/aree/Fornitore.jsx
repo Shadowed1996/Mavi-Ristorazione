@@ -695,6 +695,7 @@ function Catalogo() {
 function Fatturazione() {
   const st = usaStato();
   const MESE = "Agosto 2026";
+  const [attivo, setAttivo] = React.useState(st.committenti[0]?.id);
 
   function eur(n) { return n.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
@@ -708,17 +709,11 @@ function Fatturazione() {
     return { c, pasti, imponibile, iva, totale: imponibile + iva };
   }), [st.committenti]);
 
-  const totPasti = righe.reduce((s, r) => s + r.pasti, 0);
-  const totImponibile = righe.reduce((s, r) => s + r.imponibile, 0);
-  const totIva = righe.reduce((s, r) => s + r.iva, 0);
+  const r = righe.find((x) => x.c.id === attivo) || righe[0];
+  const totPasti = righe.reduce((s, x) => s + x.pasti, 0);
+  const totImponibile = righe.reduce((s, x) => s + x.imponibile, 0);
+  const totIva = righe.reduce((s, x) => s + x.iva, 0);
 
-  function struttureExcel() {
-    return righe.map((r) => ({
-      struttura: r.c.nome, tipo: r.c.tipo, mese: MESE, pasti: r.pasti,
-      prezzo: "€ " + eur(r.c.prezzoUnitario), imponibile: "€ " + eur(r.imponibile),
-      iva: "€ " + eur(r.iva), totale: "€ " + eur(r.totale),
-    }));
-  }
   const COLONNE_PROFORMA = [
     { header: "Struttura", key: "struttura", width: 28 },
     { header: "Tipo", key: "tipo", width: 14 },
@@ -729,72 +724,109 @@ function Fatturazione() {
     { header: "IVA", key: "iva", width: 14 },
     { header: "Totale", key: "totale", width: 16 },
   ];
+  const rigaExcel = (x) => ({
+    struttura: x.c.nome, tipo: x.c.tipo, mese: MESE, pasti: x.pasti,
+    prezzo: "€ " + eur(x.c.prezzoUnitario), imponibile: "€ " + eur(x.imponibile),
+    iva: "€ " + eur(x.iva) + " (" + x.c.ivaPercentuale + "%)", totale: "€ " + eur(x.totale),
+  });
 
-  async function generaProforma() {
+  async function scaricaExcelStruttura(x) {
     try {
       const { scaricaExcel } = await import("../excel.js");
-      const dati = struttureExcel();
-      dati.push({ struttura: "", tipo: "", mese: "TOTALE", pasti: totPasti, prezzo: "", imponibile: "€ " + eur(totImponibile), iva: "€ " + eur(totIva), totale: "€ " + eur(totImponibile + totIva) });
-      await scaricaExcel("Proforma_MAVI_" + MESE.replace(" ", "_") + ".xlsx", [{ nome: "Proforma", dati, colonne: COLONNE_PROFORMA }]);
-      st.avvisa("Proforma Excel scaricata, un rigo per committente più il totale");
+      await scaricaExcel("Proforma_" + x.c.nome.replace(/[^a-zA-Z0-9]+/g, "_") + ".xlsx",
+        [{ nome: "Proforma", dati: [rigaExcel(x)], colonne: COLONNE_PROFORMA }]);
+      st.avvisa("Excel di " + x.c.nome + " scaricato");
     } catch (e) {
       console.error(e);
       st.avvisa("Errore nella generazione, riprova");
     }
   }
-
+  async function scaricaExcelTutte() {
+    try {
+      const { scaricaExcel } = await import("../excel.js");
+      const dati = righe.map(rigaExcel);
+      dati.push({ struttura: "", tipo: "", mese: "TOTALE", pasti: totPasti, prezzo: "", imponibile: "€ " + eur(totImponibile), iva: "€ " + eur(totIva), totale: "€ " + eur(totImponibile + totIva) });
+      await scaricaExcel("Proforma_MAVI_" + MESE.replace(" ", "_") + ".xlsx", [{ nome: "Proforma", dati, colonne: COLONNE_PROFORMA }]);
+      st.avvisa("Excel scaricato, un rigo per committente più il totale");
+    } catch (e) {
+      console.error(e);
+      st.avvisa("Errore nella generazione, riprova");
+    }
+  }
+  async function generaProformaStruttura(x) {
+    const { generaProformaPDF } = await import("../proforma.js");
+    generaProformaPDF([{ nome: x.c.nome, tipo: x.c.tipo, pasti: x.pasti, mese: MESE, prezzo: x.c.prezzoUnitario, ivaPercentuale: x.c.ivaPercentuale }]);
+    st.logga("Cucina MAVI", "Operatore", "Proforma generata", x.c.nome, "generico");
+  }
   async function generaProformaCombinata() {
     const { generaProformaPDF } = await import("../proforma.js");
-    generaProformaPDF(righe.map((r) => ({ nome: r.c.nome, tipo: r.c.tipo, pasti: r.pasti, mese: MESE, prezzo: r.c.prezzoUnitario, ivaPercentuale: r.c.ivaPercentuale })));
-    st.logga("Cucina MAVI", "Operatore", "Proforma generata", righe.map((r) => r.c.nome).join(", "), "generico");
+    generaProformaPDF(righe.map((x) => ({ nome: x.c.nome, tipo: x.c.tipo, pasti: x.pasti, mese: MESE, prezzo: x.c.prezzoUnitario, ivaPercentuale: x.c.ivaPercentuale })));
+    st.logga("Cucina MAVI", "Operatore", "Proforma generata", righe.map((x) => x.c.nome).join(", ") + " (documento unico)", "generico");
   }
-  async function generaProformaSingola(r) {
-    const { generaProformaPDF } = await import("../proforma.js");
-    generaProformaPDF([{ nome: r.c.nome, tipo: r.c.tipo, pasti: r.pasti, mese: MESE, prezzo: r.c.prezzoUnitario, ivaPercentuale: r.c.ivaPercentuale }]);
-    st.logga("Cucina MAVI", "Operatore", "Proforma generata", r.c.nome + " (documento separato)", "generico");
-  }
+
+  if (!r) return null;
 
   return (
     <>
       <Intestazione
-        occhiello="Chiusura mensile" titolo="Proforma" sotto="Riepilogo dei pasti erogati per struttura, con listino proprio di ciascuna, base per la fatturazione"
-        azioni={<>
-          <button className="btn linea piccolo" onClick={generaProforma}><Icone.scarica size={16} /> Scarica Excel</button>
-          <button className="btn piccolo" onClick={generaProformaCombinata}>Genera proforma unica PDF</button>
-        </>}
+        occhiello="Chiusura mensile" titolo="Proforma"
+        sotto="Scegli la struttura: la proforma si genera con il listino e le impostazioni di quella struttura"
       />
       <div className="tela">
+        <div className="giorni-tab">
+          {righe.map((x) => (
+            <button key={x.c.id} className={attivo === x.c.id ? "on" : ""} onClick={() => setAttivo(x.c.id)}>
+              {x.c.tipo}<span>{x.c.nome}</span>
+            </button>
+          ))}
+        </div>
+
         <div className="numeri">
-          <div className="numero"><div className="n-lab">Pasti totali</div><div className="n-val">{totPasti}</div><div className="n-nota">nel mese di {MESE.toLowerCase()}</div></div>
-          <div className="numero"><div className="n-lab">Strutture</div><div className="n-val">{righe.length}</div><div className="n-nota">ognuna con il proprio listino</div></div>
-          <div className="numero"><div className="n-lab">Imponibile</div><div className="n-val" style={{ fontSize: 22 }}>€ {eur(totImponibile)}</div><div className="n-nota">somma dei prezzi unitari per committente</div></div>
-          <div className="numero"><div className="n-lab">IVA</div><div className="n-val" style={{ fontSize: 22 }}>€ {eur(totIva)}</div><div className="n-nota">totale documento € {eur(totImponibile + totIva)}</div></div>
+          <div className="numero"><div className="n-lab">Pasti nel mese</div><div className="n-val">{r.pasti}</div><div className="n-nota">{MESE}</div></div>
+          <div className="numero"><div className="n-lab">Prezzo unitario</div><div className="n-val" style={{ fontSize: 22 }}>€ {eur(r.c.prezzoUnitario)}</div><div className="n-nota">da Impostazioni per committente</div></div>
+          <div className="numero"><div className="n-lab">Imponibile</div><div className="n-val" style={{ fontSize: 22 }}>€ {eur(r.imponibile)}</div><div className="n-nota">IVA {r.c.ivaPercentuale}%, € {eur(r.iva)}</div></div>
+          <div className="numero"><div className="n-lab">Totale documento</div><div className="n-val" style={{ fontSize: 22 }}>€ {eur(r.totale)}</div><div className="n-nota">{r.c.nome}</div></div>
         </div>
 
         <div className="pannello">
           <div className="pannello-testa">
-            <h2>Dettaglio per struttura</h2>
-            <span className="conta-piatti">base per la fatturazione a fine mese, un documento separato per ciascuna se serve</span>
+            <h2>Proforma di {r.c.nome}</h2>
+            <span className="conta-piatti">{MESE}</span>
+          </div>
+          <div style={{ padding: "18px 24px", display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button className="btn" onClick={() => generaProformaStruttura(r)}>Genera proforma PDF</button>
+            <button className="btn linea" onClick={() => scaricaExcelStruttura(r)}><Icone.scarica size={16} /> Scarica Excel</button>
+          </div>
+          <div className="pannello-piede">
+            Prezzo unitario, IVA e pasti stimati al mese si impostano in <b>Impostazioni per committente</b> →
+            {" " + r.c.nome}. Non transita dal Sistema di Interscambio — la fattura elettronica si emette dal
+            gestionale contabile.
+          </div>
+        </div>
+
+        <div className="pannello">
+          <div className="pannello-testa">
+            <h2>Tutte le strutture</h2>
+            <span className="conta-piatti">{righe.length} committenti, {totPasti} pasti nel mese</span>
           </div>
           <div className="scorri">
             <table className="dati">
-              <thead><tr><th>Struttura</th><th>Tipo</th><th>Periodo</th><th>Pasti</th><th>Prezzo unitario</th><th>Imponibile</th><th>IVA</th><th>Totale</th><th /></tr></thead>
+              <thead><tr><th>Struttura</th><th>Tipo</th><th>Pasti</th><th>Prezzo unitario</th><th>Imponibile</th><th>IVA</th><th>Totale</th><th /></tr></thead>
               <tbody>
-                {righe.map((r) => (
-                  <tr key={r.c.id}>
-                    <td><b>{r.c.nome}</b></td>
-                    <td><span className="pastiglia p-neu">{r.c.tipo}</span></td>
-                    <td>{MESE}</td>
-                    <td className="quantita">{r.pasti}</td>
-                    <td className="cifra">€ {eur(r.c.prezzoUnitario)}</td>
-                    <td className="cifra">€ {eur(r.imponibile)}</td>
-                    <td className="cifra">€ {eur(r.iva)} <span style={{ color: "var(--muto)", fontSize: 11 }}>({r.c.ivaPercentuale}%)</span></td>
-                    <td className="cifra"><b>€ {eur(r.totale)}</b></td>
-                    <td><button className="btn linea piccolo" onClick={() => generaProformaSingola(r)}>PDF</button></td>
+                {righe.map((x) => (
+                  <tr key={x.c.id} style={x.c.id === attivo ? { background: "var(--carta)" } : undefined}>
+                    <td><b>{x.c.nome}</b></td>
+                    <td><span className="pastiglia p-neu">{x.c.tipo}</span></td>
+                    <td className="quantita">{x.pasti}</td>
+                    <td className="cifra">€ {eur(x.c.prezzoUnitario)}</td>
+                    <td className="cifra">€ {eur(x.imponibile)}</td>
+                    <td className="cifra">€ {eur(x.iva)} <span style={{ color: "var(--muto)", fontSize: 11 }}>({x.c.ivaPercentuale}%)</span></td>
+                    <td className="cifra"><b>€ {eur(x.totale)}</b></td>
+                    <td><button className="btn linea piccolo" onClick={() => setAttivo(x.c.id)}>Apri</button></td>
                   </tr>
                 ))}
                 <tr className="riga-totale">
-                  <td colSpan={3}><b>Totale</b></td>
+                  <td colSpan={2}><b>Totale</b></td>
                   <td className="quantita">{totPasti}</td>
                   <td />
                   <td className="cifra">€ {eur(totImponibile)}</td>
@@ -805,11 +837,10 @@ function Fatturazione() {
               </tbody>
             </table>
           </div>
-          <div className="pannello-piede">
-            Il prezzo unitario e l'IVA si impostano in <b>Impostazioni per committente</b>. "Genera proforma
-            unica PDF" produce un solo documento con tutte le strutture; il bottone PDF di ogni riga produce
-            invece un documento separato per quella sola struttura. Non transita dal Sistema di Interscambio —
-            la fattura elettronica si emette dal gestionale contabile.
+          <div className="pannello-piede" style={{ display: "flex", gap: 10, justifyContent: "flex-end", alignItems: "center" }}>
+            <span style={{ flex: 1 }}>Un unico documento con tutte le strutture insieme, se serve.</span>
+            <button className="btn linea piccolo" onClick={scaricaExcelTutte}><Icone.scarica size={16} /> Excel di tutte</button>
+            <button className="btn piccolo" onClick={generaProformaCombinata}>Proforma unica PDF</button>
           </div>
         </div>
       </div>
@@ -1571,7 +1602,7 @@ function EtichettePasto() {
 }
 
 /* ==================== modale creazione/modifica utente ==================== */
-function ModaleUtente({ utente, ruoli, strutture, onSalva, onChiudi }) {
+function ModaleUtente({ utente, ruoli, strutture, repartiComunita, onSalva, onChiudi }) {
   const [form, setForm] = React.useState(utente || { nome: "", username: "", ruolo: ruoli[0], struttura: strutture[0], email: "", telefono: "" });
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const PERMESSI_PER_RUOLO = {
@@ -1613,7 +1644,13 @@ function ModaleUtente({ utente, ruoli, strutture, onSalva, onChiudi }) {
         {form.ruolo === "Educatore" && (
           <div style={{ marginBottom: 14 }}>
             <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muto)", marginBottom: 4 }}>Reparto assegnato</label>
-            <input type="text" value={form.reparto || ""} onChange={(e) => set("reparto", e.target.value)} style={{ width: "100%", fontSize: 13, padding: "8px 10px" }} placeholder="Es. Spazio Giovani SGA" />
+            {repartiComunita.length === 0 ? (
+              <p style={{ fontSize: 12, color: "var(--muto)" }}>Nessun reparto censito. Aggiungine uno da Impostazioni per committente.</p>
+            ) : (
+              <select value={form.reparto || repartiComunita[0]} onChange={(e) => set("reparto", e.target.value)} style={{ width: "100%", fontSize: 13, padding: "8px 10px" }}>
+                {repartiComunita.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+            )}
             <p style={{ fontSize: 11, color: "var(--muto)", marginTop: 4 }}>Determina quali pazienti l'educatore vede e può modificare nel portale comunità.</p>
           </div>
         )}
@@ -1807,6 +1844,7 @@ function GestionePortale() {
                 utente={editUtente === "nuovo" ? null : editUtente}
                 ruoli={RUOLI}
                 strutture={STRUTTURE}
+                repartiComunita={st.committenti.find((c) => c.id === "comunita")?.unita || []}
                 onSalva={(u) => {
                   if (u.id) {
                     st.setUtenti((p) => p.map((x) => x.id === u.id ? u : x));
@@ -1947,9 +1985,23 @@ function ImpostazioniServizio() {
   const st = usaStato();
   const strutture = st.committenti;
   const [attivo, setAttivo] = React.useState(strutture[0]?.id);
-  const [settCorrente, setSettCorrente] = React.useState(1);
+  const [nuovoReparto, setNuovoReparto] = React.useState("");
   const c = strutture.find((s) => s.id === attivo) || strutture[0];
   const cambia = (campo, val) => st.aggiornaCommittente(attivo, { [campo]: val });
+
+  function aggiungiReparto(e) {
+    e.preventDefault();
+    const nome = nuovoReparto.trim();
+    if (!nome || c.unita.includes(nome)) return;
+    st.aggiornaCommittente(c.id, { unita: [...c.unita, nome] });
+    st.avvisa(nome + " aggiunto");
+    setNuovoReparto("");
+  }
+  function togliReparto(nome) {
+    st.aggiornaCommittente(c.id, { unita: c.unita.filter((u) => u !== nome) });
+    st.avvisa(nome + " rimosso");
+  }
+
   return (
     <>
       <Intestazione
@@ -2001,63 +2053,43 @@ function ImpostazioniServizio() {
               <em>Base per l'indicatore di equilibrio nel vassoio del commensale.</em>
             </label>
           </div>
-          <div className="impo-riga toggle">
-            <label className="toggle-riga">
-              <input type="checkbox" checked={c.frutta} onChange={(e) => cambia("frutta", e.target.checked)} />
-              <span>
-                <b>Frutta a ogni pasto</b>
-                <em>Il capitolato prevede la sesta portata, colore viola secondo il codice WHP.</em>
-              </span>
-            </label>
-            <label className="toggle-riga">
-              <input type="checkbox" checked={c.monoporzione} onChange={(e) => cambia("monoporzione", e.target.checked)} />
-              <span>
-                <b>Consegna in monoporzione nominativa</b>
-                <em>Etichetta obbligatoria su ogni vaschetta. Aumenta il costo di confezionamento.</em>
-              </span>
-            </label>
-          </div>
         </div>
 
         <div className="pannello">
           <div className="pannello-testa">
-            <h2>Rotazione menu</h2>
-            <span className="conta-piatti">ciclo autunnale, 4 settimane</span>
+            <h2>{c.etichettaUnita === "Reparto" ? "Reparti" : c.etichettaUnita + " / reparti"}</h2>
+            <span className="conta-piatti">{c.unita.length} censiti per {c.nome}</span>
           </div>
           <div style={{ padding: "18px 24px" }}>
-            <div className="rot-corrente">
-              <div>
-                <div className="so-lab">In vigore adesso</div>
-                <div className="rot-big">Settimana {settCorrente}</div>
-                <div className="rot-sub">dal 1 settembre · ruota automaticamente lunedì 8</div>
-              </div>
-              <button className="btn linea piccolo" onClick={() => {
-                const next = settCorrente === 4 ? 1 : settCorrente + 1;
-                setSettCorrente(next);
-                st.avvisa("Rotazione forzata alla settimana " + next);
-                st.logga("Cucina MAVI", "Admin", "Rotazione menu forzata", "Passaggio a settimana " + next, "modifica");
-              }}>Forza rotazione</button>
-            </div>
-
-            <div className="rot-timeline">
-              {[1, 2, 3, 4].map((n) => {
-                const stato = n === settCorrente ? "attiva" : n === (settCorrente === 4 ? 1 : settCorrente + 1) ? "prossima" : "programmata";
-                return (
-                  <button key={n} className={"rot-step " + stato} onClick={() => {
-                    setSettCorrente(n);
-                    st.avvisa("Settimana " + n + " impostata come attiva");
-                  }}>
-                    <span className="rot-n">{n}</span>
-                    <span className="rot-lab">Settimana {n}</span>
-                    <span className="rot-stato">{stato}</span>
+            <p style={{ fontSize: 12.5, color: "var(--muto)", margin: "0 0 14px" }}>
+              Determinano chi vede cosa: nel portale comunità un educatore assegnato a un reparto
+              vede e modifica solo i pazienti di quel reparto (campo "Stanza / struttura" del
+              paziente). Rimuovere un reparto non sposta i pazienti già assegnati.
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+              {c.unita.length === 0 && <span style={{ fontSize: 13, color: "var(--muto)" }}>Nessuno ancora.</span>}
+              {c.unita.map((u) => (
+                <span key={u} className="pastiglia p-neu" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, padding: "6px 8px 6px 12px" }}>
+                  {u}
+                  <button type="button" onClick={() => togliReparto(u)} aria-label={"rimuovi " + u}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muto)", display: "flex", padding: 2 }}>
+                    <Icone.x size={13} />
                   </button>
-                );
-              })}
+                </span>
+              ))}
             </div>
+            <form onSubmit={aggiungiReparto} style={{ display: "flex", gap: 10, maxWidth: 420 }}>
+              <input type="text" value={nuovoReparto} onChange={(e) => setNuovoReparto(e.target.value)}
+                placeholder={"Nuovo " + c.etichettaUnita.toLowerCase()}
+                style={{ flex: 1, padding: "9px 12px", border: "1px solid var(--linea-forte)", borderRadius: "var(--r-s)", fontFamily: "var(--sans)", fontSize: 14 }} />
+              <button type="submit" className="btn linea piccolo" disabled={!nuovoReparto.trim()}>
+                <Icone.piu size={14} /> Aggiungi
+              </button>
+            </form>
           </div>
           <div className="pannello-piede">
-            La rotazione dice quale delle quattro settimane del ciclo è in vigore. I piatti di ogni
-            settimana si compongono da <b>Menu della settimana</b>. Alla fine della quarta si torna alla prima.
+            L'elenco alimenta anche il menu a tendina di "Stanza / struttura" nel modulo paziente e
+            il campo Reparto per l'Educatore in Gestione portale → Utenti.
           </div>
         </div>
       </div>

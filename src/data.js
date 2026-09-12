@@ -562,8 +562,8 @@ export const COMMITTENTI = [
   },
   {
     id: "comunita", nome: "Comunità Il Ponte", tipo: "Comunità", modello: "unita",
-    unita: ["Casa Aurora", "Casa Ulivo"],
-    etichettaUnita: "Casa", pasti: 31, attivo: true,
+    unita: ["Spazio Giovani SGA", "CSS Sole Luna, Desio"],
+    etichettaUnita: "Reparto", pasti: 31, attivo: true,
     nota: "Menu fisso con poche personalizzazioni, ordine dichiarato dall'educatore di turno.",
     indirizzo: "Via Sole Luna 8, Desio (MB)", piva: "03887120968",
     referente: "Ilaria Gatti", ruoloReferente: "Responsabile struttura",
@@ -603,8 +603,8 @@ export const FASCE_SCOLASTICHE = [
 /* dati di esempio della giornata, per i modelli non individuali */
 export const ORDINI_UNITA = {
   comunita: [
-    { unita: "Casa Aurora", normale: 16, tritato: 0, frullato: 0, iposodica: 1, diabetica: 1, senza_glutine: 1 },
-    { unita: "Casa Ulivo", normale: 11, tritato: 1, frullato: 0, iposodica: 0, diabetica: 0, senza_glutine: 0 },
+    { unita: "Spazio Giovani SGA", normale: 16, tritato: 0, frullato: 0, iposodica: 1, diabetica: 1, senza_glutine: 1 },
+    { unita: "CSS Sole Luna, Desio", normale: 11, tritato: 1, frullato: 0, iposodica: 0, diabetica: 0, senza_glutine: 0 },
   ],
 };
 
@@ -705,8 +705,8 @@ export const GIRI = [
   {
     id: "g1", nome: "Giro Nord", furgone: "Ducato FZ-421", autista: "Paolo Neri", partenza: "10:15",
     tappe: [
-            { ora: "11:10", struttura: "Comunità Il Ponte, Casa Aurora", punto: "Portoncino laterale", pasti: 12, note: "Suonare al citofono, non lasciare fuori" },
-      { ora: "11:35", struttura: "Comunità Il Ponte, Casa Ulivo", punto: "Ingresso principale", pasti: 7, note: "Fermata breve" },
+            { ora: "11:10", struttura: "Comunità Il Ponte, Spazio Giovani SGA", punto: "Portoncino laterale", pasti: 12, note: "Suonare al citofono, non lasciare fuori" },
+      { ora: "11:35", struttura: "Comunità Il Ponte, CSS Sole Luna", punto: "Ingresso principale", pasti: 7, note: "Fermata breve" },
     ],
   },
   {

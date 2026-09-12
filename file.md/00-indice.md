@@ -60,7 +60,7 @@ resoconti giorno e settimana.
 ### 09 — Portale MAVI
 `09-portale-mavi.md`
 Distinta di produzione, ordini in arrivo, giri di consegna, etichette pasto,
-committenti, menu della settimana, catalogo, impostazioni e rotazione menu,
+committenti, menu della settimana, catalogo, impostazioni per committente e reparti,
 proforma, log operazioni, gestione portale.
 
 ### 10 — Export e documenti
