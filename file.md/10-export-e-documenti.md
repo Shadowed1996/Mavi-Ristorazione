@@ -1,6 +1,6 @@
-# Export Excel, template diete, proforma, documenti
+# Export Excel, template diete, proforma, manifesto, documenti
 
-Tre moduli senza JSX, importati sempre in modo dinamico dove servono.
+Quattro moduli senza JSX, importati sempre in modo dinamico dove servono.
 
 ## `src/excel.js` — export xlsx
 
@@ -86,10 +86,17 @@ anteprima. Vedi `08-portale-comunita.md`.
 ## `src/proforma.js` — proforma stampabile
 
 ```js
-generaProformaPDF(strutture, prezzoUnitario)
+generaProformaPDF(strutture, prezzoUnitarioDefault)
 ```
 
-`strutture` è un array di `{ nome, tipo, mese, pasti }`.
+`strutture` è un array di `{ nome, tipo, mese, pasti, prezzo, ivaPercentuale }`.
+Dal 12 settembre 2026 **prezzo e IVA sono per riga**, non un unico valore per
+tutto il documento: ogni committente ha il proprio listino (`st.committenti`).
+`prezzoUnitarioDefault` (secondo parametro) resta come ripiego per una riga
+senza `prezzo` proprio — usato da `FattureStruttura` in `Struttura.jsx`
+quando il committente non ha un listino strutturato. L'IVA in cima al
+documento mostra la percentuale media effettiva se le righe hanno aliquote
+diverse.
 
 Costruisce una stringa HTML completa e la scrive in una nuova scheda; la stampa
 parte dal pulsante in cima al documento. Non è un PDF generato lato server: è
@@ -100,9 +107,31 @@ Nome, tipo, periodo e pasti delle strutture passano da `testoHtml`, che li
 inserisce come testo e non come HTML: vedi «HTML composto come stringa» in
 `11-convenzioni.md`.
 
-Calcoli: imponibile = pasti totali × prezzo unitario, **IVA al 10 %**, totale.
-Il numero documento è `PRO-2026/` più tre cifre casuali; la data è quella
-odierna in italiano.
+Calcoli: imponibile = Σ (pasti × prezzo di riga), IVA = Σ (imponibile di riga ×
+percentuale di riga), totale. Il numero documento è `PRO-2026/` più tre cifre
+casuali; la data è quella odierna in italiano.
+
+La pagina Fatturazione (`Fornitore.jsx`) chiama questa funzione in due modi:
+"Genera proforma unica PDF" con tutte le righe insieme, il bottone PDF di ogni
+riga della tabella con un array di una sola struttura, per un documento
+separato.
+
+## `src/manifesto.js` — manifesto di consegna nominativo
+
+```js
+generaManifestoConsegna({ struttura, giorno, pasto, righe })
+```
+
+Aggiunto il 12 settembre 2026, su richiesta di Filippo: le etichette pasto
+dell'azienda sono deliberatamente anonime (vedi `09-portale-mavi.md`), ma il
+fornitore ha comunque bisogno di sapere chi ha ordinato cosa per il foglio da
+mettere nel cassone termico in consegna. `righe` è `st.nominativiAzienda`
+(nome, reparto, primo, secondo, contorno). Stessa tecnica di `proforma.js`
+(stringa HTML in una nuova scheda, pulsante "Stampa", `testoHtml` su ogni
+valore), ma senza calcoli di prezzo: è un elenco, non un documento fiscale.
+Il documento è marcato "Riservato al fornitore — non esporre al cliente" ed è
+raggiungibile solo dal drill-down azienda di "Ordini in arrivo", nel portale
+MAVI.
 
 Il layout è ispirato a WHMCS: intestazione con logo testuale e badge PROFORMA,
 info-box con numero, data, periodo e scadenza, box Da / A, tabella degli item,

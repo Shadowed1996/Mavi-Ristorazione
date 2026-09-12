@@ -1,5 +1,5 @@
 import React from "react";
-import { PIATTI, GIORNI, MENU_INIZIALE, COMMITTENTI, ORDINI_UNITA, PAZIENTI_COMUNITA } from "./data.js";
+import { PIATTI, GIORNI, MENU_INIZIALE, COMMITTENTI, ORDINI_UNITA, PAZIENTI_COMUNITA, ETICHETTE_AZIENDA_DEMO } from "./data.js";
 
 const Ctx = React.createContext(null);
 export const usaStato = () => React.useContext(Ctx);
@@ -63,6 +63,8 @@ export function Provider({ children }) {
   const [versione, setVersione] = React.useState(0); // sale a ogni modifica del catalogo
   const [documenti, setDocumenti] = React.useState(DOCUMENTI_INIZIALI);
   const [committente, setCommittente] = React.useState(COMMITTENTI[0].id);
+  const [committenti, setCommittenti] = React.useState(COMMITTENTI);
+  const [profili, setProfili] = React.useState({}); // username -> { nome, email, telefono, password, foto }
   const [unita, setUnita] = React.useState(() => ({
     comunita: (ORDINI_UNITA.comunita || []).map((r) => ({ ...r })),
   }));
@@ -73,6 +75,16 @@ export function Provider({ children }) {
   const [assenti, setAssenti] = React.useState([]);
   const [ospitiExtra, setOspitiExtra] = React.useState([]);
   const [presenzeTrasmesse, setPresenzeTrasmesse] = React.useState([]);
+  /* quando (data/ora reale) è stato confermato l'ordine di ciascun giorno del
+     menu: senza questo, "Ordini in arrivo" non può distinguere "generato il"
+     da "per quando", che sono due date diverse (si ordina oggi per un giorno
+     futuro della settimana). */
+  const [oraConferma, setOraConferma] = React.useState({});
+  /* elenco nominativo di chi ha ordinato cosa in azienda: parte dai sette
+     ordini demo già presenti in data.js (mai usati altrove) e cresce con le
+     conferme reali della demo. Riservato al portale MAVI: serve al fornitore
+     per il manifesto di consegna nel cassone termico, mai al cliente. */
+  const [nominativiAzienda, setNominativiAzienda] = React.useState(ETICHETTE_AZIENDA_DEMO);
   const [tema, setTemaRaw] = React.useState(() => {
     try { return localStorage.getItem("mavi-tema") || "auto"; } catch { return "auto"; }
   });
@@ -83,7 +95,7 @@ export function Provider({ children }) {
   const [utenti, setUtenti] = React.useState([
     { id: "u1", nome: "Antonella Rossi", ruolo: "Dipendente", struttura: "Rossi Manifatture Spa", attivo: true },
     { id: "u2", nome: "Roberto Manzi", ruolo: "Referente aziendale", struttura: "Rossi Manifatture Spa", attivo: true },
-    { id: "u3", nome: "Samuele Ferri", ruolo: "Educatore", struttura: "Comunità Il Ponte", attivo: true },
+    { id: "u3", nome: "Samuele Ferri", ruolo: "Educatore", struttura: "Comunità Il Ponte", reparto: "Spazio Giovani SGA", attivo: true },
     { id: "u4", nome: "Ilaria Gatti", ruolo: "Responsabile", struttura: "Comunità Il Ponte", attivo: true },
     { id: "u5", nome: "Cucina MAVI", ruolo: "Operatore cucina", struttura: "MAVI Ristorazione", attivo: true },
   ]);
@@ -132,8 +144,16 @@ export function Provider({ children }) {
     setLogOperazioni((p) => [{ id, ora: nowHM(), utente, ruolo, azione, dettaglio, tipo }, ...p]);
   }, []);
 
+  /* aggiorna per id invece di sovrascrivere: un educatore trasmette solo il
+     proprio reparto, il responsabile può trasmettere il resto più tardi, e la
+     seconda chiamata non deve far perdere la prima */
   const trasmettiPresenze = React.useCallback((lista) => {
-    setPresenzeTrasmesse(lista);
+    const generatoIl = new Date().toISOString();
+    const listaTimbrata = lista.map((r) => ({ ...r, generatoIl }));
+    setPresenzeTrasmesse((prec) => {
+      const restanti = prec.filter((r) => !lista.some((n) => n.id === r.id));
+      return [...restanti, ...listaTimbrata];
+    });
     logga("Comunità", "Operatore", "Presenze trasmesse", lista.length + " pazienti presenti", "presenze");
   }, [logga]);
 
@@ -144,6 +164,26 @@ export function Provider({ children }) {
     const id = "n" + Date.now();
     setOspitiExtra((p) => [...p, { ...ospite, id }]);
     return id;
+  }, []);
+
+  /* anagrafica dei committenti: creazione e modifica. È lo stesso record che
+     alimenta Committenti, Impostazioni, Produzione e Fatturazione, quindi un
+     committente nuovo compare ovunque senza bisogno di elenchi paralleli. */
+  const aggiungiCommittente = React.useCallback((dati) => {
+    const id = (dati.tipo === "Comunità" ? "com" : "az") + Date.now();
+    setCommittenti((p) => [...p, { attivo: true, unita: [], frutta: false, monoporzione: false, ...dati, id }]);
+    logga("Cucina MAVI", "Admin", "Nuovo committente creato", dati.nome + " (" + dati.tipo + ")", "modifica");
+    return id;
+  }, [logga]);
+  const aggiornaCommittente = React.useCallback((id, patch) => {
+    setCommittenti((p) => p.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+  }, []);
+
+  /* profilo personale dell'utente: dati modificabili dall'interessato,
+     indicizzati per username. Sovrascrivono i dati di UTENTI solo per la
+     visualizzazione, in aggiunta e non al posto dell'anagrafica del cliente. */
+  const aggiornaProfilo = React.useCallback((chiave, patch) => {
+    setProfili((p) => ({ ...p, [chiave]: { ...(p[chiave] || {}), ...patch } }));
   }, []);
 
   const avvisa = React.useCallback((testo) => {
@@ -216,10 +256,27 @@ export function Provider({ children }) {
   const conferma = React.useCallback(
     (giorno, chi = { nome: "Antonella Rossi", ruolo: "Dipendente" }) => {
       setConfermati((c) => ({ ...c, [giorno]: true }));
+      setOraConferma((o) => ({ ...o, [giorno]: new Date().toISOString() }));
       avvisa("Prenotazione confermata, entra nella distinta di MAVI");
       logga(chi.nome, chi.ruolo, "Prenotazione confermata", GIORNI[giorno]?.n + " " + GIORNI[giorno]?.breve + ", portale dipendente", "ordine");
+      /* entra anche nel manifesto nominativo del fornitore: quali portate,
+         non solo quante. Sostituisce l'eventuale riga precedente della stessa
+         persona per lo stesso giorno, non la somma. */
+      setNominativiAzienda((prec) => {
+        const o = ordini[giorno] || {};
+        const nomePortata = (id) => (id && PIATTI[id] ? PIATTI[id].n : "—");
+        const riga = {
+          id: "conf-" + giorno + "-" + chi.nome.replace(/\s+/g, "_"),
+          nome: chi.nome, matricola: "", reparto: chi.ruolo, committente: "Rossi Manifatture Spa",
+          giorno: (GIORNI[giorno]?.n || "") + " " + (GIORNI[giorno]?.d || ""), pasto: "pranzo",
+          primo: nomePortata(o.primo || o.sost_primo || o.unico),
+          secondo: nomePortata(o.secondo || o.sost_secondo),
+          contorno: nomePortata(o.contorno),
+        };
+        return [...prec.filter((r) => r.id !== riga.id), riga];
+      });
     },
-    [avvisa, logga]
+    [avvisa, logga, ordini]
   );
 
   const disdici = React.useCallback(
@@ -384,9 +441,10 @@ export function Provider({ children }) {
     ordini, confermati, messaggi, menu, foto, caricaFoto, togliFoto,
     versione, riordinaMenu, salvaPiatto, eliminaPiatto,
     documenti, aggiungiDocumento, rimuoviDocumento,
-    committente, setCommittente, unita, cambiaUnita, aggiungiOspitePresente, presenze, cambiaPresenze, assenti, commutaAssente, ospitiExtra, aggiungiOspite, presenzeTrasmesse, trasmettiPresenze,
+    committente, setCommittente, committenti, aggiungiCommittente, aggiornaCommittente, unita, cambiaUnita, aggiungiOspitePresente, presenze, cambiaPresenze, assenti, commutaAssente, ospitiExtra, aggiungiOspite, presenzeTrasmesse, trasmettiPresenze,
+    oraConferma, nominativiAzienda,
     presenzeComunita, setPresenzeComunita, logOperazioni, logga,
-    tema, setTema, datiAziendali, setDatiAziendali, utenti, setUtenti, notifiche, setNotifiche,
+    tema, setTema, datiAziendali, setDatiAziendali, utenti, setUtenti, notifiche, setNotifiche, profili, aggiornaProfilo,
     ordiniTrasmessi, trasmettiOrdine, approvaOrdine, respingiOrdine, allergeniUtente, dietaUtente, setDietaUtente, avvisa, scegli, conferma,
     disdici, coperte, mancanti, cambiaMenu, ripristinaMenu, commutaAllergene,
   };

@@ -51,11 +51,13 @@ non si sceglie il portale, lo decide il profilo.
 L'oggetto utente ha questa forma:
 
 ```js
-{ u, nome, iniziali, struttura, ruolo, committente, mansione }
+{ u, nome, iniziali, struttura, ruolo, committente, mansione, reparto }
 ```
 
 `struttura` vale `azienda`, `comunita` o `mavi`. `ruolo` vale `dipendente`,
-`referente`, `operatore`, `responsabile` o `fornitore`.
+`referente`, `operatore`, `responsabile` o `fornitore`. `reparto` (aggiunto il
+12 settembre 2026) esiste solo per `ruolo: "operatore"` in comunità: decide
+quali pazienti l'educatore vede, vedi `08-portale-comunita.md`.
 
 ## I portali
 
@@ -83,7 +85,10 @@ restano nel file ma non sono raggiungibili dal login, perché nessun utente in
 
 Il componente `PortaleStruttura` costruisce l'elenco voci in base a `tipo` e
 al fatto che il ruolo sia `operatore` o no, poi rende `Telaio` e sceglie la
-pagina. Per `comunita` delega tutto a `aree/Comunita.jsx`.
+pagina. Per `comunita` delega tutto a `aree/Comunita.jsx`, passando anche
+`reparto` (da `utente.reparto`, solo per l'operatore) alle pagine Pazienti,
+Presenze e Resoconti. `Telaio` riceve il nome e le iniziali reali di chi ha
+fatto login (`utente?.nome`), non più l'etichetta generica del ruolo.
 
 Esporta anche `SceltaRuolo`, riusato da `Azienda.jsx`.
 

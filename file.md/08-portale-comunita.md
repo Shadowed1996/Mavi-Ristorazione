@@ -18,16 +18,41 @@ const PASTO_DEMO  = "pranzo";
 
 ## Ruoli e permessi
 
+Rivisti il 12 settembre 2026: prima l'educatore era in sola lettura su tutto.
+Ora il modello è "ogni reparto ha il suo educatore, il responsabile li vede e
+coordina tutti", indicazione diretta di Filippo.
+
 | | Educatore (`operatore`) | Responsabile |
 |---|---|---|
 | Cruscotto | no | sì |
-| Pazienti | sola lettura | completo |
-| Presenze del giorno | sì | sì |
-| Resoconti | sì | sì |
+| Pazienti | solo il proprio reparto | tutti i reparti |
+| Modifica dieta, carica dieta, scarica template | sì, solo per i pazienti del proprio reparto | sì, per tutti |
+| Elimina, modifica anagrafica, nuovo paziente | no | sì |
+| Presenze del giorno | solo il proprio reparto | tutti i reparti |
+| Resoconti | solo il proprio reparto | tutti i reparti |
 | Fatture | no | sì |
-| Modifica dieta, elimina, modifica anagrafica, carica dieta, template | no | sì |
 
-Il flag arriva come prop `soloLettura={operatore}` da `Struttura.jsx`.
+Il **reparto** è il valore del campo `stanza` del paziente (riusato come
+unità/struttura: nei quattro pazienti demo vale "Spazio Giovani SGA" o "CSS
+Sole Luna, Desio", non un numero di stanza). L'educatore lo riceve
+dall'anagrafica di accesso — `UTENTI` in `data.js`, campo `reparto` — e
+`Struttura.jsx` lo passa come prop `reparto` a `Comunita.Pazienti`,
+`.Presenze` e `.Resoconti`; quando `reparto` è assente (responsabile, o il
+vecchio flusso senza login reale) si vede tutto. `Comunita.jsx` non filtra
+altrove: `Etichette` resta irraggiungibile dal portale comunità (la versione
+operativa vive nel portale MAVI).
+
+`soloLettura={operatore}` continua a gestire solo Elimina/Modifica
+anagrafica/Nuovo paziente: **non è più lo stesso interruttore** che decide
+Modifica dieta. Quel permesso ha una prop dedicata, `puoDieta`, calcolata in
+`Pazienti` come `!soloLettura || !!reparto` (responsabile sempre, educatore
+sempre — perché la lista che vede è già filtrata al suo reparto) e passata a
+`SchedaPaziente`.
+
+Per assegnare un educatore a un reparto diverso dal demo, si cambia il campo
+`reparto` in `UTENTI` (login) — e, solo per coerenza visiva nell'amministrazione
+MAVI, il campo omonimo nel modale Utenti di `Gestione portale` (vedi
+`09-portale-mavi.md`), che resta comunque scollegato dal login reale.
 
 ## Pazienti — `Pazienti`
 
@@ -39,7 +64,12 @@ CRUD completo per il responsabile: "Nuovo paziente" apre `ModuloPaziente`
 (nome, stanza, note), che alla creazione genera una dieta vuota con
 `dietaVuota()`.
 
-L'elenco vive in uno stato locale inizializzato da `PAZIENTI_COMUNITA`.
+L'elenco vive in uno stato locale inizializzato da `PAZIENTI_COMUNITA` (filtrato
+per `stanza === reparto` se l'educatore ha un reparto). Creazione ed
+eliminazione (12 settembre 2026) mutano anche l'array condiviso
+`PAZIENTI_COMUNITA` stesso, la stessa scorciatoia di `salvaPiatto`/`eliminaPiatto`
+in `store.jsx`: prima un paziente creato qui restava invisibile a Presenze,
+Resoconti ed Etichette, che leggono `PAZIENTI_COMUNITA` direttamente.
 
 ## Scheda paziente — `SchedaPaziente`
 
@@ -102,10 +132,17 @@ del bottone diventa "Segna tutti prima di trasmettere".
 
 Alla trasmissione costruisce la lista dei soli presenti, con nome, stanza, tipo
 dieta, note e la dieta del giorno per quel pasto, e chiama
-`st.trasmettiPresenze(lista)`.
+`st.trasmettiPresenze(lista)`, che timbra ogni riga con `generatoIl` (data/ora
+reale) prima di aggiungerla a `st.presenzeTrasmesse`.
 
 Lo stato vive in `st.presenzeComunita`, quindi **operatore e responsabile
-vedono le stesse presenze**: è la dimostrazione dello stato condiviso.
+vedono le stesse presenze**: è la dimostrazione dello stato condiviso. La
+pagina si filtra per reparto quando c'è un `reparto` (educatore): i numeri e
+il bottone "Trasmetti a MAVI" contano solo i pazienti del proprio reparto, così
+un educatore può trasmettere il suo reparto senza aspettare gli altri.
+`st.trasmettiPresenze` **aggiorna per id, non sovrascrive**: reparti diversi
+trasmessi in momenti diversi (da educatori diversi, o dal responsabile dopo)
+si sommano invece di cancellarsi a vicenda.
 
 ## Resoconti — `ResocontiComunita`
 
@@ -115,7 +152,8 @@ Due viste commutabili:
 - **Settimana** — accordion per paziente (`PazienteAccordion`); il clic espande
   la griglia delle cinque card giornaliere.
 
-Export Excel a due fogli.
+Entrambe le viste, i numeri e l'export Excel si filtrano per reparto quando
+c'è un `reparto` (educatore); il nome del file scaricato include il reparto.
 
 ## Etichette — `EtichetteComunita`
 

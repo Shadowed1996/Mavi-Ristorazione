@@ -278,16 +278,16 @@ export function Presenze({ utente }) {
 /* ==================== schema dei modelli, portale MAVI ==================== */
 export function ModelliServizio() {
   const st = usaStato();
-  const [stati, setStati] = React.useState(() => Object.fromEntries(COMMITTENTI.map((c) => [c.id, "attivo"])));
+  const committenti = st.committenti;
   const [espanso, setEspanso] = React.useState(null);
+  const [nuovo, setNuovo] = React.useState(false);
 
+  /* pasti/ora di oggi restano dati dimostrativi per i due committenti storici,
+     dove esiste già un flusso reale altrove (Produzione, Ordini in arrivo);
+     un committente appena creato non ha ancora nulla da mostrare qui. */
   const OPERATIVO = {
-    azienda: { ordinato: true, ora: "13:42", pasti: 28, cutoff: "14:00 giorno prima", ultimoOrdine: "oggi" },
-    comunita: { ordinato: true, ora: "08:31", pasti: 19, cutoff: "16:00 giorno prima", ultimoOrdine: "oggi" },
-  };
-  const CONTATTI = {
-    azienda: { referente: "Roberto Manzi", ruolo: "Ufficio del personale", email: "r.manzi@rossimanifatture.it", tel: "0332 445 122", indirizzo: "Via dell'Industria 42, Varese", piva: "02114560123" },
-    comunita: { referente: "Ilaria Gatti", ruolo: "Responsabile struttura", email: "i.gatti@comunitailponte.it", tel: "0362 998 741", indirizzo: "Via Sole Luna 8, Desio (MB)", piva: "03887120968" },
+    azienda: { ordinato: true, ora: "13:42", pasti: 28, ultimoOrdine: "oggi" },
+    comunita: { ordinato: true, ora: "08:31", pasti: 19, ultimoOrdine: "oggi" },
   };
 
   return (
@@ -296,15 +296,15 @@ export function ModelliServizio() {
         occhiello="Gestione servizio"
         titolo="Committenti"
         sotto="Anagrafica e stato operativo delle strutture servite"
-        azioni={<button className="btn piccolo" onClick={() => st.avvisa("Nuovo committente: form completo in produzione")}>
+        azioni={<button className="btn piccolo" onClick={() => setNuovo(true)}>
           <Icone.piu size={16} /> Nuovo committente
         </button>}
       />
       <div className="tela">
         <div className="numeri">
-          <div className="numero"><div className="n-lab">Committenti attivi</div><div className="n-val">{Object.values(stati).filter((s) => s === "attivo").length}</div><div className="n-nota">su {COMMITTENTI.length} censiti</div></div>
+          <div className="numero"><div className="n-lab">Committenti attivi</div><div className="n-val">{committenti.filter((c) => c.attivo !== false).length}</div><div className="n-nota">su {committenti.length} censiti</div></div>
           <div className="numero"><div className="n-lab">Pasti oggi</div><div className="n-val">{Object.values(OPERATIVO).reduce((s, o) => s + o.pasti, 0)}</div><div className="n-nota">ordini ricevuti</div></div>
-          <div className="numero"><div className="n-lab">Hanno ordinato</div><div className="n-val">{Object.values(OPERATIVO).filter((o) => o.ordinato).length}/{COMMITTENTI.length}</div><div className="n-nota">entro il cutoff</div></div>
+          <div className="numero"><div className="n-lab">Hanno ordinato</div><div className="n-val">{Object.values(OPERATIVO).filter((o) => o.ordinato).length}/{committenti.length}</div><div className="n-nota">entro il cutoff</div></div>
           <div className="numero"><div className="n-lab">In ritardo</div><div className="n-val">0</div><div className="n-nota">nessuna criticità</div></div>
         </div>
 
@@ -317,9 +317,9 @@ export function ModelliServizio() {
             <table className="dati">
               <thead><tr><th>Struttura</th><th>Tipo</th><th>Ordine</th><th>Ora</th><th>Pasti</th><th>Cutoff</th><th /></tr></thead>
               <tbody>
-                {COMMITTENTI.map((c) => {
+                {committenti.map((c) => {
                   const op = OPERATIVO[c.id] || {};
-                  const attivo = stati[c.id] === "attivo";
+                  const attivo = c.attivo !== false;
                   return (
                     <tr key={c.id} style={{ opacity: attivo ? 1 : 0.5 }}>
                       <td><b>{c.nome}</b></td>
@@ -327,7 +327,7 @@ export function ModelliServizio() {
                       <td>{op.ordinato ? <span className="pastiglia p-ok">ricevuto</span> : <span className="pastiglia p-att">in attesa</span>}</td>
                       <td className="cifra">{op.ora || "—"}</td>
                       <td className="quantita">{op.pasti || 0}</td>
-                      <td style={{ fontSize: 12, color: "var(--muto)" }}>{op.cutoff}</td>
+                      <td style={{ fontSize: 12, color: "var(--muto)" }}>{c.cutoff}</td>
                       <td>
                         <button className="btn linea piccolo" onClick={() => setEspanso(espanso === c.id ? null : c.id)}>
                           {espanso === c.id ? "Chiudi" : "Dettagli"}
@@ -342,9 +342,9 @@ export function ModelliServizio() {
         </div>
 
         {espanso && (() => {
-          const c = COMMITTENTI.find((x) => x.id === espanso);
-          const ct = CONTATTI[espanso] || {};
-          const attivo = stati[espanso] === "attivo";
+          const c = committenti.find((x) => x.id === espanso);
+          if (!c) return null;
+          const attivo = c.attivo !== false;
           return (
             <div className="pannello">
               <div className="pannello-testa">
@@ -357,11 +357,11 @@ export function ModelliServizio() {
                   <table className="dati" style={{ fontSize: 13 }}>
                     <tbody>
                       <tr><td style={{ color: "var(--muto)", width: 110 }}>Ragione sociale</td><td><b>{c.nome}</b></td></tr>
-                      <tr><td style={{ color: "var(--muto)" }}>Indirizzo</td><td>{ct.indirizzo}</td></tr>
-                      <tr><td style={{ color: "var(--muto)" }}>P.IVA</td><td className="cifra">{ct.piva}</td></tr>
-                      <tr><td style={{ color: "var(--muto)" }}>Referente</td><td>{ct.referente}<div style={{ fontSize: 11, color: "var(--muto)" }}>{ct.ruolo}</div></td></tr>
-                      <tr><td style={{ color: "var(--muto)" }}>Email</td><td>{ct.email}</td></tr>
-                      <tr><td style={{ color: "var(--muto)" }}>Telefono</td><td className="cifra">{ct.tel}</td></tr>
+                      <tr><td style={{ color: "var(--muto)" }}>Indirizzo</td><td>{c.indirizzo}</td></tr>
+                      <tr><td style={{ color: "var(--muto)" }}>P.IVA</td><td className="cifra">{c.piva}</td></tr>
+                      <tr><td style={{ color: "var(--muto)" }}>Referente</td><td>{c.referente}<div style={{ fontSize: 11, color: "var(--muto)" }}>{c.ruoloReferente}</div></td></tr>
+                      <tr><td style={{ color: "var(--muto)" }}>Email</td><td>{c.email}</td></tr>
+                      <tr><td style={{ color: "var(--muto)" }}>Telefono</td><td className="cifra">{c.telefono}</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -374,16 +374,17 @@ export function ModelliServizio() {
                       <tr><td style={{ color: "var(--muto)" }}>Chi paga</td><td>{MODELLI[c.modello].paga}</td></tr>
                       <tr><td style={{ color: "var(--muto)" }}>Unità</td><td>{c.unita.length} {c.etichettaUnita.toLowerCase()}</td></tr>
                       <tr><td style={{ color: "var(--muto)" }}>Pasti stimati</td><td className="quantita">{c.pasti}/giorno</td></tr>
-                      <tr><td style={{ color: "var(--muto)" }}>Cutoff</td><td>{(OPERATIVO[espanso] || {}).cutoff}</td></tr>
+                      <tr><td style={{ color: "var(--muto)" }}>Cutoff</td><td>{c.cutoff}</td></tr>
+                      <tr><td style={{ color: "var(--muto)" }}>Listino</td><td>€ {c.prezzoUnitario.toFixed(2)}/pasto, IVA {c.ivaPercentuale}%</td></tr>
                     </tbody>
                   </table>
                 </div>
               </div>
               <div className="pannello-piede" style={{ display: "flex", gap: 10, justifyContent: "flex-end", alignItems: "center" }}>
-                <span style={{ flex: 1 }}>Modifica dati e configurazione dalla scheda completa in produzione.</span>
+                <span style={{ flex: 1 }}>Prezzo e cutoff si modificano da Impostazioni per committente.</span>
                 <button className="btn linea piccolo" onClick={() => { st.setCommittente(c.id); st.avvisa(c.nome + " impostato come committente attivo"); }}>Imposta attivo</button>
                 <button className="btn piccolo" style={attivo ? { color: "#d9534f", background: "transparent", border: "1px solid #d9534f" } : { background: "#5cb85c" }}
-                  onClick={() => { setStati((p) => ({ ...p, [c.id]: attivo ? "sospeso" : "attivo" })); st.avvisa(c.nome + (attivo ? " sospeso" : " riattivato")); }}>
+                  onClick={() => { st.aggiornaCommittente(c.id, { attivo: !attivo }); st.avvisa(c.nome + (attivo ? " sospeso" : " riattivato")); }}>
                   {attivo ? "Sospendi servizio" : "Riattiva servizio"}
                 </button>
               </div>
@@ -391,7 +392,127 @@ export function ModelliServizio() {
           );
         })()}
       </div>
+
+      {nuovo && (
+        <ModaleCommittente
+          onChiudi={() => setNuovo(false)}
+          onSalva={(dati) => {
+            const id = st.aggiungiCommittente(dati);
+            st.avvisa(dati.nome + " aggiunto come nuovo committente");
+            setNuovo(false);
+            setEspanso(id);
+          }}
+        />
+      )}
     </>
+  );
+}
+
+/* ==================== modale nuovo committente ==================== */
+function ModaleCommittente({ onChiudi, onSalva }) {
+  const [d, setD] = React.useState({
+    nome: "", tipo: "Azienda", modello: "individuale", etichettaUnita: "Reparto",
+    indirizzo: "", piva: "", referente: "", ruoloReferente: "", email: "", telefono: "",
+    pasti: 10, cutoff: "14:00 del giorno precedente", prezzoUnitario: 7.5, ivaPercentuale: 10,
+  });
+  const campo = (k, v) => setD((x) => ({ ...x, [k]: v }));
+  const valido = d.nome.trim().length > 2 && d.referente.trim().length > 1;
+
+  function invia(e) {
+    e.preventDefault();
+    if (!valido) return;
+    onSalva({
+      ...d,
+      nome: d.nome.trim(),
+      pasti: Number(d.pasti) || 0,
+      prezzoUnitario: Number(d.prezzoUnitario) || 0,
+      ivaPercentuale: Number(d.ivaPercentuale) || 0,
+      listino: "€ " + (Number(d.prezzoUnitario) || 0).toFixed(2).replace(".", ",") + " a pasto",
+      regolaPasto: d.modello === "individuale" ? "Composizione libera, il commensale sceglie" : "Menu fisso, personalizzazioni per unità",
+      unita: [], attivo: true,
+    });
+  }
+
+  return (
+    <Velo onChiudi={onChiudi}>
+      <div className="scelta-testa">
+        <div className="occhiello">Nuovo committente</div>
+        <h2>Aggiungi una struttura servita</h2>
+        <p>Compare subito in Committenti, Impostazioni, Fatturazione, Produzione e Ordini in arrivo.</p>
+      </div>
+      <form onSubmit={invia} className="modulo" style={{ padding: "0 26px 8px" }}>
+        <div className="modulo-riga due">
+          <label>
+            <span>Ragione sociale</span>
+            <input type="text" value={d.nome} onChange={(e) => campo("nome", e.target.value)} placeholder="Es. Cooperativa Nuovo Orizzonte" />
+          </label>
+          <label>
+            <span>Tipo di committente</span>
+            <select value={d.tipo} onChange={(e) => {
+              const tipo = e.target.value;
+              campo("tipo", tipo);
+              campo("modello", tipo === "Comunità" ? "unita" : "individuale");
+              campo("etichettaUnita", tipo === "Comunità" ? "Casa" : "Reparto");
+            }}>
+              <option value="Azienda">Azienda</option>
+              <option value="Comunità">Comunità</option>
+            </select>
+          </label>
+        </div>
+        <div className="modulo-riga due">
+          <label>
+            <span>Indirizzo</span>
+            <input type="text" value={d.indirizzo} onChange={(e) => campo("indirizzo", e.target.value)} placeholder="Via, città" />
+          </label>
+          <label>
+            <span>P.IVA</span>
+            <input type="text" value={d.piva} onChange={(e) => campo("piva", e.target.value)} />
+          </label>
+        </div>
+        <div className="modulo-riga due">
+          <label>
+            <span>Referente</span>
+            <input type="text" value={d.referente} onChange={(e) => campo("referente", e.target.value)} placeholder="Nome e cognome" />
+          </label>
+          <label>
+            <span>Ruolo del referente</span>
+            <input type="text" value={d.ruoloReferente} onChange={(e) => campo("ruoloReferente", e.target.value)} placeholder="Es. Responsabile struttura" />
+          </label>
+        </div>
+        <div className="modulo-riga due">
+          <label>
+            <span>Email referente</span>
+            <input type="email" value={d.email} onChange={(e) => campo("email", e.target.value)} />
+          </label>
+          <label>
+            <span>Telefono referente</span>
+            <input type="tel" value={d.telefono} onChange={(e) => campo("telefono", e.target.value)} />
+          </label>
+        </div>
+        <div className="modulo-riga tre">
+          <label>
+            <span>Pasti stimati al giorno</span>
+            <input type="number" min="0" value={d.pasti} onChange={(e) => campo("pasti", e.target.value)} />
+          </label>
+          <label>
+            <span>Prezzo unitario a pasto</span>
+            <input type="number" min="0" step="0.10" value={d.prezzoUnitario} onChange={(e) => campo("prezzoUnitario", e.target.value)} />
+          </label>
+          <label>
+            <span>IVA %</span>
+            <input type="number" min="0" max="100" value={d.ivaPercentuale} onChange={(e) => campo("ivaPercentuale", e.target.value)} />
+          </label>
+        </div>
+        <label className="modulo-blocco">
+          <span>Orario limite ordini</span>
+          <input type="text" value={d.cutoff} onChange={(e) => campo("cutoff", e.target.value)} />
+        </label>
+      </form>
+      <div className="scelta-piede modulo-piede">
+        <button className="btn linea" onClick={onChiudi}>Annulla</button>
+        <button className="btn" disabled={!valido} onClick={invia}>Crea committente</button>
+      </div>
+    </Velo>
   );
 }
 

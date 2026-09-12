@@ -65,9 +65,10 @@ proforma, log operazioni, gestione portale.
 
 ### 10 — Export e documenti
 `10-export-e-documenti.md`
-`excel.js`, `diete.js`, `proforma.js`: come si genera un file Excel con
-l'intestazione MAVI, come si legge una dieta caricata, come si apre la proforma
-stampabile. Documenti pubblici e riservati.
+`excel.js`, `diete.js`, `proforma.js`, `manifesto.js`: come si genera un file
+Excel con l'intestazione MAVI, come si legge una dieta caricata, come si apre
+la proforma stampabile (ora con listino per committente) e il manifesto di
+consegna nominativo. Documenti pubblici e riservati.
 
 ### 11 — Convenzioni
 `11-convenzioni.md`

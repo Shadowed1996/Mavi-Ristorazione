@@ -15,13 +15,41 @@ La base è `AGGREGATO` in `data.js`, a cui il prototipo somma le scelte fatte
 in demo dal portale dipendente. È il collegamento che rende evidente lo stato
 condiviso: se il dipendente conferma, qui i numeri salgono.
 
+La tabella "Contributi per struttura" elenca `st.committenti` (non più un
+array fisso `CONTRIBUTI_STRUTTURE` a parte): un committente nuovo compare qui
+a zero pasti finché non trasmette qualcosa di reale, e RSA/Scuola non
+compaiono più perché sono fuori da `st.committenti`, coerente col perimetro
+attivo (prima del 12 settembre comparivano qui nonostante fossero disattivate
+altrove, vedi sezione 16 di `../MAVI_Stato_Progetto.md`).
+
 Ogni struttura ha un bottone **"Filtra questa"**; con il filtro attivo compare
 un banner blu che lo segnala e permette di toglierlo.
 
 ## Ordini in arrivo — `FlussiOrdine`
 
-Chi ha trasmesso cosa e quando, con lo stato. Dati da `FLUSSI_ORDINE` più
-quelli generati durante la demo.
+Riscritta il 12 settembre 2026: non più un elenco statico di eventi, ma un
+drill-down per committente sullo stesso stato condiviso della distinta di
+produzione e delle presenze — niente dati inventati a parte.
+
+Una riga per committente (`st.committenti`), con pasti dichiarati e stato
+(trasmesso/in attesa) calcolati dal vivo. **Apri dettaglio** mostra:
+
+- **Azienda** — quantità aggregate per piatto (da `st.confermati`/`st.ordini`,
+  anonime, come le etichette), con una riga "Per [giorno] · generato il
+  [data/ora reale]" per ciascun giorno confermato (`st.oraConferma`). Sotto,
+  un **dettaglio nominativo riservato al fornitore** (`st.nominativiAzienda`,
+  seminato da `ETICHETTE_AZIENDA_DEMO` e alimentato dalle conferme reali della
+  demo): chi ha preso cosa, mai visibile al cliente. Il bottone genera un
+  **manifesto PDF** (`manifesto.js`, `generaManifestoConsegna`) da stampare e
+  mettere nel cassone termico.
+- **Comunità** — elenco nominativo da `st.presenzeTrasmesse`, con reparto
+  (`stanza`), portate, "per il giorno" e "generato il" (`generatoIl`, timbrato
+  da `st.trasmettiPresenze` alla trasmissione).
+- **Altro committente** (aggiunto da "Nuovo committente") — nessuna fonte reale
+  ancora collegata, mostrato onestamente come tale.
+
+"Resoconto globale" esporta un Excel con un foglio per committente; ogni riga
+ha anche "Scarica resoconto di questa struttura" per il singolo documento.
 
 ## Giri di consegna — `GiriConsegna`
 
@@ -50,18 +78,32 @@ Sotto ogni card c'è "Elimina etichetta", con modale di conferma.
 
 ## Committenti — `ModelliServizio` (`Modelli.jsx`)
 
-Dashboard operativa. Quattro numeri: committenti attivi, pasti oggi, chi ha
+Dashboard operativa su `st.committenti`, lo stato condiviso (non più un
+dizionario statico): quattro numeri, committenti attivi, pasti oggi, chi ha
 ordinato, ritardi.
 
 Tabella "Stato operativo di oggi" con struttura, tipo, stato ordine, ora,
 pasti e cutoff. Il bottone **Dettagli** apre un pannello a due colonne:
 
 - **Anagrafica** — ragione sociale, indirizzo, P.IVA, referente con ruolo,
-  email, telefono.
+  email, telefono. Campi del committente stesso, non più un dizionario
+  `CONTATTI` separato.
 - **Configurazione servizio** — modello ordine, chi ordina, chi paga, unità,
-  pasti stimati, cutoff.
+  pasti stimati, cutoff, listino (prezzo unitario e IVA).
 
-Più i bottoni "Imposta attivo" e "Sospendi / Riattiva servizio".
+Più i bottoni "Imposta attivo" e "Sospendi / Riattiva servizio"
+(`st.aggiornaCommittente`).
+
+### Nuovo committente — `ModaleCommittente`
+
+Aggiunto il 12 settembre 2026: il bottone "Nuovo committente" non è più uno
+stub, apre un modulo completo (ragione sociale, tipo Azienda/Comunità,
+anagrafica, referente, pasti stimati, prezzo unitario, IVA, cutoff).
+`st.aggiungiCommittente` crea il record e lo fa comparire ovunque: Committenti,
+Impostazioni per committente, Fatturazione, Produzione, Ordini in arrivo. Non
+ci sono ancora ordini reali per un committente appena creato: le pagine lo
+mostrano onestamente a zero finché non arriva un flusso vero (fuori perimetro
+per RSA/Scuola, che restano creabili solo come tipo Azienda/Comunità).
 
 ## Menu della settimana — `Settimana`
 
@@ -92,8 +134,11 @@ Creazione e modifica passano da `st.salvaPiatto`, l'eliminazione da
 
 ## Impostazioni — `ImpostazioniServizio`
 
-Un tab per committente. Cutoff, listino, regola pasto, toggle frutta e
-monoporzione. Valori iniziali da `IMPOSTAZIONI_INIZIALI`.
+Un tab per committente (`st.committenti`, non più un dizionario a parte).
+Cutoff, listino (etichetta libera), **prezzo unitario a pasto e IVA**
+(campi strutturati, usati da Fatturazione), regola pasto, toggle frutta e
+monoporzione. Ogni modifica passa da `st.aggiornaCommittente` e si vede subito
+anche nella pagina Fatturazione.
 
 ### Rotazione menu
 
@@ -108,14 +153,22 @@ in vigore. I piatti si compongono in Menu della settimana.
 
 ## Fatturazione — `Fatturazione`
 
-Tabella dei pasti per struttura con prezzo unitario, imponibile, IVA e totale.
+Riscritta il 12 settembre 2026: **listino diversificato per committente**,
+non più un prezzo fisso per tutti. Tabella dei pasti per struttura con prezzo
+unitario e IVA propri (da `st.committenti`), imponibile, IVA e totale per riga
+più il totale documento.
 
-- **Export Excel** con `scaricaExcel`.
-- **Genera proforma PDF** con `generaProformaPDF`, che apre in una nuova scheda
-  un documento stile WHMCS: badge PROFORMA, info-box con numero, data, periodo e
-  scadenza, box Da/A, tabella degli item, totali e note. I dati aziendali non
-  ancora compilati appaiono come placeholder in corsivo terracotta. In cima
-  c'è la barra con "Stampa / Salva PDF".
+- **Export Excel** con `scaricaExcel`, un rigo per committente più il totale,
+  con prezzo e IVA di ciascuno.
+- **Genera proforma unica PDF** con `generaProformaPDF`, un solo documento con
+  tutte le strutture (stile WHMCS: badge PROFORMA, info-box, box Da/A, tabella
+  degli item, totali e note; dati mancanti come placeholder in corsivo
+  terracotta).
+- **PDF per riga** — proforma separata per quella sola struttura, stesso
+  generatore con un array di una riga. `generaProformaPDF(strutture, prezzoDefault)`
+  ora legge `prezzo`/`ivaPercentuale` da ogni riga; il secondo parametro resta
+  come ripiego per chi passa un solo prezzo (`FattureStruttura` in
+  `Struttura.jsx`).
 
 I dati del mittente arrivano da `st.datiAziendali`, che si compila nella
 Gestione portale.
@@ -142,7 +195,7 @@ Sei tab:
 | Dati aziendali | ragione sociale, P.IVA, CF, indirizzo, telefono, email, PEC, IBAN. Finiscono nella proforma |
 | Fatturazione | condizioni di pagamento e note standard |
 | Aspetto | tre bottoni Chiaro / Scuro / Automatico |
-| Utenti | tabella con CRUD completo; il modale mostra nome, username, ruolo, struttura, email, telefono e i permessi assegnati automaticamente per ruolo |
+| Utenti | tabella con CRUD completo; il modale mostra nome, username, ruolo, struttura, email, telefono, i permessi assegnati automaticamente per ruolo e — solo per ruolo Educatore — il reparto assegnato (vedi `08-portale-comunita.md`) |
 | Notifiche | sei toggle: promemoria, cutoff, ordine ricevuto, presenze mancanti, report mensile, digest email |
 | Backup | numeri e pulsanti backup manuale, export completo, ripristino |
 

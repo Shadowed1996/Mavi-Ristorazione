@@ -13,6 +13,57 @@ e il progetto adotta il [Versionamento Semantico](https://semver.org/lang/it/).
 
 ## [Non rilasciato]
 
+### Aggiunto — 12 settembre 2026, seconda sessione
+- **Nuovo committente**: modulo completo in Committenti (`ModaleCommittente`,
+  `Modelli.jsx`) che crea una struttura vera, visibile subito in Committenti,
+  Impostazioni, Fatturazione, Produzione e Ordini in arrivo
+  (`st.aggiungiCommittente` in `store.jsx`).
+- **Modifica profilo**: icona sul blocco utente di ogni portale (`Telaio` in
+  `ui.jsx`), modale `ModificaProfilo` per nome, email, telefono, password
+  dimostrativa e foto, salvati in `st.profili` per username.
+- **Manifesto di consegna nominativo** (`src/manifesto.js`,
+  `generaManifestoConsegna`): dal drill-down azienda di Ordini in arrivo, PDF
+  stampabile riservato al fornitore con chi ha ordinato cosa, per il cassone
+  termico. Alimentato da `st.nominativiAzienda` (seme `ETICHETTE_AZIENDA_DEMO`,
+  prima mai usata, più le conferme reali della demo).
+- Distinzione fra **"generato il"** (quando l'ordine è stato trasmesso,
+  `st.oraConferma` per l'azienda, `generatoIl` per le presenze comunità) e
+  **"per il giorno"** (a quale giorno del menu si riferisce), in "Ordini in
+  arrivo" e nell'export Excel.
+- Campo **Reparto** nel modale Utenti della Gestione portale MAVI, per il ruolo
+  Educatore (solo visualizzazione coerente con l'anagrafica di accesso, non
+  collegato al login reale).
+
+### Modificato — 12 settembre 2026, seconda sessione
+- **Committenti**: anagrafica, configurazione di servizio e listino sono ora
+  un solo record per committente in `st.committenti` (stato React, non più un
+  array statico più due dizionari separati in `Modelli.jsx`/`Fornitore.jsx`).
+- **Fatturazione**: prezzo unitario e IVA sono per committente (impostabili in
+  Impostazioni per committente), non più un prezzo fisso uguale per tutti.
+  "Genera proforma unica PDF" per tutte le strutture insieme, bottone PDF per
+  riga per un documento separato. `proforma.js`, `generaProformaPDF` accetta
+  `prezzo`/`ivaPercentuale` per riga.
+- **Permessi comunità**: l'educatore non è più in sola lettura su tutto.
+  Vede e modifica dieta/menu solo dei pazienti del proprio reparto (campo
+  `stanza` del paziente, `reparto` dell'utente); elimina, modifica anagrafica e
+  nuovo paziente restano solo del responsabile. Presenze e Resoconti si
+  filtrano allo stesso modo. `st.trasmettiPresenze` ora aggiorna per id invece
+  di sovrascrivere, così più reparti possono trasmettere in momenti diversi.
+- **Ordini in arrivo** (`FlussiOrdine` in `Fornitore.jsx`): riscritta da un
+  elenco statico di eventi a un drill-down per committente sullo stesso stato
+  condiviso di Produzione e Presenze, con export Excel globale (un foglio per
+  struttura) o per singola struttura.
+- "Nuovo paziente" ed "Elimina" nel portale comunità ora mutano anche l'elenco
+  condiviso `PAZIENTI_COMUNITA`, non solo lo stato locale della pagina: prima
+  un paziente creato lì non compariva in Presenze, Resoconti o Etichette.
+
+### Rimosso — 12 settembre 2026, seconda sessione
+- `CONTRIBUTI_STRUTTURE` e `IMPOSTAZIONI_INIZIALI` in `Fornitore.jsx`,
+  `FLUSSI_ORDINE` in `data.js`: sostituiti da `st.committenti` e dal nuovo
+  "Ordini in arrivo". Come effetto collaterale, RSA e Scuola sono sparite dalla
+  distinta di produzione, dove comparivano nonostante fossero fuori perimetro
+  (punto aperto della sezione 16 di `MAVI_Stato_Progetto.md`).
+
 ### Rimosso
 - `src/aree/Extra.jsx` (731 righe): codice morto, nessuno dei sette export era
   più importato da alcun file. Riferimenti aggiornati in `CLAUDE.md`,

@@ -18,10 +18,12 @@ prenota, il portale MAVI vede la distinta aggiornata.
 | `ordini` | `{ [indiceGiorno]: { [categoria]: idPiatto } }` |
 | `confermati` | `{ [indiceGiorno]: true }` |
 | `scegli(giorno, categoria, id)` | seleziona o deseleziona un piatto |
-| `conferma(giorno)` | conferma la prenotazione del giorno, logga |
+| `conferma(giorno)` | conferma la prenotazione del giorno, logga, timbra `oraConferma[giorno]` e aggiunge/aggiorna la riga in `nominativiAzienda` |
 | `disdici(giorno)` | annulla la conferma |
 | `coperte(giorno)` | portate già coperte dal piatto unico scelto |
 | `mancanti(giorno)` | array leggibile delle portate mancanti |
+| `oraConferma` | `{ [giorno]: isoString }`, quando è stata confermata la prenotazione — diverso da "per quale giorno", che è `giorno` stesso |
+| `nominativiAzienda` | elenco nominativo (chi ha preso cosa) per il portale MAVI, parte da `ETICHETTE_AZIENDA_DEMO` e cresce con `conferma()`. Riservato a "Ordini in arrivo", mai esposto al portale cliente/dipendente |
 
 ### Regole di esclusione dentro `scegli`
 
@@ -72,6 +74,9 @@ ricalcolare. È un compromesso deliberato del prototipo, non copiarlo altrove.
 |---|---|
 | `committente` | id del committente attivo, parte da `COMMITTENTI[0].id` |
 | `setCommittente(id)` | lo cambia; lo chiamano i portali al montaggio |
+| `committenti` | l'elenco vero e proprio, parte da `COMMITTENTI` ma è stato React (12 settembre 2026): anagrafica, configurazione servizio e listino sono lo stesso record, non più tre dizionari separati |
+| `aggiungiCommittente(dati)` | crea un committente (dal modulo "Nuovo committente" in `Modelli.jsx`), ritorna l'id |
+| `aggiornaCommittente(id, patch)` | modifica un campo qualsiasi: usato da Impostazioni per committente e da "Sospendi/Riattiva" |
 | `unita` | quantità dichiarate per unità, oggi solo `comunita` |
 | `cambiaUnita(tipo, riga, campo, valore)` | modifica una cella, mai sotto zero |
 | `aggiungiOspitePresente(ospite)` | incrementa la colonna dieta della griglia RSA |
@@ -86,8 +91,8 @@ inizializzato: la funzione esce subito. Resta per quando il modulo RSA tornerà.
 |---|---|
 | `presenzeComunita` | `{ [idPaziente]: true | false | null }`, tutti a `null` all'avvio |
 | `setPresenzeComunita(v)` | aggiorna la mappa |
-| `presenzeTrasmesse` | lista trasmessa a MAVI |
-| `trasmettiPresenze(lista)` | la trasmette e scrive nel log |
+| `presenzeTrasmesse` | lista trasmessa a MAVI, ogni riga timbrata con `generatoIl` |
+| `trasmettiPresenze(lista)` | timbra `generatoIl` e **aggiorna per id** (non sovrascrive): reparti trasmessi in momenti diversi si sommano, scrive nel log |
 | `assenti`, `commutaAssente(id)` | assenze, modello a lista |
 | `ospitiExtra`, `aggiungiOspite(ospite)` | ospiti aggiunti in demo, ritorna l'id |
 
@@ -141,6 +146,7 @@ ascolta `prefers-color-scheme` e si aggiorna al volo.
 | `datiAziendali`, `setDatiAziendali` | ragione sociale, P.IVA, CF, indirizzo, contatti, IBAN, condizioni di pagamento, note proforma. Tutti vuoti all'avvio, si compilano nella Gestione portale e finiscono nella proforma |
 | `utenti`, `setUtenti` | tabella utenti con CRUD dalla Gestione portale |
 | `notifiche`, `setNotifiche` | sei flag booleani |
+| `profili`, `aggiornaProfilo(chiave, patch)` | override del profilo personale per username (`chiave`), letti da `Telaio`/`ModificaProfilo` in `ui.jsx`. Si sommano a `UTENTI`, non lo sostituiscono mai |
 
 ## Messaggi a schermo
 

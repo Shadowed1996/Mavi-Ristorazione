@@ -1,10 +1,10 @@
-var e=e=>String(e??``).replace(/[&<>"']/g,e=>({"&":`&amp;`,"<":`&lt;`,">":`&gt;`,'"':`&quot;`,"'":`&#39;`})[e]);function t(t,n){let r=t.reduce((e,t)=>e+t.pasti,0)*n,i=r*.1,a=r+i,o=e=>e.toLocaleString(`it-IT`,{minimumFractionDigits:2,maximumFractionDigits:2}),s=new Date().toLocaleDateString(`it-IT`,{day:`2-digit`,month:`long`,year:`numeric`}),c=`PRO-2026/`+String(Math.floor(Math.random()*900)+100),l=t.map(t=>`
+var e=e=>String(e??``).replace(/[&<>"']/g,e=>({"&":`&amp;`,"<":`&lt;`,">":`&gt;`,'"':`&quot;`,"'":`&#39;`})[e]);function t(t,n){let r=t.map(e=>{let t=e.prezzo??n??0,r=e.ivaPercentuale??10,i=e.pasti*t;return{...e,prezzo:t,ivaPercentuale:r,imponibileRiga:i,ivaRiga:r/100*i}});r.reduce((e,t)=>e+t.pasti,0);let i=r.reduce((e,t)=>e+t.imponibileRiga,0),a=r.reduce((e,t)=>e+t.ivaRiga,0),o=i+a,s=i>0?Math.round(a/i*1e3)/10:r[0]?.ivaPercentuale??10,c=e=>e.toLocaleString(`it-IT`,{minimumFractionDigits:2,maximumFractionDigits:2}),l=new Date().toLocaleDateString(`it-IT`,{day:`2-digit`,month:`long`,year:`numeric`}),u=`PRO-2026/`+String(Math.floor(Math.random()*900)+100),d=r.map(t=>`
     <tr>
       <td style="padding:10px 16px;border-bottom:1px solid #eee;font-size:13px;">${e(t.nome)}<br><span style="color:#999;font-size:11px;">${e(t.tipo)} — ${e(t.mese)}</span></td>
       <td style="padding:10px 16px;border-bottom:1px solid #eee;text-align:center;font-size:13px;">${e(t.pasti)}</td>
-      <td style="padding:10px 16px;border-bottom:1px solid #eee;text-align:right;font-size:13px;">€ ${o(n)}</td>
-      <td style="padding:10px 16px;border-bottom:1px solid #eee;text-align:right;font-size:13px;font-weight:600;">€ ${o(t.pasti*n)}</td>
-    </tr>`).join(``),u=`<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>Proforma ${c}</title>
+      <td style="padding:10px 16px;border-bottom:1px solid #eee;text-align:right;font-size:13px;">€ ${c(t.prezzo)}</td>
+      <td style="padding:10px 16px;border-bottom:1px solid #eee;text-align:right;font-size:13px;font-weight:600;">€ ${c(t.imponibileRiga)}</td>
+    </tr>`).join(``),f=`<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>Proforma ${u}</title>
 <style>
 @page{size:A4;margin:15mm}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -54,8 +54,8 @@ thead th:last-child{text-align:right;border-radius:0 6px 0 0}
 </div>
 
 <div class="inv-info">
-  <div class="inv-info-item"><label>Documento n.</label><span>${c}</span></div>
-  <div class="inv-info-item"><label>Data emissione</label><span>${s}</span></div>
+  <div class="inv-info-item"><label>Documento n.</label><span>${u}</span></div>
+  <div class="inv-info-item"><label>Data emissione</label><span>${l}</span></div>
   <div class="inv-info-item"><label>Periodo</label><span>Agosto 2026</span></div>
   <div class="inv-info-item"><label>Scadenza</label><span class="ph">[30 gg d.f.]</span></div>
 </div>
@@ -90,13 +90,13 @@ thead th:last-child{text-align:right;border-radius:0 6px 0 0}
       <th style="text-align:right">Importo</th>
     </tr>
   </thead>
-  <tbody>${l}</tbody>
+  <tbody>${d}</tbody>
 </table>
 
 <div class="inv-totals"><table>
-  <tr><td class="label">Subtotale</td><td class="val">€ ${o(r)}</td></tr>
-  <tr><td class="label">IVA 10%</td><td class="val">€ ${o(i)}</td></tr>
-  <tr class="grand"><td style="padding:10px 16px">Totale</td><td style="padding:10px 16px;text-align:right">€ ${o(a)}</td></tr>
+  <tr><td class="label">Subtotale</td><td class="val">€ ${c(i)}</td></tr>
+  <tr><td class="label">IVA ${s}%</td><td class="val">€ ${c(a)}</td></tr>
+  <tr class="grand"><td style="padding:10px 16px">Totale</td><td style="padding:10px 16px;text-align:right">€ ${c(o)}</td></tr>
 </table></div>
 
 <div class="inv-notes">
@@ -115,6 +115,6 @@ thead th:last-child{text-align:right;border-radius:0 6px 0 0}
 </div>
 
 <div class="inv-footer">
-  Documento generato dal portale MAVI Ristorazione il ${s}
+  Documento generato dal portale MAVI Ristorazione il ${l}
 </div>
-</body></html>`,d=window.open(`about:blank`,`_blank`);if(d)d.document.write(u),d.document.close();else{let e=new Blob([u],{type:`text/html;charset=utf-8`}),t=URL.createObjectURL(e),n=document.createElement(`a`);n.href=t,n.download=`Proforma_MAVI.html`,document.body.appendChild(n),n.click(),document.body.removeChild(n),URL.revokeObjectURL(t)}}export{t as generaProformaPDF};
+</body></html>`,p=window.open(`about:blank`,`_blank`);if(p)p.document.write(f),p.document.close();else{let e=new Blob([f],{type:`text/html;charset=utf-8`}),t=URL.createObjectURL(e),n=document.createElement(`a`);n.href=t,n.download=`Proforma_MAVI.html`,document.body.appendChild(n),n.click(),document.body.removeChild(n),URL.revokeObjectURL(t)}}export{t as generaProformaPDF};

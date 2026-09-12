@@ -92,10 +92,17 @@ importato da `data.js`. Per far ridisegnare i componenti c'è il contatore
 `st.versione`. Chi legge il catalogo deve dipendere da `st.versione`.
 
 Stessa cosa in `Comunita.jsx`, dove la modifica inline e l'import scrivono su
-`paziente.dieta`.
+`paziente.dieta`, e dal 12 settembre 2026 anche "Nuovo paziente" ed "Elimina"
+in `Pazienti`, che scrivono direttamente sull'array `PAZIENTI_COMUNITA`
+(`push`/`splice`) oltre che sullo stato locale `lista`: senza, un paziente
+creato lì non comparirebbe in Presenze, Resoconti né Etichette, che leggono
+`PAZIENTI_COMUNITA` a modulo, non lo stato locale della pagina Pazienti.
 
-È un compromesso accettato nel prototipo. **Non estenderlo a codice nuovo**: se
-il progetto va in produzione questa è la prima cosa da rifare.
+È un compromesso accettato nel prototipo, esteso solo dentro la stessa
+famiglia di casi (mutare un elenco di `data.js` per farlo vedere da più
+pagine). **Non introdurlo in aree nuove del codice**: se il progetto va in
+produzione questa è la prima cosa da rifare, con uno stato vero (backend o
+almeno un Context dedicato) al posto di array mutati a mano.
 
 ### Doppio montaggio in StrictMode
 

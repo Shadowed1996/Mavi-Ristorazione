@@ -12,7 +12,7 @@ componenti riusati. Prima di scrivere un componente nuovo controllare qui.
 
 Chiavi disponibili: `piatto`, `lista`, `foglia`, `grafico`, `gente`, `fattura`,
 `cuoco`, `calendario`, `sacco`, `ok`, `piu`, `x`, `sx`, `dx`, `lucchetto`,
-`scarica`, `stampa`, `edificio`, `attenzione` e altre.
+`scarica`, `stampa`, `edificio`, `attenzione`, `utente`, `matita` e altre.
 
 Uso: `<Icone.piatto size={18} />`. Nelle liste `VOCI` si passa il componente,
 non l'elemento: `["menu", "Menu del giorno", Icone.piatto]`.
@@ -27,6 +27,7 @@ Il guscio di ogni portale. Props:
   marchio="Portale dipendente"
   ruolo="Dipendente"
   utente={{ iniziali, nome, sotto }}
+  chiaveUtente={utente?.u}   // chiave per il profilo personale, vedi sotto
   voci={VOCI}                // [[chiave, etichetta, ComponenteIcona], ...]
   pagina={pagina}
   setPagina={setPagina}
@@ -41,6 +42,21 @@ tag ruolo, menu di navigazione, toggle tema a tre stati e blocco utente con
 pulsante di uscita; il contenuto in `<main className="principale">`; e, sotto,
 una barra di navigazione per il mobile che mostra solo la prima parola di ogni
 etichetta.
+
+### Modifica profilo — aggiunta 12 settembre 2026
+
+Il blocco utente in fondo alla barra laterale è cliccabile (icona matita) e
+apre `ModificaProfilo`, un modale interno a `Telaio` uguale in tutti i
+portali: nome, email, telefono, nuova password (dimostrativa, non applicata al
+login), foto profilo caricata come file e mostrata come immagine circolare al
+posto delle iniziali.
+
+I dati modificati vivono in `st.profili`, un dizionario per `chiaveUtente`
+(username reale, o `"cucina.mavi"` per il portale MAVI che non ha una sessione
+utente propria) con override che si sommano — mai sostituiscono — l'anagrafica
+di login (`UTENTI` in `data.js`): cambiare il proprio profilo non tocca mai
+`UTENTI`. `Telaio` unisce automaticamente `utente` e l'override per mostrare
+nome/iniziali/foto aggiornati.
 
 ### `Intestazione`
 

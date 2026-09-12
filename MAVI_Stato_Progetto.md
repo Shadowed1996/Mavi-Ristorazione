@@ -2,9 +2,9 @@
 
 Documento vivo. Va riletto all'inizio di ogni nuova sessione e aggiornato alla fine di ogni task.
 
-**Ultimo aggiornamento**: 12 settembre 2026 — scheda piatto senza foto per l'attesa sulle estensioni, settimana della demo ferma al 31 agosto: entrambe corrette (sezione 17).
+**Ultimo aggiornamento**: 12 settembre 2026 — sei punti del TO DO di Filippo: nuovo committente, fatturazione diversificata, permessi comunità per reparto, ordini in arrivo riscritti con manifesto nominativo, modifica profilo (sezione 18).
 
-**Precedente**: 12 settembre 2026 — revisione critica del prototipo e correzioni: tabella Produzione, "Prenota per lui", rimozione di `Extra.jsx`, pulizia CSS morto, documentazione cliente allineata (sezione 16).
+**Precedente**: 12 settembre 2026 — scheda piatto senza foto per l'attesa sulle estensioni, settimana della demo ferma al 31 agosto: entrambe corrette (sezione 17).
 
 ---
 
@@ -517,5 +517,161 @@ più a un evento realmente accaduto. Documentato in
 `file.md/04-dati.md`/`06-portale-dipendente.md` che `chiuso` va rimesso a
 `true` sui primi giorni solo quando `GIORNI` punta a una settimana già
 iniziata rispetto a "oggi".
+
+---
+
+## 18. Sei punti del TO DO di Filippo — 12 settembre 2026
+
+Filippo aveva lasciato un `Nuovo documento di testo.txt` sul Desktop del
+progetto (non versionato) con sei richieste. Prima di iniziare sono state
+fatte domande di chiarimento su ampiezza e ambiguità (vedi risposte più sotto),
+poi il lavoro è proseguito in un'unica sessione, con verifica dal vivo in
+`npm run dev` (Chrome) a mano a mano che ogni pezzo veniva completato.
+
+### Decisioni prese con Filippo prima di iniziare
+
+- **Permessi comunità**: non un'assegnazione per singolo paziente, ma per
+  reparto/struttura — "ogni struttura ha il suo responsabile, ogni reparto o
+  padiglione ha il suo educatore; l'educatore vede i pazienti del reparto, il
+  responsabile li vede tutti".
+- **Nuovo committente**: collegamento completo, non solo un'anagrafica isolata.
+- **Fatturazione diversificata**: listino strutturato per committente, più
+  proforma separata per singola struttura oltre a quella unica.
+- **Ordine di lavoro**: lasciato alla mia scelta.
+
+### Modello dati: committenti unificati
+
+`COMMITTENTI` in `data.js` e lo stato `st.committenti` in `store.jsx` ora
+portano in un solo record quello che prima erano tre cose separate:
+anagrafica (prima un dizionario `CONTATTI` locale a `ModelliServizio`),
+configurazione di servizio (prima `IMPOSTAZIONI_INIZIALI`) e listino (prima un
+prezzo fisso `7,50 €` uguale per tutti in `Fatturazione`). `st.committenti` è
+stato React, esteso da `st.aggiungiCommittente`/`st.aggiornaCommittente`: è
+il collegamento che fa comparire un committente nuovo ovunque senza codice
+duplicato.
+
+### Nuovo committente
+
+Il bottone "Nuovo committente" in Committenti (`ModaleCommittente`,
+`Modelli.jsx`) non è più uno stub: apre un modulo con ragione sociale, tipo
+(Azienda o Comunità — RSA/Scuola restano fuori perimetro, coerente con la
+sezione 12 di questo documento), anagrafica, referente, pasti stimati, prezzo
+unitario, IVA, cutoff. Alla creazione (`st.aggiungiCommittente`) il
+committente compare subito in Committenti, Impostazioni per committente,
+Fatturazione, Produzione e Ordini in arrivo. Non ha ancora ordini reali:
+le pagine lo mostrano onestamente a zero pasti, non con dati inventati.
+
+Effetto collaterale utile: la tabella "Contributi per struttura" di
+Produzione ora legge `st.committenti` invece dell'array fisso
+`CONTRIBUTI_STRUTTURE`, che aveva ancora righe per RSA e Scuola (punto aperto
+della sezione 16). Sparite senza bisogno di una decisione a parte.
+
+### Fatturazione diversificata per committente
+
+Impostazioni per committente ha due campi nuovi, **prezzo unitario a pasto** e
+**IVA**, usati davvero da Fatturazione al posto del prezzo fisso `PREZZO = 7.50`
+che valeva per tutte le strutture. La tabella mostra imponibile, IVA e totale
+per riga oltre al totale documento. `proforma.js` (`generaProformaPDF`) ora
+accetta `prezzo`/`ivaPercentuale` per riga invece di un unico parametro
+globale; "Genera proforma unica PDF" produce un documento con tutte le
+strutture, il bottone PDF di ogni riga un documento separato per quella sola
+struttura, come chiesto.
+
+### Permessi comunità per reparto
+
+Prima: l'educatore era in sola lettura su tutto il portale comunità. Ora:
+
+- **Reparto/struttura** = campo `stanza` del paziente, già presente e già
+  diverso per i quattro pazienti demo (`Spazio Giovani SGA`, `CSS Sole Luna,
+  Desio`) — riusato invece di aggiungere un campo nuovo, perché nella pratica
+  era già la stessa cosa.
+- **Reparto dell'educatore** = nuovo campo `reparto` su `UTENTI` (login) e su
+  `st.utenti` (Gestione Utenti, solo per coerenza visiva, resta scollegato dal
+  login reale). Samuele Ferri è stato assegnato a "Spazio Giovani SGA" (prima
+  la sua `mansione` diceva "Casa Aurora", un'etichetta di un vecchio modello
+  di ordinazione mai collegato a questa parte del prodotto).
+- **Pazienti, Presenze, Resoconti** in `Comunita.jsx` ricevono `reparto` da
+  `Struttura.jsx` (assente per il responsabile) e filtrano la lista di
+  conseguenza, con un banner che lo segnala.
+- **Modifica dieta, carica dieta, scarica template** ora sono permessi anche
+  all'educatore, ma solo per i pazienti del suo reparto (prop `puoDieta`,
+  separata da `soloLettura` che continua a governare Elimina, Modifica
+  anagrafica, Nuovo paziente — questi restano solo del responsabile, come
+  chiesto: "il responsabile... accetta nuovi pazienti e gestisce la loro
+  anagrafica").
+- `st.trasmettiPresenze` **aggiorna per id invece di sovrascrivere**: prima,
+  due trasmissioni in momenti diversi (due reparti, o un educatore e poi il
+  responsabile) si sarebbero cancellate a vicenda.
+- Corretto anche un difetto preesistente scoperto lavorandoci: "Nuovo
+  paziente" ed "Elimina" scrivevano solo nello stato locale della pagina
+  Pazienti, mai nell'array condiviso `PAZIENTI_COMUNITA` letto da Presenze,
+  Resoconti ed Etichette. Ora mutano anche quello (stessa scorciatoia di
+  `salvaPiatto`/`eliminaPiatto`, vedi `file.md/11-convenzioni.md`).
+
+Verificato dal vivo: **Samuele Ferri** vede e può modificare la dieta solo dei
+due pazienti di "Spazio Giovani SGA"; **Ilaria Gatti** vede tutti e quattro e
+mantiene Elimina/Modifica anagrafica.
+
+### Ordini in arrivo, riscritta da zero
+
+La vecchia pagina era un elenco statico (`FLUSSI_ORDINE`, rimosso) di eventi
+con dati inventati. La nuova (`FlussiOrdine` in `Fornitore.jsx`) è un
+drill-down per committente sullo stesso stato condiviso di Produzione e
+Presenze:
+
+- **Azienda** — quantità aggregate per piatto, anonime, da `st.confermati`/
+  `st.ordini` (la scelta reale fatta in demo dal dipendente).
+- **Comunità** — elenco nominativo da `st.presenzeTrasmesse`, con reparto e
+  portate.
+- **Un committente nuovo** senza fonte reale — mostrato onestamente come tale,
+  non con numeri finti.
+- "Resoconto globale" scarica un Excel con un foglio per committente;
+  ogni riga ha anche "Scarica resoconto di questa struttura".
+
+**Correzione dello stesso giorno**, su segnalazione di Filippo dopo aver visto
+la prima versione: mancava la distinzione fra **quando l'ordine è stato
+generato** e **per quale giorno vale**. Aggiunto `st.oraConferma` (timbrato da
+`conferma()`, per riga confermata) e `generatoIl` (timbrato da
+`st.trasmettiPresenze`, per riga trasmessa dalla comunità): ogni riga del
+dettaglio ora mostra sia "per il giorno" sia "generato il", a schermo e
+nell'export Excel.
+
+**Aggiunta collegata**, sempre su richiesta di Filippo: un **manifesto di
+consegna nominativo**, riservato al fornitore — "Maria Giovanna ha preso un
+pollo, una patata, uno yogurt", da stampare e mettere nel cassone termico
+consegnato in azienda. Le etichette pasto dell'azienda restano deliberatamente
+anonime (per la cucina non serve il nome, vedi sezione 8/`09-portale-mavi.md`)
+ma il fornitore aveva comunque bisogno di sapere chi ha ordinato cosa per
+organizzare la consegna. Nuovo file `src/manifesto.js`
+(`generaManifestoConsegna`), stessa tecnica HTML-in-nuova-scheda di
+`proforma.js`. Alimentato da `st.nominativiAzienda`, che riusa
+`ETICHETTE_AZIENDA_DEMO` — sette righe già presenti in `data.js` da prima ma
+mai importate da nessuna parte — e cresce con le conferme reali della demo
+(`conferma()` in `store.jsx` aggiunge/aggiorna la riga della persona che
+conferma). Il documento è raggiungibile solo dal portale MAVI, mai da
+Azienda/Cliente.
+
+### Modifica profilo
+
+Icona a forma di matita sul blocco utente in fondo alla barra laterale, in
+ogni portale (`Telaio` in `ui.jsx`): apre `ModificaProfilo`, nome, email,
+telefono, nuova password (dimostrativa, non applicata al login reale — nessuno
+lo era prima) e foto profilo, mostrata come immagine circolare al posto delle
+iniziali. I dati vivono in `st.profili`, indicizzato per username, e si
+sommano all'anagrafica di login senza mai sovrascriverla.
+
+Corretto nello stesso lavoro un difetto preesistente: il blocco utente del
+portale comunità (e di RSA/Scuola, fuori perimetro) mostrava l'etichetta
+generica del ruolo ("Educatore di turno") invece del nome reale della persona
+loggata. `Struttura.jsx` ora passa `utente?.nome`/`utente?.iniziali` a
+`Telaio` quando disponibili.
+
+### Punto lasciato aperto
+
+La Gestione Utenti del portale MAVI (tab Utenti) resta, come già annotato
+nelle sezioni precedenti, uno strumento dimostrativo scollegato dal login
+reale: il campo Reparto aggiunto lì per l'Educatore è coerente con
+`UTENTI`/`data.js` ma non lo scrive. Un vero sistema di permessi configurabili
+da interfaccia resta fuori perimetro per questo prototipo.
 
 ---

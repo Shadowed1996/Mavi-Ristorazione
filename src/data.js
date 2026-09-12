@@ -540,20 +540,40 @@ export const MODELLI = {
   },
 };
 
+/* Anagrafica + configurazione di servizio + listino, tutto in un solo record
+   per committente. In produzione sarebbero tabelle collegate da chiave
+   esterna; qui il prototipo li tiene insieme perché è più facile far
+   crescere l'elenco con "Nuovo committente" senza inseguire tre dizionari
+   paralleli (era così fino all'11 settembre 2026: anagrafica in Modelli.jsx,
+   configurazione qui, listino testuale qui). */
 export const COMMITTENTI = [
   {
     id: "azienda", nome: "Rossi Manifatture Spa", tipo: "Azienda", modello: "individuale",
     unita: ["Amministrazione", "Produzione", "Logistica", "Commerciale"],
-    etichettaUnita: "Reparto", pasti: 28,
+    etichettaUnita: "Reparto", pasti: 28, attivo: true,
     nota: "Modello classico della mensa aziendale, ogni dipendente compone il proprio pasto.",
+    indirizzo: "Via dell'Industria 42, Varese", piva: "02114560123",
+    referente: "Roberto Manzi", ruoloReferente: "Ufficio del personale",
+    email: "r.manzi@rossimanifatture.it", telefono: "0332 445 122",
+    cutoff: "14:00 del giorno precedente",
+    regolaPasto: "Composizione libera, dipendente sceglie",
+    listino: "Tariffa unica, 7,50 €", frutta: false, monoporzione: false,
+    prezzoUnitario: 7.5, ivaPercentuale: 10, pastiMeseDemo: 790,
   },
-    {
+  {
     id: "comunita", nome: "Comunità Il Ponte", tipo: "Comunità", modello: "unita",
     unita: ["Casa Aurora", "Casa Ulivo"],
-    etichettaUnita: "Casa", pasti: 31,
+    etichettaUnita: "Casa", pasti: 31, attivo: true,
     nota: "Menu fisso con poche personalizzazioni, ordine dichiarato dall'educatore di turno.",
+    indirizzo: "Via Sole Luna 8, Desio (MB)", piva: "03887120968",
+    referente: "Ilaria Gatti", ruoloReferente: "Responsabile struttura",
+    email: "i.gatti@comunitailponte.it", telefono: "0362 998 741",
+    cutoff: "16:00 del giorno precedente",
+    regolaPasto: "Menu fisso, personalizzazioni per singola casa",
+    listino: "Convenzione, fatturazione mensile", frutta: true, monoporzione: false,
+    prezzoUnitario: 7.5, ivaPercentuale: 10, pastiMeseDemo: 248,
   },
-  ];
+];
 
 /* Diete e consistenze, il vocabolario di RSA e comunità */
 export const CONSISTENZE = [
@@ -606,7 +626,7 @@ export const PRESENZE_SCUOLA = [
 export const UTENTI = [
   { u: "antonella.rossi", nome: "Antonella Rossi", iniziali: "AR", struttura: "azienda", ruolo: "dipendente", committente: "Rossi Manifatture Spa", mansione: "Amministrazione" },
   { u: "roberto.manzi", nome: "Roberto Manzi", iniziali: "RM", struttura: "azienda", ruolo: "referente", committente: "Rossi Manifatture Spa", mansione: "Ufficio del personale" },
-      { u: "samuele.ferri", nome: "Samuele Ferri", iniziali: "SF", struttura: "comunita", ruolo: "operatore", committente: "Comunità Il Ponte", mansione: "Casa Aurora" },
+      { u: "samuele.ferri", nome: "Samuele Ferri", iniziali: "SF", struttura: "comunita", ruolo: "operatore", committente: "Comunità Il Ponte", mansione: "Educatore", reparto: "Spazio Giovani SGA" },
   { u: "ilaria.gatti", nome: "Ilaria Gatti", iniziali: "IG", struttura: "comunita", ruolo: "responsabile", committente: "Comunità Il Ponte", mansione: "Responsabile" },
       { u: "cucina.mavi", nome: "Cucina centrale", iniziali: "MV", struttura: "mavi", ruolo: "fornitore", committente: "MAVI Ristorazione", mansione: "Produzione e amministrazione" },
 ];
@@ -679,15 +699,6 @@ export const OSPITI_RSA = [
 ];
 
 /* ============================================================
-   Flusso dell'ordine, chi lo ha inviato e chi lo riceve
-   ============================================================ */
-export const FLUSSI_ORDINE = [
-      { id: "f03", quando: "oggi, ore 08:35", struttura: "Comunità Il Ponte", tipo: "Comunità", inviato_da: "Samuele Ferri", ruolo: "Educatore, Casa Aurora", pasti: 19, note: "Nessuna dieta speciale", stato: "ricevuto" },
-    { id: "f05", quando: "ieri, ore 13:52", struttura: "Rossi Manifatture Spa", tipo: "Azienda", inviato_da: "aggregato dei dipendenti", ruolo: "22 prenotazioni individuali", pasti: 22, note: "Due vegetariani", stato: "chiuso" },
-  { id: "f06", quando: "oggi, in attesa", struttura: "Comunità Il Ponte", tipo: "Comunità", inviato_da: "Casa Ulivo", ruolo: "operatore non ancora entrato", pasti: 0, note: "Sollecito automatico alle 10:00", stato: "attesa" },
-];
-
-/* ============================================================
    Giri di consegna
    ============================================================ */
 export const GIRI = [
@@ -705,14 +716,6 @@ export const GIRI = [
           ],
   },
 ];
-
-/* ============================================================
-   Impostazioni per committente
-   ============================================================ */
-export const IMPOSTAZIONI_INIZIALI = {
-  azienda: { cutoff: "14:00 del giorno precedente", regolaPasto: "Composizione libera, dipendente sceglie", listino: "Tariffa unica, 7,50 €", frutta: false, monoporzione: false },
-  comunita: { cutoff: "16:00 del giorno precedente", regolaPasto: "Menu fisso, personalizzazioni per singola casa", listino: "Convenzione, fatturazione mensile", frutta: true, monoporzione: false },
-};
 
 /* ============================================================
    Menu ciclico, quattro settimane a rotazione

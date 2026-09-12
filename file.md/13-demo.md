@@ -20,7 +20,7 @@ riga entra direttamente, senza digitare.
 |---|---|---|---|
 | `antonella.rossi` | Antonella Rossi | Rossi Manifatture Spa | Dipendente |
 | `roberto.manzi` | Roberto Manzi | Rossi Manifatture Spa | Referente |
-| `samuele.ferri` | Samuele Ferri | Comunità Il Ponte | Educatore, sola lettura sulle diete |
+| `samuele.ferri` | Samuele Ferri | Comunità Il Ponte | Educatore, reparto "Spazio Giovani SGA" |
 | `ilaria.gatti` | Ilaria Gatti | Comunità Il Ponte | Responsabile |
 | `cucina.mavi` | Cucina centrale | MAVI Ristorazione | Fornitore |
 
@@ -42,22 +42,37 @@ utente.
    scegliere i piatti, confermare.
 7. **Resoconti** → espandere un dipendente per il dettaglio giornaliero →
    Excel → Export paghe.
-8. Uscire → **Samuele Ferri** (educatore) → Pazienti → aprire Beatrice Comi,
-   far notare che è in sola lettura.
-9. **Presenze** → segnare presenti e assenti → "Trasmetti a MAVI" si attiva solo
-   quando sono tutti segnati.
-10. Uscire → **Ilaria Gatti** (responsabile) → Pazienti → Beatrice Comi →
-    Modifica dieta → cambiare un piatto inline.
+8. Uscire → **Samuele Ferri** (educatore) → Pazienti: si vedono solo i due
+   pazienti di "Spazio Giovani SGA", con il banner che lo segnala. Aprire
+   Beatrice Comi → **Modifica dieta** funziona (per i pazienti del proprio
+   reparto); "Elimina" e "Modifica anagrafica" restano assenti.
+9. **Presenze** (filtrate allo stesso reparto) → segnare presenti e assenti →
+   "Trasmetti a MAVI" si attiva quando sono segnati i pazienti di quel reparto.
+10. Uscire → **Ilaria Gatti** (responsabile) → Pazienti: vede tutti e quattro i
+    pazienti, di entrambe le strutture. Aprire Carmelo Aronica → **Modifica
+    anagrafica** ed **Elimina**, assenti per l'educatore, compaiono qui.
 11. **Scarica template** → mostrare l'Excel pensato per il dietista.
 12. **Resoconti** → vista Settimana con accordion → Excel.
 13. Uscire → **Cucina MAVI** → Etichette pasto: sezione Azienda (anonime,
     raggruppate per piatto) e Comunità (nominative, per paziente e pasto).
 14. **Produzione** → distinta multi struttura → "Filtra questa".
-15. **Committenti** → Dettagli su una struttura.
-16. **Impostazioni** → Rotazione menu, con la timeline a quattro settimane.
-17. **Fatturazione** → Genera proforma PDF, si apre in una nuova scheda.
-18. **Gestione portale** → Aspetto → provare il tema scuro.
-19. **Log operazioni** → filtrare per Sistema.
+15. **Ordini in arrivo** → aprire il dettaglio di Rossi Manifatture Spa: quantità
+    per piatto con "per il giorno"/"generato il", poi il **dettaglio
+    nominativo riservato al fornitore** e "Genera manifesto PDF per il
+    cassone termico". Aprire anche il dettaglio di Comunità Il Ponte: elenco
+    nominativo con reparto.
+16. **Committenti** → "Nuovo committente": creare una struttura di prova e far
+    notare che compare subito anche in Impostazioni, Fatturazione, Produzione
+    e Ordini in arrivo.
+17. **Impostazioni** → Rotazione menu, con la timeline a quattro settimane; far
+    notare il prezzo unitario e l'IVA per committente.
+18. **Fatturazione** → riga per struttura con prezzo e IVA propri → "PDF" sulla
+    singola riga per un documento separato, poi "Genera proforma unica PDF".
+19. **Modifica profilo** (icona matita accanto al nome, in fondo alla barra
+    laterale, in qualsiasi portale) → cambiare foto e telefono.
+20. **Gestione portale** → Aspetto → provare il tema scuro. Utenti → aprire
+    Samuele Ferri, far notare il campo Reparto.
+21. **Log operazioni** → filtrare per Sistema.
 
 ## I momenti che colpiscono di più
 
@@ -79,6 +94,14 @@ utente.
    presenze, in tempo reale.
 7. **Le etichette diverse per contesto.** Anonime per l'azienda, nominative per
    la comunità. È una scelta di riservatezza, non un dettaglio grafico.
+8. **Il reparto che filtra tutto.** Da Samuele Ferri a Ilaria Gatti: stessi
+   pazienti nel database, vista completamente diversa. Nessuna configurazione
+   manuale in mezzo, solo il login.
+9. **Un committente nuovo, ovunque.** "Nuovo committente" compila un solo
+   modulo e la struttura compare subito in cinque pagine diverse.
+10. **Chi ha ordinato cosa, ma solo per chi deve saperlo.** Le etichette
+    dell'azienda restano anonime; il manifesto nominativo per il cassone
+    termico esiste solo dentro "Ordini in arrivo", portale MAVI.
 
 ## Cose da sapere prima di mostrare
 
@@ -87,8 +110,6 @@ utente.
 - Le frecce di navigazione settimana nel Menu del giorno sono decorative,
   mostrano solo un toast.
 - "Scarica riepilogo" nella pagina Prenotazioni è dimostrativo.
-- La prenotazione fatta dal referente con "Prenota per lui" non alimenta la
-  distinta: produce toast e riga di log. Se qualcuno lo nota, è un punto aperto.
 - I dati aziendali nella proforma appaiono come placeholder in corsivo finché
   non si compilano in Gestione portale. Compilarli prima se si vuole mostrare
   una proforma completa.

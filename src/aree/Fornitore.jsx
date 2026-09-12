@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  AGGREGATO, ALLERGENI, CATEGORIE, splitPiatto, COLORI, FLUSSI_ORDINE, GIORNI, GIRI, IMPOSTAZIONI_INIZIALI, INGREDIENTI_DIETE, MARCATORI, PIATTI, catalogoPerCategoria, sostituisce,
+  AGGREGATO, ALLERGENI, CATEGORIE, splitPiatto, COLORI, GIORNI, GIRI, INGREDIENTI_DIETE, MARCATORI, PIATTI, catalogoPerCategoria, sostituisce,
 } from "../data.js";
 import {
   Accesso, DiscoColore, Documenti, Icone, Illustrazione, Intestazione, Messaggi,
@@ -53,6 +53,7 @@ export default function Fornitore({ diretto, onEsci }) {
       marchio="Portale fornitore"
       ruolo="MAVI Ristorazione"
       utente={{ iniziali: "MV", nome: "Cucina centrale", sotto: "MAVI Ristorazione" }}
+      chiaveUtente="cucina.mavi"
       voci={VOCI}
       pagina={pagina}
       setPagina={setPagina}
@@ -76,15 +77,9 @@ export default function Fornitore({ diretto, onEsci }) {
 }
 
 /* ==================== distinta di produzione, multi struttura ==================== */
-const CONTRIBUTI_STRUTTURE = [
-  { id: "azienda", nome: "Rossi Manifatture Spa", tipo: "Azienda", chiusura: "mar 14:00", stato: "chiuso" },
-  { id: "rsa", nome: "RSA Villa Serena", tipo: "RSA", chiusura: "mar 16:00", stato: "chiuso" },
-  { id: "comunita", nome: "Comunità Il Ponte", tipo: "Comunità", chiusura: "mar 16:00", stato: "chiuso" },
-  { id: "scuola", nome: "Istituto Sant'Anna", tipo: "Scuola", chiusura: "mer 9:30", stato: "in attesa" },
-];
-
 function Produzione() {
   const st = usaStato();
+  const committenti = st.committenti;
   const [filtro, setFiltro] = React.useState("tutte");
 
   /* aggregato azienda dai vassoi confermati + AGGREGATO base */
@@ -138,7 +133,7 @@ function Produzione() {
           <div className="numero">
             <div className="n-lab">Pasti totali</div>
             <div className="n-val">{complessivo}</div>
-            <div className="n-nota">{CONTRIBUTI_STRUTTURE.length} strutture servite</div>
+            <div className="n-nota">{committenti.length} strutture servite</div>
           </div>
           <div className="numero">
             <div className="n-lab">Diete particolari</div>
@@ -160,7 +155,7 @@ function Produzione() {
         <div className="pannello">
           <div className="pannello-testa">
             <h2>Contributi per struttura</h2>
-            <span className="conta-piatti">{CONTRIBUTI_STRUTTURE.length} committenti</span>
+            <span className="conta-piatti">{committenti.length} committenti</span>
           </div>
           <div className="scorri">
             <table className="dati">
@@ -168,19 +163,19 @@ function Produzione() {
                 <tr><th>Struttura</th><th>Tipo</th><th>Chiusura</th><th>Pasti</th><th>Stato</th><th /></tr>
               </thead>
               <tbody>
-                {CONTRIBUTI_STRUTTURE.map((c) => {
+                {committenti.map((c) => {
                   const pasti = c.id === "azienda"
                     ? Object.values(aggAzienda).reduce((a, b) => a + b, 0)
-                    : aggComunita;
+                    : c.id === "comunita" ? aggComunita : 0;
                   const attivo = filtro === c.id;
                   return (
-                    <tr key={c.id}>
+                    <tr key={c.id} style={{ opacity: c.attivo === false ? 0.5 : 1 }}>
                       <td><b>{c.nome}</b></td>
                       <td><span className="pastiglia p-neu">{c.tipo}</span></td>
-                      <td className="cifra">{c.chiusura}</td>
+                      <td className="cifra">{c.cutoff}</td>
                       <td className="quantita">{pasti}</td>
                       <td>
-                        {c.stato === "chiuso"
+                        {pasti > 0
                           ? <span className="pastiglia p-ok">trasmesso</span>
                           : <span className="pastiglia p-att">in attesa</span>}
                       </td>
@@ -205,7 +200,7 @@ function Produzione() {
         {filtro !== "tutte" && (
           <div className="banner-dieta" style={{ background: "#eef3fa", borderColor: "#b8cce0", color: "#2c4a6c" }}>
             <Icone.attenzione size={15} />
-            Stai vedendo solo i dati di <b>{CONTRIBUTI_STRUTTURE.find((c) => c.id === filtro)?.nome}</b>
+            Stai vedendo solo i dati di <b>{committenti.find((c) => c.id === filtro)?.nome}</b>
             <button className="btn linea piccolo" style={{ marginLeft: "auto" }} onClick={() => setFiltro("tutte")}>Mostra tutte</button>
           </div>
         )}
@@ -214,7 +209,7 @@ function Produzione() {
           <div className="pannello-testa">
             <h2>Quantità da produrre</h2>
             <span className="conta-piatti">
-              {filtro === "tutte" ? "somma di tutte le strutture" : "solo " + CONTRIBUTI_STRUTTURE.find((c) => c.id === filtro).nome}
+              {filtro === "tutte" ? "somma di tutte le strutture" : "solo " + committenti.find((c) => c.id === filtro)?.nome}
             </span>
           </div>
           <div className="scorri">
@@ -223,9 +218,9 @@ function Produzione() {
                 <tr>
                   <th>Piatto</th>
                   <th>Colore</th>
-                  {filtro === "tutte" && <>
-                    <th>Azienda</th><th>Comunità</th>
-                  </>}
+                  {filtro === "tutte" && Object.keys(perStruttura).map((k) => (
+                    <th key={k}>{committenti.find((c) => c.id === k)?.nome || k}</th>
+                  ))}
                   <th>Totale</th>
                 </tr>
               </thead>
@@ -244,7 +239,7 @@ function Produzione() {
                         {COLORI[PIATTI[id].col].nome}
                       </span>
                     </td>
-                    {filtro === "tutte" && ["azienda", "comunita"].map((k) => (
+                    {filtro === "tutte" && Object.keys(perStruttura).map((k) => (
                       <td key={k} className="cifra">{perStruttura[k][id] || 0}</td>
                     ))}
                     <td style={{ minWidth: 180 }}>
@@ -699,101 +694,122 @@ function Catalogo() {
 /* ==================== fatturazione — solo proforma ==================== */
 function Fatturazione() {
   const st = usaStato();
-  const PREZZO = 7.50;
-  const strutture = [
-    { nome: "Rossi Manifatture Spa", tipo: "Azienda", pasti: 790, mese: "Agosto 2026" },
-    { nome: "Comunità Il Ponte", tipo: "Comunità", pasti: 248, mese: "Agosto 2026" },
-  ];
-  const totPasti = strutture.reduce((s, r) => s + r.pasti, 0);
-  const totImponibile = totPasti * PREZZO;
-  const totIva = totImponibile * 0.10;
+  const MESE = "Agosto 2026";
 
   function eur(n) { return n.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+  /* listino, IVA e pasti del mese vengono dal committente stesso (Impostazioni
+     per committente): ogni struttura può avere un prezzo diverso, non più un
+     prezzo unico fisso per tutti. */
+  const righe = React.useMemo(() => st.committenti.map((c) => {
+    const pasti = c.pastiMeseDemo ?? Math.round((c.pasti || 0) * 22);
+    const imponibile = pasti * c.prezzoUnitario;
+    const iva = imponibile * (c.ivaPercentuale / 100);
+    return { c, pasti, imponibile, iva, totale: imponibile + iva };
+  }), [st.committenti]);
+
+  const totPasti = righe.reduce((s, r) => s + r.pasti, 0);
+  const totImponibile = righe.reduce((s, r) => s + r.imponibile, 0);
+  const totIva = righe.reduce((s, r) => s + r.iva, 0);
+
+  function struttureExcel() {
+    return righe.map((r) => ({
+      struttura: r.c.nome, tipo: r.c.tipo, mese: MESE, pasti: r.pasti,
+      prezzo: "€ " + eur(r.c.prezzoUnitario), imponibile: "€ " + eur(r.imponibile),
+      iva: "€ " + eur(r.iva), totale: "€ " + eur(r.totale),
+    }));
+  }
+  const COLONNE_PROFORMA = [
+    { header: "Struttura", key: "struttura", width: 28 },
+    { header: "Tipo", key: "tipo", width: 14 },
+    { header: "Periodo", key: "mese", width: 16 },
+    { header: "Pasti", key: "pasti", width: 10 },
+    { header: "Prezzo unitario", key: "prezzo", width: 16 },
+    { header: "Imponibile", key: "imponibile", width: 16 },
+    { header: "IVA", key: "iva", width: 14 },
+    { header: "Totale", key: "totale", width: 16 },
+  ];
 
   async function generaProforma() {
     try {
       const { scaricaExcel } = await import("../excel.js");
-      const righe = strutture.map((s) => ({
-        struttura: s.nome, tipo: s.tipo, mese: s.mese, pasti: s.pasti,
-        prezzo: "€ " + eur(PREZZO), imponibile: "€ " + eur(s.pasti * PREZZO),
-      }));
-      righe.push({
-        struttura: "", tipo: "", mese: "TOTALE", pasti: totPasti,
-        prezzo: "", imponibile: "€ " + eur(totImponibile),
-      });
-      await scaricaExcel("Proforma_MAVI_Agosto_2026.xlsx", [
-        { nome: "Proforma", dati: righe, colonne: [
-          { header: "Struttura", key: "struttura", width: 28 },
-          { header: "Tipo", key: "tipo", width: 14 },
-          { header: "Periodo", key: "mese", width: 16 },
-          { header: "Pasti", key: "pasti", width: 10 },
-          { header: "Prezzo unitario", key: "prezzo", width: 16 },
-          { header: "Imponibile", key: "imponibile", width: 16 },
-        ]},
-      ]);
-      st.avvisa("Proforma Excel scaricata");
+      const dati = struttureExcel();
+      dati.push({ struttura: "", tipo: "", mese: "TOTALE", pasti: totPasti, prezzo: "", imponibile: "€ " + eur(totImponibile), iva: "€ " + eur(totIva), totale: "€ " + eur(totImponibile + totIva) });
+      await scaricaExcel("Proforma_MAVI_" + MESE.replace(" ", "_") + ".xlsx", [{ nome: "Proforma", dati, colonne: COLONNE_PROFORMA }]);
+      st.avvisa("Proforma Excel scaricata, un rigo per committente più il totale");
     } catch (e) {
       console.error(e);
       st.avvisa("Errore nella generazione, riprova");
     }
   }
 
+  async function generaProformaCombinata() {
+    const { generaProformaPDF } = await import("../proforma.js");
+    generaProformaPDF(righe.map((r) => ({ nome: r.c.nome, tipo: r.c.tipo, pasti: r.pasti, mese: MESE, prezzo: r.c.prezzoUnitario, ivaPercentuale: r.c.ivaPercentuale })));
+    st.logga("Cucina MAVI", "Operatore", "Proforma generata", righe.map((r) => r.c.nome).join(", "), "generico");
+  }
+  async function generaProformaSingola(r) {
+    const { generaProformaPDF } = await import("../proforma.js");
+    generaProformaPDF([{ nome: r.c.nome, tipo: r.c.tipo, pasti: r.pasti, mese: MESE, prezzo: r.c.prezzoUnitario, ivaPercentuale: r.c.ivaPercentuale }]);
+    st.logga("Cucina MAVI", "Operatore", "Proforma generata", r.c.nome + " (documento separato)", "generico");
+  }
+
   return (
     <>
       <Intestazione
-        occhiello="Chiusura mensile" titolo="Proforma" sotto="Riepilogo dei pasti erogati per struttura, base per la fatturazione"
+        occhiello="Chiusura mensile" titolo="Proforma" sotto="Riepilogo dei pasti erogati per struttura, con listino proprio di ciascuna, base per la fatturazione"
         azioni={<>
           <button className="btn linea piccolo" onClick={generaProforma}><Icone.scarica size={16} /> Scarica Excel</button>
-          <button className="btn piccolo" onClick={async () => {
-            const { generaProformaPDF } = await import("../proforma.js");
-            generaProformaPDF(strutture, PREZZO);
-            st.logga("Cucina MAVI", "Operatore", "Proforma generata", strutture.map(s => s.nome).join(", "), "generico");
-          }}>Genera proforma PDF</button>
+          <button className="btn piccolo" onClick={generaProformaCombinata}>Genera proforma unica PDF</button>
         </>}
       />
       <div className="tela">
         <div className="numeri">
-          <div className="numero"><div className="n-lab">Pasti totali</div><div className="n-val">{totPasti}</div><div className="n-nota">nel mese di agosto</div></div>
-          <div className="numero"><div className="n-lab">Strutture</div><div className="n-val">{strutture.length}</div><div className="n-nota">committenti attivi</div></div>
-          <div className="numero"><div className="n-lab">Imponibile</div><div className="n-val" style={{ fontSize: 22 }}>€ {eur(totImponibile)}</div><div className="n-nota">prezzo unitario € {eur(PREZZO)}</div></div>
-          <div className="numero"><div className="n-lab">IVA 10%</div><div className="n-val" style={{ fontSize: 22 }}>€ {eur(totIva)}</div><div className="n-nota">totale € {eur(totImponibile + totIva)}</div></div>
+          <div className="numero"><div className="n-lab">Pasti totali</div><div className="n-val">{totPasti}</div><div className="n-nota">nel mese di {MESE.toLowerCase()}</div></div>
+          <div className="numero"><div className="n-lab">Strutture</div><div className="n-val">{righe.length}</div><div className="n-nota">ognuna con il proprio listino</div></div>
+          <div className="numero"><div className="n-lab">Imponibile</div><div className="n-val" style={{ fontSize: 22 }}>€ {eur(totImponibile)}</div><div className="n-nota">somma dei prezzi unitari per committente</div></div>
+          <div className="numero"><div className="n-lab">IVA</div><div className="n-val" style={{ fontSize: 22 }}>€ {eur(totIva)}</div><div className="n-nota">totale documento € {eur(totImponibile + totIva)}</div></div>
         </div>
 
         <div className="pannello">
           <div className="pannello-testa">
             <h2>Dettaglio per struttura</h2>
-            <span className="conta-piatti">base per la fatturazione a fine mese</span>
+            <span className="conta-piatti">base per la fatturazione a fine mese, un documento separato per ciascuna se serve</span>
           </div>
           <div className="scorri">
             <table className="dati">
-              <thead><tr><th>Struttura</th><th>Tipo</th><th>Periodo</th><th>Pasti</th><th>Prezzo unitario</th><th>Imponibile</th></tr></thead>
+              <thead><tr><th>Struttura</th><th>Tipo</th><th>Periodo</th><th>Pasti</th><th>Prezzo unitario</th><th>Imponibile</th><th>IVA</th><th>Totale</th><th /></tr></thead>
               <tbody>
-                {strutture.map((s) => (
-                  <tr key={s.nome}>
-                    <td><b>{s.nome}</b></td>
-                    <td><span className="pastiglia p-neu">{s.tipo}</span></td>
-                    <td>{s.mese}</td>
-                    <td className="quantita">{s.pasti}</td>
-                    <td className="cifra">€ {eur(PREZZO)}</td>
-                    <td className="cifra">€ {eur(s.pasti * PREZZO)}</td>
+                {righe.map((r) => (
+                  <tr key={r.c.id}>
+                    <td><b>{r.c.nome}</b></td>
+                    <td><span className="pastiglia p-neu">{r.c.tipo}</span></td>
+                    <td>{MESE}</td>
+                    <td className="quantita">{r.pasti}</td>
+                    <td className="cifra">€ {eur(r.c.prezzoUnitario)}</td>
+                    <td className="cifra">€ {eur(r.imponibile)}</td>
+                    <td className="cifra">€ {eur(r.iva)} <span style={{ color: "var(--muto)", fontSize: 11 }}>({r.c.ivaPercentuale}%)</span></td>
+                    <td className="cifra"><b>€ {eur(r.totale)}</b></td>
+                    <td><button className="btn linea piccolo" onClick={() => generaProformaSingola(r)}>PDF</button></td>
                   </tr>
                 ))}
                 <tr className="riga-totale">
                   <td colSpan={3}><b>Totale</b></td>
                   <td className="quantita">{totPasti}</td>
                   <td />
-                  <td className="cifra"><b>€ {eur(totImponibile)}</b></td>
+                  <td className="cifra">€ {eur(totImponibile)}</td>
+                  <td className="cifra">€ {eur(totIva)}</td>
+                  <td className="cifra"><b>€ {eur(totImponibile + totIva)}</b></td>
+                  <td />
                 </tr>
               </tbody>
             </table>
           </div>
-          <div className="proforma-totale">
-            <span>IVA 10%: € {eur(totIva)}</span>
-            <span>Totale documento: <b>€ {eur(totImponibile + totIva)}</b></span>
-          </div>
           <div className="pannello-piede">
-            La proforma si genera dallo storico pasti del mese selezionato. Non transita
-            dal Sistema di Interscambio — la fattura elettronica si emette dal gestionale contabile.
+            Il prezzo unitario e l'IVA si impostano in <b>Impostazioni per committente</b>. "Genera proforma
+            unica PDF" produce un solo documento con tutte le strutture; il bottone PDF di ogni riga produce
+            invece un documento separato per quella sola struttura. Non transita dal Sistema di Interscambio —
+            la fattura elettronica si emette dal gestionale contabile.
           </div>
         </div>
       </div>
@@ -968,75 +984,279 @@ function ModuloPiatto({ id, onChiudi }) {
 }
 
 
-/* ==================== ordini in arrivo, chi ha inviato ==================== */
+/* ==================== ordini in arrivo, drill-down per committente ====================
+   Riscritta il 12 settembre 2026 su richiesta di Filippo: non più una riga per
+   evento con dati inventati, ma una struttura per riga che apre il dettaglio
+   reale — piatti e quantità per l'azienda, elenco nominativo per reparto per
+   la comunità — presa dallo stesso stato condiviso della distinta di
+   produzione e delle presenze, non da un elenco statico a parte. */
+/* "generato il" (quando è stato trasmesso l'ordine) e "per il" (a quale
+   giorno del menu si riferisce) sono due date diverse — un ordine di oggi può
+   valere per un giorno futuro della settimana — e vanno sempre mostrate
+   insieme, mai una al posto dell'altra. */
+function formattaQuando(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return d.toLocaleDateString("it-IT", { day: "2-digit", month: "short" }) + " alle " +
+    d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+}
+
+function OrdiniAzienda({ pasti, giorniConfermati, nominativi, onManifesto }) {
+  const righe = Object.entries(pasti).sort((a, b) => b[1] - a[1]);
+  if (!righe.length) return (
+    <div className="avviso info">
+      <Icone.attenzione size={16} />
+      <span>Nessuna prenotazione confermata ancora oggi. La lista si popola quando un dipendente conferma dal proprio portale.</span>
+    </div>
+  );
+  return (
+    <>
+      {giorniConfermati.map((g) => (
+        <div key={g.giorno} style={{ fontSize: 12, color: "var(--muto)", marginBottom: 4 }}>
+          Per <b style={{ color: "var(--inchiostro)" }}>{g.giorno}</b> · generato il {g.quando || "poco fa"}
+        </div>
+      ))}
+      <table className="dati" style={{ marginTop: 8 }}>
+        <thead><tr><th>Piatto</th><th>Quantità</th></tr></thead>
+        <tbody>
+          {righe.map(([id, q]) => PIATTI[id] && (
+            <tr key={id}>
+              <td><b>{PIATTI[id].n}</b></td>
+              <td className="quantita">×{q}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div className="pannello-testa" style={{ padding: "14px 0 8px", border: "none" }}>
+        <h2 style={{ fontSize: 15 }}>Dettaglio nominativo</h2>
+        <span className="pastiglia p-att">riservato al fornitore</span>
+      </div>
+      <p style={{ fontSize: 12, color: "var(--muto)", margin: "0 0 10px" }}>
+        Chi ha ordinato cosa. Non è mai visibile al cliente né al dipendente: le etichette pasto
+        dell'azienda restano anonime, questo elenco serve solo al fornitore per il cassone termico.
+      </p>
+      {nominativi.length === 0 ? (
+        <div className="avviso info"><Icone.attenzione size={16} /><span>Nessun nominativo disponibile per oggi.</span></div>
+      ) : (
+        <div className="scorri">
+          <table className="dati">
+            <thead><tr><th>Nominativo</th><th>Reparto</th><th>Per il giorno</th><th>Primo</th><th>Secondo</th><th>Contorno</th></tr></thead>
+            <tbody>
+              {nominativi.map((n) => (
+                <tr key={n.id}>
+                  <td><b>{n.nome}</b></td>
+                  <td style={{ color: "var(--muto)" }}>{n.reparto}</td>
+                  <td>{n.giorno}</td>
+                  <td>{n.primo}</td>
+                  <td>{n.secondo}</td>
+                  <td>{n.contorno}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <div style={{ marginTop: 12 }}>
+        <button className="btn linea piccolo" onClick={onManifesto}>
+          <Icone.stampa size={16} /> Genera manifesto PDF per il cassone termico
+        </button>
+      </div>
+    </>
+  );
+}
+
+function OrdiniComunita({ righe }) {
+  if (!righe.length) return (
+    <div className="avviso info">
+      <Icone.attenzione size={16} />
+      <span>Nessuna presenza trasmessa ancora oggi. La lista si popola quando l'educatore o il responsabile trasmette a MAVI.</span>
+    </div>
+  );
+  return (
+    <div className="scorri">
+      <table className="dati">
+        <thead><tr><th>Paziente</th><th>Reparto</th><th>Per il giorno</th><th>Pasto</th><th>Primo</th><th>Secondo</th><th>Contorno</th><th>Generato il</th></tr></thead>
+        <tbody>
+          {righe.map((r) => (
+            <tr key={r.id + r.pasto}>
+              <td><b>{r.nome}</b></td>
+              <td style={{ color: "var(--muto)" }}>{r.stanza}</td>
+              <td>{r.giorno}</td>
+              <td>{r.pasto}</td>
+              <td>{splitPiatto(r.dieta.primo).nome}</td>
+              <td>{splitPiatto(r.dieta.secondo).nome}</td>
+              <td>{splitPiatto(r.dieta.contorno).nome}</td>
+              <td style={{ fontSize: 12, color: "var(--muto)" }}>{formattaQuando(r.generatoIl) || "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const FOGLIO_VUOTO = { colonne: [{ header: "Nessun ordine ricevuto per questo committente", key: "x", width: 44 }], dati: [] };
+
+function foglioPerCommittente(id, pastiAzienda, presenzeTrasmesse) {
+  if (id === "azienda") {
+    return {
+      colonne: [{ header: "Piatto", key: "piatto", width: 30 }, { header: "Quantità", key: "quantita", width: 12 }],
+      dati: Object.entries(pastiAzienda).map(([pid, q]) => ({ piatto: PIATTI[pid]?.n || pid, quantita: q })),
+    };
+  }
+  if (id === "comunita") {
+    return {
+      colonne: [
+        { header: "Paziente", key: "paziente", width: 22 }, { header: "Reparto", key: "reparto", width: 24 },
+        { header: "Per il giorno", key: "perGiorno", width: 20 }, { header: "Pasto", key: "pasto", width: 10 },
+        { header: "Primo", key: "primo", width: 24 }, { header: "Secondo", key: "secondo", width: 24 },
+        { header: "Contorno", key: "contorno", width: 24 }, { header: "Generato il", key: "generato", width: 20 },
+      ],
+      dati: presenzeTrasmesse.map((r) => ({
+        paziente: r.nome, reparto: r.stanza, perGiorno: r.giorno, pasto: r.pasto,
+        primo: splitPiatto(r.dieta.primo).nome, secondo: splitPiatto(r.dieta.secondo).nome, contorno: splitPiatto(r.dieta.contorno).nome,
+        generato: formattaQuando(r.generatoIl) || "—",
+      })),
+    };
+  }
+  return FOGLIO_VUOTO;
+}
+
 function FlussiOrdine() {
   const st = usaStato();
-  const totale = FLUSSI_ORDINE.reduce((s, x) => s + x.pasti, 0);
-  const attesa = FLUSSI_ORDINE.filter((x) => x.stato === "attesa").length;
-  const ricevuti = FLUSSI_ORDINE.filter((x) => x.stato !== "attesa").length;
-  const percentuale = Math.round((ricevuti / FLUSSI_ORDINE.length) * 100);
+  const committenti = st.committenti;
+  const [aperto, setAperto] = React.useState(null);
+
+  const pastiAzienda = React.useMemo(() => {
+    const a = {};
+    Object.keys(st.confermati).forEach((g) => {
+      Object.values(st.ordini[g] || {}).forEach((id) => { if (PIATTI[id]) a[id] = (a[id] || 0) + 1; });
+    });
+    return a;
+  }, [st.ordini, st.confermati]);
+  const totAzienda = Object.values(pastiAzienda).reduce((a, b) => a + b, 0);
+  const totComunita = st.presenzeTrasmesse.length;
+  /* "generato il" e "per il giorno" sono due informazioni diverse: un ordine
+     confermato oggi vale per un giorno della settimana in corso, non per oggi
+     stesso. Un giorno per riga, con la data/ora reale della conferma. */
+  const giorniConfermatiAzienda = React.useMemo(() =>
+    Object.keys(st.confermati).map((g) => ({
+      giorno: (GIORNI[g]?.n || "") + " " + (GIORNI[g]?.d || ""),
+      quando: formattaQuando(st.oraConferma[g]),
+    })),
+  [st.confermati, st.oraConferma]);
+
+  const dati = React.useMemo(() => committenti.map((c) => ({
+    c,
+    pasti: c.id === "azienda" ? totAzienda : c.id === "comunita" ? totComunita : 0,
+    trasmesso: c.id === "azienda" ? totAzienda > 0 : c.id === "comunita" ? totComunita > 0 : false,
+  })), [committenti, totAzienda, totComunita]);
+
+  const totale = dati.reduce((s, d) => s + d.pasti, 0);
+  const trasmessi = dati.filter((d) => d.trasmesso).length;
+  const percentuale = dati.length ? Math.round((trasmessi / dati.length) * 100) : 0;
+
+  async function scaricaGlobale() {
+    const { scaricaExcel } = await import("../excel.js");
+    const fogli = dati.map((d) => ({ nome: d.c.nome.slice(0, 28), ...foglioPerCommittente(d.c.id, pastiAzienda, st.presenzeTrasmesse) }));
+    await scaricaExcel("Ordini_in_arrivo.xlsx", fogli);
+    st.avvisa("Resoconto globale scaricato, un foglio per struttura");
+  }
+  async function scaricaStruttura(d) {
+    const { scaricaExcel } = await import("../excel.js");
+    await scaricaExcel("Ordini_" + d.c.nome.replace(/[^a-zA-Z0-9]+/g, "_") + ".xlsx",
+      [{ nome: "Ordini", ...foglioPerCommittente(d.c.id, pastiAzienda, st.presenzeTrasmesse) }]);
+    st.avvisa("Resoconto di " + d.c.nome + " scaricato");
+  }
+  async function generaManifesto(struttura) {
+    const { generaManifestoConsegna } = await import("../manifesto.js");
+    generaManifestoConsegna({
+      struttura, pasto: "pranzo",
+      giorno: giorniConfermatiAzienda[0]?.giorno || "Mercoledì 16 settembre 2026",
+      righe: st.nominativiAzienda,
+    });
+    st.logga("Cucina MAVI", "Operatore", "Manifesto di consegna generato", struttura + ", " + st.nominativiAzienda.length + " nominativi", "generico");
+  }
+
   return (
     <>
       <Intestazione
         occhiello="Mercoledì 16 settembre 2026"
         titolo="Ordini in arrivo"
-        sotto="Chi ha trasmesso il pasto di oggi, quando, e cosa ha dichiarato"
+        sotto="Da dove arrivano gli ordini di oggi: apri una struttura per vedere cosa ha dichiarato"
         azioni={<>
           <button className="btn linea piccolo" onClick={() => st.avvisa("Sollecito inviato alle strutture in attesa")}>
             Sollecita chi manca
           </button>
-          <button className="btn piccolo" onClick={() => st.avvisa("Ordini congelati, distinta di produzione generata")}>
-            Chiudi ordini di oggi
+          <button className="btn piccolo" onClick={scaricaGlobale}>
+            <Icone.scarica size={16} /> Resoconto globale
           </button>
         </>}
       />
       <div className="tela">
         <div className="barra-avanzamento">
           <div className="ba-testa">
-            <span><b>{ricevuti}</b> ordini ricevuti su <b>{FLUSSI_ORDINE.length}</b> attesi</span>
+            <span><b>{trasmessi}</b> strutture hanno trasmesso su <b>{dati.length}</b></span>
             <span className="ba-perc">{percentuale}%</span>
           </div>
           <div className="ba-progresso"><i style={{ width: percentuale + "%" }} /></div>
-          <p>{attesa > 0 ? "Chiusura ordini alle 16:00, poi le righe in attesa vengono congelate come sono." : "Tutte le strutture hanno trasmesso, si può chiudere la giornata."}</p>
+          <p>{trasmessi < dati.length ? "Le strutture in attesa non hanno ancora trasmesso l'ordine o le presenze di oggi." : "Tutte le strutture hanno trasmesso, si può passare alla produzione."}</p>
         </div>
         <div className="numeri">
-          <div className="numero"><div className="n-lab">Ordini ricevuti</div><div className="n-val">{ricevuti}</div><div className="n-nota">su {FLUSSI_ORDINE.length} attesi</div></div>
-          <div className="numero"><div className="n-lab">Pasti dichiarati</div><div className="n-val">{totale}</div><div className="n-nota">totale multi struttura</div></div>
-          <div className="numero"><div className="n-lab">In attesa</div><div className="n-val">{attesa}</div><div className="n-nota">chiusura ordini alle 16:00</div></div>
-          <div className="numero"><div className="n-lab">Diete particolari</div><div className="n-val">7</div><div className="n-nota">segnalate negli ordini</div></div>
+          <div className="numero"><div className="n-lab">Strutture</div><div className="n-val">{dati.length}</div><div className="n-nota">azienda, comunità e quelle aggiunte</div></div>
+          <div className="numero"><div className="n-lab">Hanno trasmesso</div><div className="n-val">{trasmessi}</div><div className="n-nota">su {dati.length} attese</div></div>
+          <div className="numero"><div className="n-lab">Pasti dichiarati</div><div className="n-val">{totale}</div><div className="n-nota">somma di tutte le strutture</div></div>
+          <div className="numero"><div className="n-lab">In attesa</div><div className="n-val">{dati.length - trasmessi}</div><div className="n-nota">non ancora trasmesso</div></div>
         </div>
 
         <div className="pannello">
           <div className="pannello-testa">
-            <h2>Ordini di giornata</h2>
-            <span className="conta-piatti">responsabile in ricezione, cucina centrale MAVI</span>
+            <h2>Strutture servite</h2>
+            <span className="conta-piatti">clicca per aprire il dettaglio</span>
           </div>
           <div className="scorri">
             <table className="dati">
-              <thead>
-                <tr><th>Quando</th><th>Struttura</th><th>Inviato da</th><th>Pasti</th><th>Note</th><th>Stato</th></tr>
-              </thead>
+              <thead><tr><th>Struttura</th><th>Tipo</th><th>Cutoff</th><th>Pasti</th><th>Stato</th><th /></tr></thead>
               <tbody>
-                {FLUSSI_ORDINE.map((f) => (
-                  <tr key={f.id}>
-                    <td className="cifra">{f.quando}</td>
-                    <td><b>{f.struttura}</b><div className="riservato">{f.tipo}</div></td>
-                    <td><b>{f.inviato_da}</b><div className="riservato">{f.ruolo}</div></td>
-                    <td className="quantita">{f.pasti || "—"}</td>
-                    <td style={{ fontSize: 12.5, color: "var(--muto)" }}>{f.note}</td>
-                    <td>
-                      {f.stato === "ricevuto" ? <span className="pastiglia p-ok">ricevuto</span>
-                        : f.stato === "chiuso" ? <span className="pastiglia p-neu">chiuso</span>
-                        : <span className="pastiglia p-att">in attesa</span>}
-                    </td>
-                  </tr>
+                {dati.map((d) => (
+                  <React.Fragment key={d.c.id}>
+                    <tr>
+                      <td><b>{d.c.nome}</b></td>
+                      <td><span className="pastiglia p-neu">{d.c.tipo}</span></td>
+                      <td className="cifra">{d.c.cutoff}</td>
+                      <td className="quantita">{d.pasti}</td>
+                      <td>{d.trasmesso ? <span className="pastiglia p-ok">trasmesso</span> : <span className="pastiglia p-att">in attesa</span>}</td>
+                      <td>
+                        <button className={"btn piccolo" + (aperto === d.c.id ? "" : " linea")} onClick={() => setAperto(aperto === d.c.id ? null : d.c.id)}>
+                          {aperto === d.c.id ? "Chiudi" : "Apri dettaglio"}
+                        </button>
+                      </td>
+                    </tr>
+                    {aperto === d.c.id && (
+                      <tr>
+                        <td colSpan={6} style={{ background: "var(--carta)", padding: "16px 18px" }}>
+                          {d.c.id === "azienda"
+                            ? <OrdiniAzienda pasti={pastiAzienda} giorniConfermati={giorniConfermatiAzienda} nominativi={st.nominativiAzienda} onManifesto={() => generaManifesto(d.c.nome)} />
+                            : d.c.id === "comunita"
+                              ? <OrdiniComunita righe={st.presenzeTrasmesse} />
+                              : <div className="avviso info"><Icone.attenzione size={16} /><span>Nessuna fonte di ordini collegata ancora per questo committente.</span></div>}
+                          <div style={{ marginTop: 14 }}>
+                            <button className="btn linea piccolo" onClick={() => scaricaStruttura(d)}>
+                              <Icone.scarica size={16} /> Scarica resoconto di {d.c.nome}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
           </div>
           <div className="pannello-piede">
-            L'ordine arriva alla cucina attraverso un responsabile del servizio, che verifica
-            provenienza, diete e coerenza con il capitolato prima di girarlo alla produzione.
+            Per l'azienda il dettaglio somma i piatti confermati dai dipendenti. Per la comunità
+            elenca i pazienti trasmessi, con reparto e portate, perché il pasto è nominativo.
           </div>
         </div>
       </div>
@@ -1390,6 +1610,13 @@ function ModaleUtente({ utente, ruoli, strutture, onSalva, onChiudi }) {
             {strutture.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
+        {form.ruolo === "Educatore" && (
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muto)", marginBottom: 4 }}>Reparto assegnato</label>
+            <input type="text" value={form.reparto || ""} onChange={(e) => set("reparto", e.target.value)} style={{ width: "100%", fontSize: 13, padding: "8px 10px" }} placeholder="Es. Spazio Giovani SGA" />
+            <p style={{ fontSize: 11, color: "var(--muto)", marginTop: 4 }}>Determina quali pazienti l'educatore vede e può modificare nel portale comunità.</p>
+          </div>
+        )}
         <div style={{ marginBottom: 14 }}>
           <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muto)", marginBottom: 4 }}>Email</label>
           <input type="email" value={form.email || ""} onChange={(e) => set("email", e.target.value)} style={{ width: "100%", fontSize: 13, padding: "8px 10px" }} />
@@ -1718,23 +1945,18 @@ function LogOperazioni() {
 /* ==================== impostazioni per committente ==================== */
 function ImpostazioniServizio() {
   const st = usaStato();
-  const [conf, setConf] = React.useState(IMPOSTAZIONI_INIZIALI);
-  const [attivo, setAttivo] = React.useState("azienda");
+  const strutture = st.committenti;
+  const [attivo, setAttivo] = React.useState(strutture[0]?.id);
   const [settCorrente, setSettCorrente] = React.useState(1);
-  const strutture = [
-    { id: "azienda", nome: "Rossi Manifatture Spa", tipo: "Azienda" },
-    { id: "comunita", nome: "Comunità Il Ponte", tipo: "Comunità" },
-  ];
-  const c = conf[attivo];
-  const cambia = (campo, val) => setConf((p) => ({ ...p, [attivo]: { ...p[attivo], [campo]: val } }));
-  const attiva = strutture.find((s) => s.id === attivo);
+  const c = strutture.find((s) => s.id === attivo) || strutture[0];
+  const cambia = (campo, val) => st.aggiornaCommittente(attivo, { [campo]: val });
   return (
     <>
       <Intestazione
         occhiello="Configurazione servizio"
         titolo="Impostazioni per committente"
         sotto="Ogni struttura ha le sue regole. Qui si definiscono orari limite, listino, composizione del pasto"
-        azioni={<button className="btn piccolo" onClick={() => st.avvisa("Impostazioni salvate per " + attiva.nome)}>Salva</button>}
+        azioni={<button className="btn piccolo" onClick={() => st.avvisa("Impostazioni salvate per " + c.nome)}>Salva</button>}
       />
       <div className="tela">
         <div className="giorni-tab">
@@ -1755,7 +1977,21 @@ function ImpostazioniServizio() {
             <label>
               <span className="so-lab">Listino</span>
               <input type="text" value={c.listino} onChange={(e) => cambia("listino", e.target.value)} />
-              <em>Il prototipo mostra un solo prezzo, a regime va per categoria di pasto.</em>
+              <em>Etichetta libera mostrata al cliente. Il prezzo usato in Fatturazione è qui sotto.</em>
+            </label>
+          </div>
+          <div className="impo-riga">
+            <label>
+              <span className="so-lab">Prezzo unitario a pasto</span>
+              <input type="number" min="0" step="0.10" value={c.prezzoUnitario}
+                onChange={(e) => cambia("prezzoUnitario", Number(e.target.value) || 0)} />
+              <em>Usato per calcolare imponibile e proforma di questo committente.</em>
+            </label>
+            <label>
+              <span className="so-lab">IVA</span>
+              <input type="number" min="0" max="100" step="1" value={c.ivaPercentuale}
+                onChange={(e) => cambia("ivaPercentuale", Number(e.target.value) || 0)} />
+              <em>Percentuale applicata sull'imponibile in fattura e proforma.</em>
             </label>
           </div>
           <div className="impo-riga">

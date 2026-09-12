@@ -74,6 +74,7 @@ export default function Dipendente({ onEsci, utente }) {
       marchio="Portale dipendente"
       ruolo="Dipendente"
       utente={{ iniziali: utente ? utente.iniziali : "AR", nome: utente ? utente.nome : "Antonella Rossi", sotto: utente ? utente.committente : "Rossi Manifatture Spa" }}
+      chiaveUtente={utente ? utente.u : "antonella.rossi"}
       voci={VOCI}
       pagina={pagina}
       setPagina={setPagina}

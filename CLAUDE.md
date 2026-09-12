@@ -107,7 +107,8 @@ PROTOTIPO/
     styles.css              sistema visivo completo, tema chiaro e scuro
     excel.js                export Excel con ExcelJS
     diete.js                template e parser Excel delle diete
-    proforma.js             proforma HTML stampabile
+    proforma.js             proforma HTML stampabile, listino per riga
+    manifesto.js            manifesto di consegna nominativo, riservato al fornitore
     aree/
       Azienda.jsx           smistamento ruolo azienda
       Dipendente.jsx        portale dipendente

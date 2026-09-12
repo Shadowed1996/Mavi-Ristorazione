@@ -1,5 +1,5 @@
 import React from "react";
-import { COMMITTENTI, DIETE_TERAPEUTICHE, FATTURE, MODELLI } from "../data.js";
+import { DIETE_TERAPEUTICHE, FATTURE, MODELLI } from "../data.js";
 import { Accesso, Documenti, Icone, Intestazione, Messaggi, Telaio } from "../ui.jsx";
 import { usaStato } from "../store.jsx";
 import { OrdiniUnita } from "./Modelli.jsx";
@@ -170,6 +170,10 @@ export default function PortaleStruttura({ tipo, ruoloIniziale, onEsci, utente }
     );
 
   const operatore = ruolo.id === "operatore";
+  /* il reparto/casa dell'educatore arriva dall'anagrafica di accesso (UTENTI,
+     campo reparto): scoping delle pagine paziente per chi non è responsabile.
+     Assente per il responsabile e per il flusso di prova senza login reale. */
+  const reparto = tipo === "comunita" && operatore ? (utente?.reparto || null) : null;
   const voci = tipo === "comunita"
     ? (operatore
       ? [
@@ -199,23 +203,25 @@ export default function PortaleStruttura({ tipo, ruoloIniziale, onEsci, utente }
           ["documenti", "Documenti", Icone.lista],
         ]);
 
-  const iniziali = ruolo.nome.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase();
+  const nomeVisto = utente?.nome || ruolo.nome;
+  const iniziali = utente?.iniziali || nomeVisto.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase();
 
   return (
     <Telaio
       area={cfg.tema}
       marchio={cfg.titolo}
       ruolo={ruolo.nome}
-      utente={{ iniziali, nome: ruolo.nome, sotto: cfg.nome }}
+      utente={{ iniziali, nome: nomeVisto, sotto: cfg.nome }}
+      chiaveUtente={utente?.u}
       voci={voci}
       pagina={pagina}
       setPagina={setPagina}
       onEsci={() => (onEsci ? onEsci() : setRuolo(null))}
     >
       {pagina === "ordine" && tipo !== "comunita" && <OrdiniUnita tipo={tipo} utente={utente} />}
-      {tipo === "comunita" && pagina === "pazienti" && <Comunita.Pazienti soloLettura={operatore} />}
-      {tipo === "comunita" && pagina === "presenze" && <Comunita.Presenze />}
-      {tipo === "comunita" && pagina === "resoconti" && <Comunita.Resoconti />}
+      {tipo === "comunita" && pagina === "pazienti" && <Comunita.Pazienti soloLettura={operatore} reparto={reparto} />}
+      {tipo === "comunita" && pagina === "presenze" && <Comunita.Presenze reparto={reparto} />}
+      {tipo === "comunita" && pagina === "resoconti" && <Comunita.Resoconti reparto={reparto} />}
       {pagina === "cruscotto" && <CruscottoStruttura tipo={tipo} cfg={cfg} />}
       {pagina === "settimana" && <MenuStruttura cfg={cfg} />}
       {pagina === "fatture" && <FattureStruttura cfg={cfg} />}
@@ -228,7 +234,7 @@ export default function PortaleStruttura({ tipo, ruoloIniziale, onEsci, utente }
 /* ==================== cruscotto della struttura ==================== */
 function CruscottoStruttura({ tipo, cfg }) {
   const st = usaStato();
-  const c = COMMITTENTI.find((x) => x.id === cfg.committente);
+  const c = st.committenti.find((x) => x.id === cfg.committente);
   const scuola = tipo === "scuola";
 
   const totali = scuola
@@ -399,7 +405,8 @@ function FattureStruttura({ cfg }) {
                       <div style={{ display: "flex", gap: 8 }}>
                         <button className="btn linea piccolo" onClick={async () => {
                           const { generaProformaPDF } = await import("../proforma.js");
-                          generaProformaPDF([{ nome: cfg.nome, tipo: ETICHETTA_TIPO[cfg.committente] || "Struttura", pasti: f.pasti, mese: f.periodo }], 7.50);
+                          const c = st.committenti.find((x) => x.id === cfg.committente);
+                          generaProformaPDF([{ nome: cfg.nome, tipo: ETICHETTA_TIPO[cfg.committente] || "Struttura", pasti: f.pasti, mese: f.periodo, prezzo: c?.prezzoUnitario, ivaPercentuale: c?.ivaPercentuale }], 7.50);
                         }}>PDF</button>
                       </div>
                     </td>

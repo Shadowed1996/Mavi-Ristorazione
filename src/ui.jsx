@@ -31,6 +31,8 @@ export const Icone = {
   griglia: (p) => <Svg {...p}><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></Svg>,
   attenzione: (p) => <Svg {...p}><path d="M12 3l9.5 17H2.5z" /><path d="M12 10v4M12 17.5h.01" /></Svg>,
   edificio: (p) => <Svg {...p}><path d="M4 21V6l8-3 8 3v15" /><path d="M9 21v-5h6v5M8 9h.01M12 9h.01M16 9h.01M8 13h.01M12 13h.01M16 13h.01" /></Svg>,
+  utente: (p) => <Svg {...p}><circle cx="12" cy="8" r="4" /><path d="M4 20c0-3.9 3.6-6 8-6s8 2.1 8 6" /></Svg>,
+  matita: (p) => <Svg {...p}><path d="M4 20l1-4.5L15.5 5 19 8.5 8.5 19z" /><path d="M13.5 6.5L17 10" /></Svg>,
 };
 
 /* ============================ illustrazioni ============================ */
@@ -596,8 +598,14 @@ td:last-child{text-align:right;font-weight:700}
 }
 
 /* ============================ telaio dell'area ============================ */
-export function Telaio({ area, marchio, ruolo, utente, voci, pagina, setPagina, onEsci, children }) {
+export function Telaio({ area, marchio, ruolo, utente, chiaveUtente, voci, pagina, setPagina, onEsci, children }) {
   const st = usaStato();
+  const [profiloAperto, setProfiloAperto] = React.useState(false);
+  const chiave = chiaveUtente || utente.nome;
+  const ov = st.profili[chiave] || {};
+  const nomeVisto = ov.nome || utente.nome;
+  const inizialiViste = nomeVisto === utente.nome ? utente.iniziali
+    : nomeVisto.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase();
   return (
     <div data-area={area}>
       <div className="nastro">
@@ -622,10 +630,14 @@ export function Telaio({ area, marchio, ruolo, utente, voci, pagina, setPagina, 
               <button className={st.tema === "auto" ? "on" : ""} onClick={() => st.setTema("auto")}>Auto</button>
               <button className={st.tema === "scuro" ? "on" : ""} onClick={() => st.setTema("scuro")}>🌙</button>
             </div>
-            <div className="utente">
-              <div className="iniziali">{utente.iniziali}</div>
-              <div><div className="un">{utente.nome}</div><div className="ur">{utente.sotto}</div></div>
-            </div>
+            <button className="utente" style={{ cursor: "pointer", border: "none", background: "none", width: "100%", textAlign: "left" }}
+              onClick={() => setProfiloAperto(true)} title="Modifica profilo">
+              {ov.foto ? <div className="iniziali" style={{ padding: 0, overflow: "hidden" }}>
+                <img src={ov.foto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "inherit" }} />
+              </div> : <div className="iniziali">{inizialiViste}</div>}
+              <div><div className="un">{nomeVisto}</div><div className="ur">{utente.sotto}</div></div>
+              <Icone.matita size={13} style={{ marginLeft: "auto", opacity: 0.5, flexShrink: 0 }} />
+            </button>
             <button className="esci" onClick={onEsci}>Esci dal portale</button>
           </div>
         </aside>
@@ -638,7 +650,111 @@ export function Telaio({ area, marchio, ruolo, utente, voci, pagina, setPagina, 
           </button>
         ))}
       </nav>
+      {profiloAperto && (
+        <ModificaProfilo
+          chiave={chiave}
+          nomeBase={utente.nome}
+          onChiudi={() => setProfiloAperto(false)}
+        />
+      )}
     </div>
+  );
+}
+
+/* ==================== modifica del profilo personale ==================== */
+function ModificaProfilo({ chiave, nomeBase, onChiudi }) {
+  const st = usaStato();
+  const ov = st.profili[chiave] || {};
+  const [nome, setNome] = React.useState(ov.nome || nomeBase);
+  const [email, setEmail] = React.useState(ov.email || "");
+  const [telefono, setTelefono] = React.useState(ov.telefono || "");
+  const [password, setPassword] = React.useState("");
+  const [conferma, setConferma] = React.useState("");
+  const [errore, setErrore] = React.useState("");
+  const fileRef = React.useRef(null);
+
+  function salva(e) {
+    e.preventDefault();
+    if (password && password !== conferma) {
+      setErrore("Le due password non coincidono.");
+      return;
+    }
+    const patch = { nome: nome.trim() || nomeBase, email: email.trim(), telefono: telefono.trim() };
+    if (password) patch.password = password;
+    st.aggiornaProfilo(chiave, patch);
+    st.avvisa("Profilo aggiornato");
+    st.logga(patch.nome, "Profilo", "Dati personali modificati", password ? "Dati e password aggiornati" : "Email e telefono aggiornati", "modifica");
+    onChiudi();
+  }
+
+  function caricaFoto(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      st.aggiornaProfilo(chiave, { foto: reader.result });
+      st.avvisa("Foto profilo aggiornata");
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
+  return (
+    <Velo onChiudi={onChiudi}>
+      <div className="scelta-testa">
+        <div className="occhiello">Account</div>
+        <h2>Modifica profilo</h2>
+        <p>Nome, contatti, password e foto. Visibili solo a te in questa sessione dimostrativa.</p>
+      </div>
+      <div style={{ padding: "0 24px 16px", display: "flex", alignItems: "center", gap: 14 }}>
+        <div className="iniziali" style={{ width: 56, height: 56, fontSize: 20, padding: 0, overflow: "hidden", flexShrink: 0 }}>
+          {ov.foto
+            ? <img src={ov.foto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            : (nome || nomeBase).split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase()}
+        </div>
+        <input type="file" accept="image/*" ref={fileRef} style={{ display: "none" }} onChange={caricaFoto} />
+        <button type="button" className="btn linea piccolo" onClick={() => fileRef.current?.click()}>Cambia foto</button>
+        {ov.foto && (
+          <button type="button" className="btn linea piccolo" onClick={() => { st.aggiornaProfilo(chiave, { foto: null }); st.avvisa("Foto profilo rimossa"); }}>
+            Rimuovi
+          </button>
+        )}
+      </div>
+      <form onSubmit={salva} style={{ padding: "0 26px 20px" }}>
+        <div className="campo">
+          <label>Nome e cognome</label>
+          <input type="text" value={nome} onChange={(e) => setNome(e.target.value)} />
+        </div>
+        <div className="modulo-riga due">
+          <div className="campo">
+            <label>Email</label>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nome@esempio.it" />
+          </div>
+          <div className="campo">
+            <label>Telefono</label>
+            <input type="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="333 1234567" />
+          </div>
+        </div>
+        <div className="modulo-riga due">
+          <div className="campo">
+            <label>Nuova password</label>
+            <input type="password" value={password} onChange={(e) => { setPassword(e.target.value); setErrore(""); }} placeholder="Lascia vuoto per non cambiarla" />
+          </div>
+          <div className="campo">
+            <label>Conferma password</label>
+            <input type="password" value={conferma} onChange={(e) => { setConferma(e.target.value); setErrore(""); }} placeholder="Ripeti la nuova password" />
+          </div>
+        </div>
+        {errore && <div className="au-errore"><Icone.attenzione size={16} /> {errore}</div>}
+        <p style={{ fontSize: 11, color: "var(--muto)", margin: "4px 0 14px" }}>
+          In produzione il cambio password richiede quella attuale ed è cifrato lato server; qui resta dimostrativo.
+        </p>
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          <button type="button" className="btn linea" onClick={onChiudi}>Annulla</button>
+          <button type="submit" className="btn">Salva modifiche</button>
+        </div>
+      </form>
+    </Velo>
   );
 }
 

@@ -44,6 +44,7 @@ export default function Cliente({ onEsci, utente }) {
       marchio="Portale azienda cliente"
       ruolo="Admin cliente"
       utente={{ iniziali: utente ? utente.iniziali : "RM", nome: utente ? utente.nome : "Roberto Manzi", sotto: utente ? utente.committente : "Rossi Manifatture Spa" }}
+      chiaveUtente={utente ? utente.u : "admin.rossi"}
       voci={VOCI}
       pagina={pagina}
       setPagina={setPagina}

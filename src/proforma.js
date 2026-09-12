@@ -4,21 +4,33 @@
 const testoHtml = (v) =>
   String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
-export function generaProformaPDF(strutture, prezzoUnitario) {
-  const totPasti = strutture.reduce((s, r) => s + r.pasti, 0);
-  const imponibile = totPasti * prezzoUnitario;
-  const iva = imponibile * 0.10;
+/* strutture: [{ nome, tipo, mese, pasti, prezzo, ivaPercentuale }]. `prezzo`
+   e `ivaPercentuale` sono per riga, così ogni committente può avere un
+   listino diverso; prezzoUnitarioDefault resta come ripiego per chi chiama
+   con un solo prezzo per tutte le righe (compatibilità con le fatture di
+   RSA, comunità e scuola generate dal loro portale). */
+export function generaProformaPDF(strutture, prezzoUnitarioDefault) {
+  const righeCalc = strutture.map((s) => {
+    const prezzo = s.prezzo ?? prezzoUnitarioDefault ?? 0;
+    const iva = s.ivaPercentuale ?? 10;
+    const imponibileRiga = s.pasti * prezzo;
+    return { ...s, prezzo, ivaPercentuale: iva, imponibileRiga, ivaRiga: imponibileRiga * (iva / 100) };
+  });
+  const totPasti = righeCalc.reduce((s, r) => s + r.pasti, 0);
+  const imponibile = righeCalc.reduce((s, r) => s + r.imponibileRiga, 0);
+  const iva = righeCalc.reduce((s, r) => s + r.ivaRiga, 0);
   const totale = imponibile + iva;
+  const ivaMedia = imponibile > 0 ? Math.round((iva / imponibile) * 1000) / 10 : (righeCalc[0]?.ivaPercentuale ?? 10);
   const eur = (n) => n.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const oggi = new Date().toLocaleDateString("it-IT", { day: "2-digit", month: "long", year: "numeric" });
   const numDoc = "PRO-2026/" + String(Math.floor(Math.random() * 900) + 100);
 
-  const righe = strutture.map(s => `
+  const righe = righeCalc.map(s => `
     <tr>
       <td style="padding:10px 16px;border-bottom:1px solid #eee;font-size:13px;">${testoHtml(s.nome)}<br><span style="color:#999;font-size:11px;">${testoHtml(s.tipo)} — ${testoHtml(s.mese)}</span></td>
       <td style="padding:10px 16px;border-bottom:1px solid #eee;text-align:center;font-size:13px;">${testoHtml(s.pasti)}</td>
-      <td style="padding:10px 16px;border-bottom:1px solid #eee;text-align:right;font-size:13px;">€ ${eur(prezzoUnitario)}</td>
-      <td style="padding:10px 16px;border-bottom:1px solid #eee;text-align:right;font-size:13px;font-weight:600;">€ ${eur(s.pasti * prezzoUnitario)}</td>
+      <td style="padding:10px 16px;border-bottom:1px solid #eee;text-align:right;font-size:13px;">€ ${eur(s.prezzo)}</td>
+      <td style="padding:10px 16px;border-bottom:1px solid #eee;text-align:right;font-size:13px;font-weight:600;">€ ${eur(s.imponibileRiga)}</td>
     </tr>`).join("");
 
   const html = `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>Proforma ${numDoc}</title>
@@ -112,7 +124,7 @@ thead th:last-child{text-align:right;border-radius:0 6px 0 0}
 
 <div class="inv-totals"><table>
   <tr><td class="label">Subtotale</td><td class="val">€ ${eur(imponibile)}</td></tr>
-  <tr><td class="label">IVA 10%</td><td class="val">€ ${eur(iva)}</td></tr>
+  <tr><td class="label">IVA ${ivaMedia}%</td><td class="val">€ ${eur(iva)}</td></tr>
   <tr class="grand"><td style="padding:10px 16px">Totale</td><td style="padding:10px 16px;text-align:right">€ ${eur(totale)}</td></tr>
 </table></div>
 

@@ -6,26 +6,38 @@ import { usaStato } from "../store.jsx";
 const GIORNO_DEMO = "mercoledì";
 
 /* ==================== pagina Pazienti ==================== */
-function Pazienti({ soloLettura }) {
+function Pazienti({ soloLettura, reparto }) {
   const st = usaStato();
-  const [lista, setLista] = React.useState(PAZIENTI_COMUNITA);
+  const [lista, setLista] = React.useState(() =>
+    reparto ? PAZIENTI_COMUNITA.filter((p) => p.stanza === reparto) : PAZIENTI_COMUNITA
+  );
   const [scheda, setScheda] = React.useState(null);
   const [modulo, setModulo] = React.useState(null); // null | "nuovo" | paziente per modifica
   const [giornoVista, setGiornoVista] = React.useState("lunedì");
 
+  /* Nuovo paziente ed eliminazione mutano anche l'elenco condiviso
+     PAZIENTI_COMUNITA (stessa scorciatoia del catalogo piatti in store.jsx):
+     senza questo, un paziente creato qui non comparirebbe in Presenze,
+     Resoconti né nelle Etichette del portale MAVI. */
   function salva(dati) {
     if (dati.id) {
+      Object.assign(PAZIENTI_COMUNITA.find((p) => p.id === dati.id) || {}, dati);
       setLista((l) => l.map((p) => (p.id === dati.id ? { ...p, ...dati } : p)));
       st.avvisa(dati.nome + " aggiornato");
+      st.logga(dati.nome, "Responsabile", "Anagrafica paziente modificata", dati.nome + ", " + dati.stanza, "modifica");
     } else {
-      const nuovo = { ...dati, id: "p" + Date.now(), dal: "agosto 2026" };
+      const nuovo = { ...dati, id: "p" + Date.now(), dal: "settembre 2026" };
+      PAZIENTI_COMUNITA.push(nuovo);
       setLista((l) => [...l, nuovo]);
       st.avvisa(nuovo.nome + " aggiunto all'anagrafica");
+      st.logga(nuovo.nome, "Responsabile", "Nuovo paziente accettato", nuovo.nome + ", " + nuovo.stanza, "modifica");
     }
     setModulo(null);
   }
 
   function elimina(id) {
+    const idx = PAZIENTI_COMUNITA.findIndex((p) => p.id === id);
+    if (idx >= 0) PAZIENTI_COMUNITA.splice(idx, 1);
     setLista((l) => l.filter((p) => p.id !== id));
     st.avvisa("Paziente rimosso dall'anagrafica");
     setScheda(null);
@@ -51,6 +63,13 @@ function Pazienti({ soloLettura }) {
             la gestione dei pazienti tratta dati personali e richiede consenso e responsabilità precise.
           </span>
         </div>
+
+        {reparto && (
+          <div className="banner-dieta" style={{ background: "#eef3fa", borderColor: "#b8cce0", color: "#2c4a6c" }}>
+            <Icone.attenzione size={15} />
+            Stai vedendo solo i pazienti di <b>{reparto}</b>. Il responsabile vede tutte le strutture.
+          </div>
+        )}
 
         <div className="ospiti">
           {lista.map((p) => (
@@ -80,6 +99,7 @@ function Pazienti({ soloLettura }) {
           onModifica={soloLettura ? null : () => { setModulo(scheda); setScheda(null); }}
           onElimina={soloLettura ? null : () => elimina(scheda.id)}
           soloLettura={soloLettura}
+          puoDieta={!soloLettura || !!reparto}
         />
       )}
 
@@ -95,7 +115,7 @@ function Pazienti({ soloLettura }) {
 }
 
 /* ==================== scheda paziente ==================== */
-function SchedaPaziente({ paziente, onChiudi, onModifica, onElimina, soloLettura }) {
+function SchedaPaziente({ paziente, onChiudi, onModifica, onElimina, soloLettura, puoDieta }) {
   const [editing, setEditing] = React.useState(null);
   const [editVal, setEditVal] = React.useState("");
   const [modalitaModifica, setModalitaModifica] = React.useState(false);
@@ -151,7 +171,7 @@ function SchedaPaziente({ paziente, onChiudi, onModifica, onElimina, soloLettura
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <p style={{ flex: 1, minWidth: 200 }}>{paziente.note}</p>
           {paziente.tipo_dieta && <span className="tag-dieta terap">{paziente.tipo_dieta}</span>}
-          {!soloLettura && (
+          {puoDieta && (
             <button
               className={"btn piccolo" + (modalitaModifica ? "" : " linea")}
               onClick={() => { setModalitaModifica(!modalitaModifica); setEditing(null); }}
@@ -192,7 +212,7 @@ function SchedaPaziente({ paziente, onChiudi, onModifica, onElimina, soloLettura
       <div className="scelta-piede" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
         {!soloLettura && <button className="btn linea" style={{ color: "#d9534f" }} onClick={onElimina}>Elimina</button>}
         {!soloLettura && <button className="btn linea" onClick={onModifica}>Modifica anagrafica</button>}
-        {!soloLettura && <>
+        {puoDieta && <>
           <input type="file" accept=".xlsx,.xls" ref={fileRef} style={{ display: "none" }} onChange={async (e) => {
             const file = e.target.files?.[0];
             if (!file) return;
@@ -308,8 +328,11 @@ function ModuloPaziente({ paziente, onChiudi, onSalva }) {
           <input type="text" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="es. Mario Bianchi" />
         </div>
         <div className="campo">
-          <label>Stanza</label>
-          <input type="text" value={stanza} onChange={(e) => setStanza(e.target.value)} placeholder="es. Casa Aurora, stanza 6" />
+          <label>Stanza / struttura</label>
+          <input type="text" value={stanza} onChange={(e) => setStanza(e.target.value)} placeholder="es. Spazio Giovani SGA" />
+          <p style={{ fontSize: 11, color: "var(--muto)", margin: "4px 0 0" }}>
+            Determina anche il reparto: solo l'educatore assegnato a questo valore vedrà il paziente.
+          </p>
         </div>
         <div className="campo">
           <label>Note per la cucina</label>
@@ -334,26 +357,27 @@ function dietaVuota() {
 }
 
 /* ==================== pagina Presenze ==================== */
-function PresenzeComunita() {
+function PresenzeComunita({ reparto }) {
   const st = usaStato();
   const [pasto, setPasto] = React.useState("pranzo");
   const presenti = st.presenzeComunita;
+  const paz = reparto ? PAZIENTI_COMUNITA.filter((p) => p.stanza === reparto) : PAZIENTI_COMUNITA;
 
   const segnaPresente = (id) => st.setPresenzeComunita({ ...presenti, [id]: true });
   const segnaAssente = (id) => st.setPresenzeComunita({ ...presenti, [id]: false });
-  const totPresenti = PAZIENTI_COMUNITA.filter((p) => presenti[p.id] === true).length;
-  const totAssenti = PAZIENTI_COMUNITA.filter((p) => presenti[p.id] === false).length;
-  const totNonSegnati = PAZIENTI_COMUNITA.filter((p) => presenti[p.id] == null).length;
+  const totPresenti = paz.filter((p) => presenti[p.id] === true).length;
+  const totAssenti = paz.filter((p) => presenti[p.id] === false).length;
+  const totNonSegnati = paz.filter((p) => presenti[p.id] == null).length;
 
   return (
     <>
       <Intestazione
-        occhiello={"Mercoledì 16 settembre 2026, " + pasto}
+        occhiello={"Mercoledì 16 settembre 2026, " + pasto + (reparto ? " · " + reparto : "")}
         titolo="Presenze del giorno"
         sotto="Segna ogni paziente come presente o assente. La cucina prepara solo i pasti dei presenti"
         azioni={
           <button className="btn piccolo" disabled={totNonSegnati > 0} onClick={() => {
-            const trasmessi = PAZIENTI_COMUNITA
+            const trasmessi = paz
               .filter((p) => presenti[p.id] === true)
               .map((p) => ({
                 id: p.id,
@@ -384,10 +408,17 @@ function PresenzeComunita() {
           <div className="numero"><div className="n-lab">Etichette</div><div className="n-val">{totPresenti * 3}</div><div className="n-nota">una per portata</div></div>
         </div>
 
+        {reparto && (
+          <div className="banner-dieta" style={{ background: "#eef3fa", borderColor: "#b8cce0", color: "#2c4a6c" }}>
+            <Icone.attenzione size={15} />
+            Stai vedendo solo i pazienti di <b>{reparto}</b>. Il responsabile vede tutte le strutture.
+          </div>
+        )}
+
         <div className="pannello">
           <div className="pannello-testa">
             <h2>Pazienti della struttura</h2>
-            <span className="conta-piatti">{totPresenti} presenti, {totAssenti} assenti su {PAZIENTI_COMUNITA.length}</span>
+            <span className="conta-piatti">{totPresenti} presenti, {totAssenti} assenti su {paz.length}</span>
           </div>
           <div className="scorri">
             <table className="dati">
@@ -402,7 +433,7 @@ function PresenzeComunita() {
                 </tr>
               </thead>
               <tbody>
-                {PAZIENTI_COMUNITA.map((p) => {
+                {paz.map((p) => {
                   const dieta = p.dieta[GIORNO_DEMO]?.[pasto];
                   const stato = presenti[p.id]; // null, true, false
                   const cls = stato === true ? "pz-presente" : stato === false ? "pz-assente" : "pz-neutro";
@@ -569,15 +600,17 @@ function PazienteAccordion({ paziente, giorni }) {
 }
 
 /* ==================== resoconti per il gestore ==================== */
-function ResocontiComunita() {
+function ResocontiComunita({ reparto }) {
   const st = usaStato();
   const GIORNI_SETT_DEMO = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì"];
   const [vista, setVista] = React.useState("giorno"); // "giorno" o "mese"
+  const paz = reparto ? PAZIENTI_COMUNITA.filter((p) => p.stanza === reparto) : PAZIENTI_COMUNITA;
+  const trasmesso = paz.some((p) => st.presenzeComunita[p.id] != null) || st.presenzeTrasmesse.some((t) => paz.some((p) => p.id === t.id));
 
   async function esportaExcel() {
     try {
       const { scaricaExcel } = await import("../excel.js");
-      const righe = PAZIENTI_COMUNITA.map((p) => {
+      const righe = paz.map((p) => {
         const dieta = p.dieta["mercoledì"]?.pranzo;
         return {
           paziente: p.nome, stanza: p.stanza, tipoDieta: p.tipo_dieta || "Standard",
@@ -587,7 +620,7 @@ function ResocontiComunita() {
         };
       });
       const sett = [];
-      PAZIENTI_COMUNITA.forEach((p) => {
+      paz.forEach((p) => {
         GIORNI_SETT_DEMO.forEach((g) => {
           const d = p.dieta[g]?.pranzo;
           if (!d || (d.primo === "—" && d.secondo === "—")) return;
@@ -596,7 +629,8 @@ function ResocontiComunita() {
             contorno: splitPiatto(d?.contorno).nome });
         });
       });
-      await scaricaExcel("Resoconto_Comunita_Il_Ponte.xlsx", [
+      const nomeFile = "Resoconto_Comunita_Il_Ponte" + (reparto ? "_" + reparto.replace(/[^a-zA-Z0-9]+/g, "_") : "") + ".xlsx";
+      await scaricaExcel(nomeFile, [
         { nome: "Pranzo mercoledì", dati: righe, colonne: [
           { header: "Paziente", key: "paziente", width: 22 },
           { header: "Stanza", key: "stanza", width: 24 },
@@ -625,7 +659,7 @@ function ResocontiComunita() {
   return (
     <>
       <Intestazione
-        occhiello="Mercoledì 16 settembre 2026"
+        occhiello={"Mercoledì 16 settembre 2026" + (reparto ? " · " + reparto : "")}
         titolo="Resoconti"
         sotto="Cosa è stato trasmesso alla cucina MAVI, con dettaglio per giorno e per paziente"
         azioni={<>
@@ -636,15 +670,21 @@ function ResocontiComunita() {
         </>}
       />
       <div className="tela">
+        {reparto && (
+          <div className="banner-dieta" style={{ background: "#eef3fa", borderColor: "#b8cce0", color: "#2c4a6c", marginBottom: 16 }}>
+            <Icone.attenzione size={15} />
+            Stai vedendo solo i pazienti di <b>{reparto}</b>. Il responsabile vede tutte le strutture.
+          </div>
+        )}
         <div className="commuta" style={{ marginBottom: 20 }}>
           <button className={vista === "giorno" ? "on" : ""} onClick={() => setVista("giorno")}>Giorno</button>
           <button className={vista === "mese" ? "on" : ""} onClick={() => setVista("mese")}>Settimana</button>
         </div>
         <div className="numeri">
-          <div className="numero"><div className="n-lab">Pazienti presenti</div><div className="n-val">{PAZIENTI_COMUNITA.length}</div><div className="n-nota">su {PAZIENTI_COMUNITA.length} totali</div></div>
-          <div className="numero"><div className="n-lab">Portate totali</div><div className="n-val">{PAZIENTI_COMUNITA.length * 3}</div><div className="n-nota">primo + secondo + contorno</div></div>
-          <div className="numero"><div className="n-lab">Diete speciali</div><div className="n-val">{PAZIENTI_COMUNITA.filter(p => p.tipo_dieta && p.tipo_dieta !== "Standard").length}</div><div className="n-nota">con restrizioni</div></div>
-          <div className="numero"><div className="n-lab">Stato</div><div className="n-val" style={{ fontSize: 20 }}>Trasmesso</div><div className="n-nota">alle ore 15:48</div></div>
+          <div className="numero"><div className="n-lab">Pazienti</div><div className="n-val">{paz.length}</div><div className="n-nota">{reparto ? "in " + reparto : "in tutta la comunità"}</div></div>
+          <div className="numero"><div className="n-lab">Portate totali</div><div className="n-val">{paz.length * 3}</div><div className="n-nota">primo + secondo + contorno</div></div>
+          <div className="numero"><div className="n-lab">Diete speciali</div><div className="n-val">{paz.filter(p => p.tipo_dieta && p.tipo_dieta !== "Standard").length}</div><div className="n-nota">con restrizioni</div></div>
+          <div className="numero"><div className="n-lab">Stato</div><div className="n-val" style={{ fontSize: 20 }}>{trasmesso ? "Trasmesso" : "Da trasmettere"}</div><div className="n-nota">{trasmesso ? "presenze inviate a MAVI" : "vedi Presenze del giorno"}</div></div>
         </div>
 
         {vista === "giorno" ? (
@@ -659,7 +699,7 @@ function ResocontiComunita() {
                   <tr><th>Paziente</th><th>Tipo dieta</th><th>Primo</th><th>Secondo</th><th>Contorno</th></tr>
                 </thead>
                 <tbody>
-                  {PAZIENTI_COMUNITA.map((p) => {
+                  {paz.map((p) => {
                     const dieta = p.dieta["mercoledì"]?.pranzo;
                     return (
                       <tr key={p.id}>
@@ -684,9 +724,9 @@ function ResocontiComunita() {
           <div className="pannello">
             <div className="pannello-testa">
               <h2>Resoconto settimanale</h2>
-              <span className="conta-piatti">{PAZIENTI_COMUNITA.length} pazienti · clicca per espandere</span>
+              <span className="conta-piatti">{paz.length} pazienti · clicca per espandere</span>
             </div>
-            {PAZIENTI_COMUNITA.map((p) => (
+            {paz.map((p) => (
               <PazienteAccordion key={p.id} paziente={p} giorni={GIORNI_SETT_DEMO} />
             ))}
             <div className="pannello-piede">

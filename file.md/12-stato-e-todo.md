@@ -43,18 +43,15 @@ rimosso il 12 settembre 2026 perché interamente codice morto (vedi
 Anche `Landing.jsx` (vecchia pagina di scelta portale) e le schermate `Accesso`
 interne ai portali sono fuori dal flusso ma vive nel codice.
 
-## Difetti da correggere
+## Difetti corretti il 12 settembre 2026
 
-### `CONTRIBUTI_STRUTTURE` in `Fornitore.jsx` elenca ancora RSA e Scuola
+### `CONTRIBUTI_STRUTTURE` in `Fornitore.jsx` elencava ancora RSA e Scuola
 
-Nella Distinta di produzione, tabella "Contributi per struttura": l'array
-`CONTRIBUTI_STRUTTURE` (riga 79) ha righe per "RSA Villa Serena" e "Istituto
-Sant'Anna", mostrate come committenti serviti con dati dimostrativi (numero
-pasti duplicato da `aggComunita`). È una pagina raggiungibile dal login
-Cucina MAVI, quindi il perimetro RSA/Scuola torna visibile in demo, al
-contrario di quanto documentato in "Perimetro attuale" sopra. Non toccato:
-va deciso con il cliente/con Filippo se togliere le due righe o lasciarle
-come dato dimostrativo dichiarato.
+Risolto come effetto collaterale della riscrittura di "Nuovo committente":
+la tabella "Contributi per struttura" ora elenca `st.committenti` (lo stato
+condiviso, esteso da "Nuovo committente") invece di un array fisso a parte.
+RSA e Scuola non ci sono mai state in `st.committenti`, quindi sono sparite
+dalla tabella senza bisogno di una decisione separata.
 
 ## Prima della prossima demo
 
@@ -88,9 +85,39 @@ note di preparazione.
 
 ### Altri
 
-- Export PDF vero lato server. Oggi `proforma.js` produce HTML stampabile.
+- Export PDF vero lato server. Oggi `proforma.js` e `manifesto.js` producono
+  HTML stampabile.
 - Import Excel dell'anagrafica dipendenti.
 - Persistenza: oggi non esiste. Tutto vive in memoria, tranne il tema.
+
+## TO DO di Filippo del 12 settembre 2026 — fatto in questa sessione
+
+Sei punti lasciati in `Nuovo documento di testo.txt` sul Desktop, non
+versionato. Stato a fine sessione:
+
+- **Nuovo committente** — fatto. `ModaleCommittente` in `Modelli.jsx`,
+  `st.aggiungiCommittente`: compare in Committenti, Impostazioni, Fatturazione,
+  Produzione, Ordini in arrivo. Solo tipo Azienda/Comunità (perimetro attivo).
+- **Fatturazione diversificata per committente** — fatto. Prezzo e IVA per
+  committente in Impostazioni, proforma unica o separata per struttura.
+- **Permessi comunità** (coordinatore/tutore/educatore vs responsabile) —
+  fatto nella forma confermata da Filippo: reparto (`stanza` del paziente,
+  `reparto` dell'utente), non assegnazione per singolo paziente. Vedi
+  `08-portale-comunita.md`.
+- **Permessi e gestione utenti** in generale — parzialmente fatto: il campo
+  Reparto è comparso nel modale Utenti della Gestione portale MAVI, ma quella
+  tabella resta scollegata dal login reale (`UTENTI` in `data.js`), come tutto
+  il resto della Gestione utenti — è dimostrativa, non applicata. Un sistema
+  di permessi granulari configurabili da interfaccia (oltre al ruolo fisso)
+  resta fuori perimetro.
+- **Sezione fornitore, Ordini in arrivo da rivedere** — fatto, riscritta da
+  zero come drill-down per committente con dettaglio nominativo per l'azienda
+  (manifesto PDF per il cassone termico) e per la comunità. Aggiunta anche la
+  distinzione fra "generato il" e "per il giorno", segnalata da Filippo dopo
+  la prima versione.
+- **Edit profilo** — fatto. Icona matita sul blocco utente di ogni portale,
+  modale `ModificaProfilo` in `ui.jsx`: nome, email, telefono, password e foto
+  (tutto dimostrativo, vedi `05-ui-e-stile.md`).
 
 ## Sequenza di lavoro consigliata
 

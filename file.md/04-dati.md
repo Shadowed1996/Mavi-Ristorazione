@@ -100,11 +100,11 @@ settimana già iniziata.
 
 | Costante | Cosa contiene |
 |---|---|
-| `UTENTI` | i cinque profili di accesso, con struttura e ruolo |
+| `UTENTI` | i cinque profili di accesso, con struttura e ruolo. Chi ha `ruolo: "operatore"` in comunità ha anche `reparto` (es. "Spazio Giovani SGA"): decide quali pazienti vede e può modificare, vedi `08-portale-comunita.md` |
 | `ETICHETTE_STRUTTURA`, `ETICHETTE_RUOLO` | nomi leggibili per il login |
 | `trovaUtente(nome)` | risolve il nome utente, case insensitive |
 | `DIPENDENTI` | otto dipendenti Rossi Manifatture con matricola, reparto, dieta, stato, pasti |
-| `COMMITTENTI` | i due committenti attivi: azienda e comunità, con modello, unità, etichetta unità |
+| `COMMITTENTI` | i due committenti di partenza (azienda e comunità): modello, unità, etichetta unità, **più** anagrafica (indirizzo, P.IVA, referente), configurazione (cutoff, regola pasto, frutta, monoporzione) e listino (`prezzoUnitario`, `ivaPercentuale`, `pastiMeseDemo`) — un solo record, non tre dizionari separati come prima del 12 settembre 2026. È solo il seed: lo stato vero è `st.committenti` in `store.jsx`, esteso da "Nuovo committente" |
 | `MODELLI` | i tre modelli di ordinazione: `individuale`, `unita`, `presenze` |
 | `PAZIENTI_COMUNITA` | quattro pazienti con dieta settimanale completa |
 | `OSPITI`, `OSPITI_RSA` | ospiti RSA, fuori dal flusso attivo |
@@ -115,6 +115,11 @@ settimana già iniziata.
 ```js
 { id, nome, stanza, dal, note, tipo_dieta, dieta: { giorno: { pranzo: {...}, cena: {...} } } }
 ```
+
+`stanza` fa doppio servizio: è anche il **reparto/struttura** usato per
+filtrare la visibilità dell'educatore (vedi `08-portale-comunita.md`). Nei
+quattro pazienti demo vale "Spazio Giovani SGA" o "CSS Sole Luna, Desio", non
+un numero di stanza — riflette il dato reale, non un vincolo di nome.
 
 I giorni sono i sette di `GIORNI_SETT`, i pasti quelli di `PASTI_TIPO`
 (`pranzo`, `cena`). Ogni pasto ha `primo`, `secondo`, `contorno`; il trattino
@@ -151,12 +156,10 @@ fuori dieta *ogni* piatto (leggeva `piatto.m`) è stato corretto il 3 settembre
 | Costante | Cosa |
 |---|---|
 | `AGGREGATO` | base della distinta di produzione, il prototipo ci somma le scelte fatte in demo |
-| `FLUSSI_ORDINE` | ordini in arrivo con stato `ricevuto`, `chiuso`, `attesa` |
 | `GIRI` | due giri di consegna con furgone, autista, tappe |
-| `IMPOSTAZIONI_INIZIALI` | per committente: cutoff, regola pasto, listino, frutta, monoporzione |
 | `CICLICO` | le quattro settimane della rotazione menu |
 | `ORDINI_UNITA` | quantità dichiarate dalle case della comunità |
-| `ETICHETTE_AZIENDA_DEMO` | sette ordini confermati, per popolare le etichette |
+| `ETICHETTE_AZIENDA_DEMO` | sette ordini nominativi demo (nome, reparto, portate). Seed di `st.nominativiAzienda`, il manifesto di consegna nominativo di "Ordini in arrivo" (portale MAVI) |
 | `RESOCONTO_MENSILE` | dati aggregati di agosto 2026 con dettaglio giornaliero |
 | `FATTURE` | tre documenti, uno dei quali proforma |
 | `PREZZO_PASTO` (7,50 €), `QUOTA_DIPENDENTE` (3,20 €) | listino |
