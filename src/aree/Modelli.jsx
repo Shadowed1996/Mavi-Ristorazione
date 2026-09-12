@@ -311,7 +311,7 @@ export function ModelliServizio() {
         <div className="pannello">
           <div className="pannello-testa">
             <h2>Stato operativo di oggi</h2>
-            <span className="conta-piatti">mercoledì 2 settembre</span>
+            <span className="conta-piatti">mercoledì 16 settembre</span>
           </div>
           <div className="scorri">
             <table className="dati">

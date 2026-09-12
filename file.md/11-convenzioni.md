@@ -42,7 +42,7 @@ riga. Vanno rispettate, non allungate:
   **locale** al componente. Nello store va solo ciò che serve a più portali.
 - Le pagine di un portale sono funzioni nello stesso file, non file separati,
   a meno che il file non superi le dimensioni gestibili. `Fornitore.jsx` ha
-  scorporato in `Modelli.jsx` ed `Extra.jsx` per questo motivo.
+  scorporato in `Modelli.jsx` per questo motivo.
 - La navigazione è `pagina` + `setPagina` con render condizionale
   `{pagina === "x" && <X />}`. Non usare React Router per le pagine interne.
 - Le voci di menu sono array di triple `[chiave, etichetta, ComponenteIcona]`.

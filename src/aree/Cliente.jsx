@@ -66,8 +66,9 @@ function Cruscotto() {
 
   function confermaPrenotazione() {
     const nPortate = Object.keys(scelte).length;
+    Object.entries(scelte).forEach(([categoria, id]) => st.scegli(2, categoria, id));
+    st.conferma(2, { nome: prenota.n, ruolo: "Referente (per conto suo)" });
     st.avvisa("Prenotazione confermata per " + prenota.n + ": " + nPortate + " portate. Il dipendente riceverà la conferma via email.");
-    st.logga("Roberto Manzi", "Referente", "Prenotazione per conto di", prenota.n + ", " + nPortate + " portate", "ordine");
     setPrenota(null);
     setScelte({});
   }
@@ -77,7 +78,7 @@ function Cruscotto() {
       <Intestazione occhiello="Rossi Manifatture Spa" titolo="Cruscotto" sotto="Mensa aziendale, situazione aggiornata a oggi" />
       <div className="tela">
         <div className="numeri">
-          <div className="numero"><div className="n-lab">Dipendenti attivi</div><div className="n-val">7</div><div className="n-nota">su 8 utenze create</div></div>
+          <div className="numero"><div className="n-lab">Dipendenti attivi</div><div className="n-val">{DIPENDENTI.filter((d) => d.stato === "attivo").length}</div><div className="n-nota">su {DIPENDENTI.length} utenze create</div></div>
           <div className="numero"><div className="n-lab">Prenotazioni di domani</div><div className="n-val">22</div><div className="n-nota">su 28 possibili</div><div className="progresso"><i style={{ width: "79%" }} /></div></div>
           <div className="numero"><div className="n-lab">Pasti del mese</div><div className="n-val">143</div><div className="n-nota">media 20 al giorno</div></div>
           <div className="numero"><div className="n-lab">Diete speciali attive</div><div className="n-val">4</div><div className="n-nota">2 senza glutine, 2 vegetariane</div></div>
@@ -119,7 +120,7 @@ function Cruscotto() {
       {prenota && (
         <Velo onChiudi={() => setPrenota(null)} largo>
           <div className="scelta-testa">
-            <div className="occhiello">Prenotazione per conto di un dipendente · Mercoledì 2 settembre</div>
+            <div className="occhiello">Prenotazione per conto di un dipendente · Mercoledì 16 settembre</div>
             <h2>Prenota per {prenota.n}</h2>
             <p>{prenota.rep} · Matricola {prenota.m}</p>
           </div>

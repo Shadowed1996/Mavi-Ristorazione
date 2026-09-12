@@ -13,6 +13,42 @@ e il progetto adotta il [Versionamento Semantico](https://semver.org/lang/it/).
 
 ## [Non rilasciato]
 
+### Rimosso
+- `src/aree/Extra.jsx` (731 righe): codice morto, nessuno dei sette export era
+  più importato da alcun file. Riferimenti aggiornati in `CLAUDE.md`,
+  `README.md` e nei documenti tematici di `file.md/`.
+- CSS morto in `src/styles.css`: famiglie di classi non più referenziate da
+  alcun JSX (`.tessera*`, `.tv-*`, `.cassetto*`, `.piatto-card*`,
+  `.riga-piatto`, `.fase*`/`.fasi`/`.roadmap`, `.so-anteprima*`, `.comm-card*`,
+  `.cat-tab*`, `.filtri-colore`, `.scelta-riga*` e altre minori). File da 6159
+  a 5284 righe.
+
+### Corretto
+- `Fornitore.jsx`, componente `Produzione`: intestazione della tabella
+  "Quantità da produrre" allineata al corpo reale (solo Azienda e Comunità,
+  non più anche RSA e Scuola).
+- `Cliente.jsx`/`store.jsx`: "Prenota per lui" nel cruscotto del referente ora
+  scrive davvero l'ordine nel vassoio condiviso (`st.scegli`/`st.conferma`),
+  quindi compare nella distinta di produzione MAVI; il log riporta il
+  dipendente per cui si prenota invece del nome fisso "Antonella Rossi".
+- `Cliente.jsx`, cruscotto: il riquadro "Dipendenti attivi" è ora calcolato da
+  `DIPENDENTI` invece di essere un valore fisso.
+- `LEGGIMI.md`: il perimetro descritto (tre portali attivi, non cinque) e la
+  promessa di funzionamento offline (i font Fraunces/Inter arrivano da Google
+  Fonts) ora corrispondono al prototipo reale.
+- `ui.jsx`, componente `Illustrazione`: la scheda piatto (e ogni card) restava
+  vuota per la durata dei tentativi falliti sulle estensioni della foto
+  (`jpg`/`jpeg`/`png`/`webp`), prima di ripiegare sull'illustrazione. Ora
+  l'illustrazione è il primo render e la foto la sostituisce solo a
+  caricamento riuscito.
+- Settimana della demo aggiornata dal 31 agosto - 4 settembre al 14-18
+  settembre 2026 (aziende, `GIORNI` in `data.js`) e al 14-20 settembre per le
+  comunità (`Struttura.jsx`): era rimasta ferma alla settimana in cui è nato
+  il prototipo. Aggiornate tutte le intestazioni "Settimana 36"/date fisse nei
+  portali dipendente, referente, comunità e MAVI; l'indice di default di
+  "Menu della settimana" e "Griglia della settimana" ora punta alla settimana
+  reale invece che alla prima della lista.
+
 ### Aggiunto
 - Documentazione e file di controllo standard del repository: `README.md`,
   `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` e questo

@@ -2,9 +2,9 @@
 
 Documento vivo. Va riletto all'inizio di ogni nuova sessione e aggiornato alla fine di ogni task.
 
-**Ultimo aggiornamento**: 11 settembre 2026 — repository GitHub allineato agli altri progetti: documentazione standard, licenza, file di controllo, lockfile corretto, escape nei documenti stampabili (sezione 15).
+**Ultimo aggiornamento**: 12 settembre 2026 — scheda piatto senza foto per l'attesa sulle estensioni, settimana della demo ferma al 31 agosto: entrambe corrette (sezione 17).
 
-**Precedente**: 3 settembre 2026 — revisione del codice (sezione 14).
+**Precedente**: 12 settembre 2026 — revisione critica del prototipo e correzioni: tabella Produzione, "Prenota per lui", rimozione di `Extra.jsx`, pulizia CSS morto, documentazione cliente allineata (sezione 16).
 
 ---
 
@@ -380,3 +380,128 @@ La cartella `Desktop\Prototipo` sul PC non è un repository git e non coincide
 con quello pubblicato: il `MAVI_Stato_Progetto.md` lì dentro racconta una
 sezione Committenti con CRUD completo che su GitHub non c'è. Prima di lavorarci
 va deciso quale delle due versioni è quella buona.
+
+---
+
+## 16. Revisione critica del prototipo e correzioni — 12 settembre 2026
+
+Rilettura critica del prototipo su richiesta di Filippo, con verifica nel
+codice dei punti aperti elencati in `file.md/12-stato-e-todo.md` e nella
+sezione 14, più due incoerenze nuove nella documentazione cliente. Ogni punto
+è stato affidato a un task dedicato (in parallelo dove i file non si
+sovrapponevano), poi verificato con build e con un giro dal vivo in
+`npm run dev` su tutti i profili demo, tema scuro incluso.
+
+**Difetti corretti**
+
+- `Fornitore.jsx`, componente `Produzione`: la tabella "Quantità da produrre"
+  dichiarava quattro colonne struttura (Azienda, RSA, Comunità, Scuola) ma il
+  corpo ne calcolava solo due. Intestazione allineata al corpo reale (Azienda,
+  Comunità); anche un commento che citava un "aggregato RSA" mai calcolato è
+  stato corretto.
+- `Cliente.jsx` e `store.jsx`: "Prenota per lui" nel cruscotto del referente
+  scriveva solo un avviso e una riga di log, senza passare da `st.scegli` /
+  `st.conferma`. Ora la prenotazione entra davvero nel vassoio condiviso e
+  compare nella distinta di produzione MAVI. `conferma()` accetta un secondo
+  parametro opzionale con nome e ruolo di chi conferma (default invariato per
+  il portale dipendente), così il log registra il dipendente per cui si
+  prenota invece del nome fisso "Antonella Rossi". Verificato dal vivo: il log
+  operazioni mostra correttamente "Luca De Santis · Referente (per conto suo)
+  · Prenotazione confermata" e la distinta somma il pasto scelto.
+- `Cliente.jsx`, cruscotto: il riquadro "Dipendenti attivi" era interamente
+  hardcoded. `DIPENDENTI` ha già un campo `stato`, quindi ora sia il numeratore
+  (`filter stato === "attivo"`) sia il denominatore (`DIPENDENTI.length`) sono
+  calcolati dai dati.
+- `src/aree/Extra.jsx` (731 righe), confermato codice morto al 100% (nessuno
+  dei sette export importato da alcun file, incluso l'ex `PazientiRSA` per
+  RSA): eliminato. Aggiornati i riferimenti rimasti in `CLAUDE.md`, `README.md`,
+  `file.md/02-architettura.md`, `file.md/09-portale-mavi.md`,
+  `file.md/11-convenzioni.md`, `file.md/12-stato-e-todo.md`.
+- `LEGGIMI.md` (documento per il cliente): descriveva ancora cinque portali
+  (azienda, RSA, comunità, scuola, MAVI) mentre solo tre sono raggiungibili dal
+  login (`UTENTI` in `data.js` non ha voci per RSA/scuola, `App.jsx` non le
+  instrada). Corretto: tre portali attivi, con una nota che il codice di
+  RSA/scuola resta pronto per essere riattivato. Corretta anche la promessa
+  "funziona anche senza connessione": `index.html` carica i font Fraunces/Inter
+  da Google Fonts, quindi senza rete l'interfaccia resta usabile ma con i font
+  di sistema, non con quelli del progetto.
+- `styles.css`: pulizia del CSS morto rilevato nella revisione del 3 settembre
+  (`.tessera*`, `.tv-*`, `.cassetto*`, `.piatto-card*`, `.riga-piatto`,
+  `.fase*`/`.fasi`/`.roadmap` degli ex componenti `Cronoprogramma` e `Roadmap`
+  già rimossi da `Fornitore.jsx`, `.so-anteprima*`, `.comm-card*`, `.cat-tab*`,
+  `.filtri-colore`) più altre famiglie emerse durante il controllo
+  (`.scelta-riga*`, `.pastello-colore`, `.ricerca`/`.filtro-c` del cassetto,
+  `.piatti-grid`, `.piatto-info-btn`, gli override `[data-tema="scuro"]`
+  corrispondenti). Rimossi solo i selettori con zero occorrenze verificate in
+  `src/**/*.jsx`; dove un selettore raggruppato mescolava classi morte e vive
+  (es. `.tessere, .elenco { ... }` per lo scroll) è stata tolta solo la parte
+  morta. Regole vive interne a blocchi altrimenti morti sono state
+  riconosciute e mantenute (`.btn:disabled`, `.modulo-ospite`/`.mo-riga`
+  ricorrono due volte nel file, una delle quali dentro le sezioni
+  Cronoprogramma/Roadmap: entrambe le occorrenze restano perché il CSS le
+  applica comunque all'elemento live in `Modelli.jsx`). File passato da 6159 a
+  5284 righe; CSS nella build da 101,6 kB a 84,6 kB (gzip 18,3 → 15,9 kB).
+  Verificato dal vivo su Menu del giorno, tema scuro, cruscotto referente,
+  distinta di produzione e log operazioni: nessuna regressione visiva.
+
+**Punto lasciato aperto, per decisione**
+
+- `CONTRIBUTI_STRUTTURE` in `Fornitore.jsx` (tabella "Contributi per
+  struttura" della Distinta di produzione) elenca ancora "RSA Villa Serena" e
+  "Istituto Sant'Anna" come committenti serviti, con pasti demo duplicati da
+  `aggComunita`. È una pagina raggiungibile dal login Cucina MAVI, quindi il
+  perimetro RSA/Scuola torna visibile in demo nonostante sia fuori dal
+  perimetro attivo. Non toccato: va deciso se togliere le due righe o
+  lasciarle come dato dimostrativo dichiarato. Vedi
+  `file.md/12-stato-e-todo.md`.
+
+---
+
+## 17. Foto piatto vuota e settimana ferma — 12 settembre 2026
+
+Due segnalazioni di Filippo, verificate dal vivo in `npm run dev` (Chrome,
+profilo Antonella Rossi e poi tutti gli altri) prima e dopo la correzione.
+
+**Difetti corretti**
+
+- `ui.jsx`, componente `Illustrazione`: nella scheda piatto (e in ogni
+  `Tessera`) l'area della foto restava vuota — sfondo `--carta` a vista, nessun
+  errore in console — per tutta la durata dei quattro tentativi in sequenza
+  sulle estensioni (`jpg`→`jpeg`→`png`→`webp`), perché `public/foto/` non
+  contiene ancora fotografie reali (solo `LEGGIMI.txt`) e ogni tentativo
+  richiede un giro di rete che fallisce prima di passare al successivo. Solo a
+  cascata esaurita compariva l'illustrazione disegnata. Riprodotto radendo la
+  sessione (prima apertura della scheda piatto dopo il login, prima che il
+  browser mettesse in cache i 404) e confermato via `read_page`/JS: l'SVG di
+  fallback aveva dimensioni corrette, semplicemente non era ancora montato.
+  Corretto invertendo l'ordine: l'illustrazione è ora il primo render, la foto
+  (se `public/foto/<codice>.<estensione>` esiste ed è caricabile) la sostituisce
+  solo a caricamento riuscito, verificato con `new Image()` invece che con
+  `onError` sull'`<img>` visibile. Nessuna foto reale in `public/foto/`, quindi
+  in demo non cambia nulla a vista salvo la sparizione del vuoto iniziale;
+  quando il cliente aggiungerà le foto (vedi `public/foto/LEGGIMI.txt`)
+  appariranno con lo stesso miglioramento progressivo.
+- Settimana della demo (`GIORNI` in `data.js`, usata dal "Menu del giorno" del
+  portale dipendente e da quanto ne dipende) ferma al 31 agosto - 4 settembre
+  2026: con oggi 12 settembre, un'intera settimana lavorativa già passata.
+  Aggiornata alla settimana entrante su indicazione di Filippo — aziende
+  lunedì-venerdì 14-18 settembre, comunità tutta la settimana 14-20 settembre
+  — cioè la "Settimana 38" già presente come voce decorativa nei selettori
+  multi-settimana. Aggiornati in blocco: `GIORNI` e le sette etichette demo di
+  `ETICHETTE_AZIENDA_DEMO` in `data.js`; le intestazioni "Settimana 36"/date
+  fisse in `Dipendente.jsx`, `Fornitore.jsx`, `Cliente.jsx`, `Comunita.jsx`,
+  `Struttura.jsx`, `Modelli.jsx`, `store.jsx` (log operazioni) e `Landing.jsx`
+  (fuori dal flusso attivo, aggiornata comunque per coerenza). L'indice di
+  default di "Menu della settimana" (`Dipendente.jsx`) e "Griglia della
+  settimana"/"Composizione del menu" (`Fornitore.jsx`) puntava sempre alla
+  prima voce dell'elenco (`useState(0)`, "Settimana 35"): ora punta all'ultima
+  voce, quella coperta da `GIORNI`, così l'intestazione e i giorni "chiuso"
+  per cutoff tornano ad allinearsi con le colonne reali sotto. Non toccati,
+  deliberatamente fuori perimetro: il ciclo menu a 4 settimane `CICLICO` in
+  `data.js` (rotazione autonoma, non legata a "oggi") e le note "nel mese di
+  agosto" dei resoconti mensili (mese completo più recente, resta valido).
+  L'elenco decorativo delle quattro settimane navigabili (35-38) non è stato
+  esteso: oggi la settimana reale coincide con l'ultima della lista, quindi non
+  si può più scorrere in avanti; da estendere se si vuole tenere un margine.
+
+---

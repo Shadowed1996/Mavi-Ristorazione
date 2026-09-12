@@ -348,7 +348,7 @@ function PresenzeComunita() {
   return (
     <>
       <Intestazione
-        occhiello={"Mercoledì 2 settembre 2026, " + pasto}
+        occhiello={"Mercoledì 16 settembre 2026, " + pasto}
         titolo="Presenze del giorno"
         sotto="Segna ogni paziente come presente o assente. La cucina prepara solo i pasti dei presenti"
         azioni={
@@ -449,7 +449,7 @@ function EtichetteComunita() {
   return (
     <>
       <Intestazione
-        occhiello={"Mercoledì 2 settembre 2026, " + pasto}
+        occhiello={"Mercoledì 16 settembre 2026, " + pasto}
         titolo="Etichette pasto"
         sotto="Tre etichette per paziente: primo, secondo, contorno. Da stampare su etichetta adesiva"
         extra={
@@ -486,7 +486,7 @@ function EtichetteComunita() {
                   <div className="etichetta" key={portata}>
                     <div className="etichetta-testa">
                       <span className="marchio-t" style={{ fontSize: 14 }}>MAVI</span>
-                      <span className="et-data">mer 2 set 2026, {pasto}</span>
+                      <span className="et-data">mer 16 set 2026, {pasto}</span>
                     </div>
                     <div className="etichetta-corpo">
                       <span className="et-struttura">Comunità Il Ponte</span>
@@ -625,7 +625,7 @@ function ResocontiComunita() {
   return (
     <>
       <Intestazione
-        occhiello="Mercoledì 2 settembre 2026"
+        occhiello="Mercoledì 16 settembre 2026"
         titolo="Resoconti"
         sotto="Cosa è stato trasmesso alla cucina MAVI, con dettaglio per giorno e per paziente"
         azioni={<>

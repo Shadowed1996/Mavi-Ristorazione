@@ -363,30 +363,44 @@ export function Ingredienti({ testo }) {
 /* Ordine di preferenza dell'immagine di un piatto:
    1. fotografia caricata dal portale MAVI, resta in memoria per la sessione
    2. file presente nella cartella foto, nominato con il codice del piatto
-   3. illustrazione disegnata, sempre disponibile anche senza rete */
+   3. illustrazione disegnata, sempre disponibile anche senza rete
+   L'illustrazione è sempre il primo render: verificare se esiste una foto in
+   cartella richiede fino a quattro tentativi di rete in sequenza (una per
+   estensione), e finché quel giro non finisce l'area apparirebbe vuota. Si
+   passa alla foto solo a caricamento avvenuto (miglioramento progressivo). */
 const ESTENSIONI = ["jpg", "jpeg", "png", "webp"];
 
 export function Illustrazione({ id }) {
   const st = usaStato();
   const p = PIATTI[id];
   const caricata = st && st.foto ? st.foto[id] : null;
-  const [tentativo, setTentativo] = React.useState(0);
+  const [urlTrovato, setUrlTrovato] = React.useState(null);
 
-  React.useEffect(() => { setTentativo(0); }, [id, caricata]);
+  React.useEffect(() => {
+    setUrlTrovato(null);
+    if (caricata) return;
+    let annullato = false;
+    (async () => {
+      for (const estensione of ESTENSIONI) {
+        const url = `${import.meta.env.BASE_URL}foto/${id}.${estensione}`;
+        const trovato = await new Promise((risolvi) => {
+          const prova = new Image();
+          prova.onload = () => risolvi(true);
+          prova.onerror = () => risolvi(false);
+          prova.src = url;
+        });
+        if (annullato) return;
+        if (trovato) { setUrlTrovato(url); return; }
+      }
+    })();
+    return () => { annullato = true; };
+  }, [id, caricata]);
 
   if (caricata) {
     return <img className="foto-piatto" src={caricata} alt={p.n} loading="lazy" />;
   }
-  if (tentativo < ESTENSIONI.length) {
-    return (
-      <img
-        className="foto-piatto"
-        src={`${import.meta.env.BASE_URL}foto/${id}.${ESTENSIONI[tentativo]}`}
-        alt={p.n}
-        loading="lazy"
-        onError={() => setTentativo((t) => t + 1)}
-      />
-    );
+  if (urlTrovato) {
+    return <img className="foto-piatto" src={urlTrovato} alt={p.n} loading="lazy" />;
   }
   const dis = DISEGNI[p.ill] || DISEGNI.pasta;
   return (

@@ -444,11 +444,11 @@ export const VARIABILI = [
 ];
 
 export const GIORNI = [
-  { n: "Lunedì", d: "31 agosto", breve: "31 ago", chiuso: true },
-  { n: "Martedì", d: "1 settembre", breve: "1 set", chiuso: true },
-  { n: "Mercoledì", d: "2 settembre", breve: "2 set", chiuso: false },
-  { n: "Giovedì", d: "3 settembre", breve: "3 set", chiuso: false },
-  { n: "Venerdì", d: "4 settembre", breve: "4 set", chiuso: false },
+  { n: "Lunedì", d: "14 settembre", breve: "14 set", chiuso: true },
+  { n: "Martedì", d: "15 settembre", breve: "15 set", chiuso: true },
+  { n: "Mercoledì", d: "16 settembre", breve: "16 set", chiuso: false },
+  { n: "Giovedì", d: "17 settembre", breve: "17 set", chiuso: false },
+  { n: "Venerdì", d: "18 settembre", breve: "18 set", chiuso: false },
 ];
 
 /* menu = { variabili: [...5 giorni], fissi: {...} }, tenuto nello stato */
@@ -821,19 +821,19 @@ export function splitPiatto(testo) {
    ============================================================ */
 export const ETICHETTE_AZIENDA_DEMO = [
   { id: "ea01", nome: "Anna Ferrari", matricola: "MV0142", reparto: "Amministrazione", committente: "Rossi Manifatture Spa",
-    giorno: "mer 2 set 2026", pasto: "pranzo", primo: "Pasta al pomodoro", secondo: "Pollo grigliato", contorno: "Verdure grigliate" },
+    giorno: "mer 16 set 2026", pasto: "pranzo", primo: "Pasta al pomodoro", secondo: "Pollo grigliato", contorno: "Verdure grigliate" },
   { id: "ea02", nome: "Marco Bassi", matricola: "MV0143", reparto: "Produzione", committente: "Rossi Manifatture Spa",
-    giorno: "mer 2 set 2026", pasto: "pranzo", primo: "Risotto ai funghi", secondo: "Salmone al forno", contorno: "Insalata mista" },
+    giorno: "mer 16 set 2026", pasto: "pranzo", primo: "Risotto ai funghi", secondo: "Salmone al forno", contorno: "Insalata mista" },
   { id: "ea03", nome: "Sara Colombo", matricola: "MV0144", reparto: "Amministrazione", committente: "Rossi Manifatture Spa",
-    giorno: "mer 2 set 2026", pasto: "pranzo", primo: "Vellutata di zucca", secondo: "Tofu alla piastra", contorno: "Fagiolini a vapore" },
+    giorno: "mer 16 set 2026", pasto: "pranzo", primo: "Vellutata di zucca", secondo: "Tofu alla piastra", contorno: "Fagiolini a vapore" },
   { id: "ea04", nome: "Luca De Santis", matricola: "MV0145", reparto: "Logistica", committente: "Rossi Manifatture Spa",
-    giorno: "mer 2 set 2026", pasto: "pranzo", primo: "Lasagne alla bolognese", secondo: "Polpette al sugo", contorno: "Patate al forno" },
+    giorno: "mer 16 set 2026", pasto: "pranzo", primo: "Lasagne alla bolognese", secondo: "Polpette al sugo", contorno: "Patate al forno" },
   { id: "ea05", nome: "Giulia Moretti", matricola: "MV0146", reparto: "Logistica", committente: "Rossi Manifatture Spa",
-    giorno: "mer 2 set 2026", pasto: "pranzo", primo: "Insalata di farro", secondo: "Formaggio misto", contorno: "Insalata mista" },
+    giorno: "mer 16 set 2026", pasto: "pranzo", primo: "Insalata di farro", secondo: "Formaggio misto", contorno: "Insalata mista" },
   { id: "ea06", nome: "Chiara Vitali", matricola: "MV0148", reparto: "Commerciale", committente: "Rossi Manifatture Spa",
-    giorno: "mer 2 set 2026", pasto: "pranzo", primo: "Pasta al pomodoro", secondo: "Tofu alla piastra", contorno: "Verdure grigliate" },
+    giorno: "mer 16 set 2026", pasto: "pranzo", primo: "Pasta al pomodoro", secondo: "Tofu alla piastra", contorno: "Verdure grigliate" },
   { id: "ea07", nome: "Davide Orlando", matricola: "MV0149", reparto: "Produzione", committente: "Rossi Manifatture Spa",
-    giorno: "mer 2 set 2026", pasto: "pranzo", primo: "Risotto ai funghi", secondo: "Pollo grigliato", contorno: "Patate al forno" },
+    giorno: "mer 16 set 2026", pasto: "pranzo", primo: "Risotto ai funghi", secondo: "Pollo grigliato", contorno: "Patate al forno" },
 ];
 
 /* ============================================================

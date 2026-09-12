@@ -123,14 +123,14 @@ function MenuGiorno() {
   return (
     <>
       <Intestazione
-        occhiello="Settimana 36, 31 agosto · 4 settembre 2026"
+        occhiello="Settimana 38, 14 · 18 settembre 2026"
         titolo="Menu del giorno"
         sotto="Prenota giorno per giorno. Puoi modificare finché il giorno resta aperto."
       />
       <div className="tela">
         <div className="strumenti">
           <button className="nav-tondo" onClick={() => st.avvisa("Settimana precedente")}><Icone.sx size={16} /></button>
-          <div className="settimana">31 agosto · 4 settembre</div>
+          <div className="settimana">14 · 18 settembre</div>
           <button className="nav-tondo" onClick={() => st.avvisa("Settimana successiva")}><Icone.dx size={16} /></button>
         </div>
 
@@ -366,14 +366,15 @@ function Tessera({ id, cat, giorno, scelto, dietaAttiva, onScheda, onScegli }) {
 function MenuSettimana() {
   const st = usaStato();
   const [scheda, setScheda] = React.useState(null);
-  const [settIdx, setSettIdx] = React.useState(0);
-  const [portataFiltro, setPortataFiltro] = React.useState("tutte");
   const SETT = [
     { lab: "Settimana 35", range: "24 · 28 agosto" },
     { lab: "Settimana 36", range: "31 ago · 4 set" },
     { lab: "Settimana 37", range: "7 · 11 settembre" },
     { lab: "Settimana 38", range: "14 · 18 settembre" },
   ];
+  const SETT_ATTUALE = SETT.length - 1; // settimana coperta da GIORNI/menu reale
+  const [settIdx, setSettIdx] = React.useState(SETT_ATTUALE);
+  const [portataFiltro, setPortataFiltro] = React.useState("tutte");
   const s = SETT[settIdx];
 
   const catFiltrate = portataFiltro === "tutte"
@@ -418,7 +419,7 @@ function MenuSettimana() {
         <div className="ms-grid">
           {/* intestazione giorni */}
           {GIORNI.map((g) => (
-            <div className={"ms-giorno-head" + (g.chiuso && settIdx === 0 ? " chiuso" : "")} key={g.n}>
+            <div className={"ms-giorno-head" + (g.chiuso && settIdx === SETT_ATTUALE ? " chiuso" : "")} key={g.n}>
               <span className="ms-g-nome">{g.n}</span>
               <span className="ms-g-data">{g.breve}</span>
             </div>
@@ -430,7 +431,7 @@ function MenuSettimana() {
               <div className="ms-cat-label" style={{ gridColumn: "1 / -1" }}>{c.nome}</div>
               {GIORNI.map((g, gi) => {
                 const lista = menuDelGiorno(st.menu, gi, c.id);
-                const chiuso = g.chiuso && settIdx === 0;
+                const chiuso = g.chiuso && settIdx === SETT_ATTUALE;
                 return (
                   <div className={"ms-cella" + (chiuso ? " chiuso" : "")} key={g.n + c.id}>
                     {lista.length === 0 ? (
@@ -471,7 +472,7 @@ function Prenotazioni() {
   return (
     <>
       <Intestazione
-        occhiello="Settimana 36"
+        occhiello="Settimana 38"
         titolo="Le mie prenotazioni"
         sotto="Riepilogo della settimana in corso"
         azioni={<button className="btn linea piccolo" onClick={() => st.avvisa("Riepilogo scaricato, funzione dimostrativa")}><Icone.scarica size={16} /> Scarica riepilogo</button>}

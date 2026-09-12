@@ -92,7 +92,7 @@ Esporta anche `SceltaRuolo`, riusato da `Azienda.jsx`.
 Portale MAVI. Con la prop `diretto` salta la schermata di accesso interna,
 ed è così che lo usa `App.jsx`. Ha dodici voci di menu, l'elenco più lungo
 del prototipo. Alcune pagine sono definite nello stesso file, altre importate
-da `Modelli.jsx` ed `Extra.jsx`.
+da `Modelli.jsx`.
 
 ## Doppio accesso: una stranezza da conoscere
 

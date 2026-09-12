@@ -27,7 +27,7 @@ tutto lì:
 | Configurazione portale RSA e scuola | `Struttura.jsx` → `STRUTTURE` |
 | Ospiti RSA, nuclei, consistenze | `data.js` → `OSPITI`, `OSPITI_RSA` |
 | Presenze e fasce scolastiche | `data.js` → `PRESENZE_SCUOLA`, `FASCE_SCOLASTICHE` |
-| Pagine dedicate | `Extra.jsx` → `PazientiRSA`, `Modelli.jsx` → `OspitiRsa` |
+| Pagine dedicate | `Modelli.jsx` → `OspitiRsa` |
 | Ordini demo di RSA e scuola | `store.jsx` → `ORDINI_IN_CODA` |
 | Identità cromatica | `styles.css` → `[data-area="rsa"]`, `[data-area="scuola"]` |
 
@@ -35,42 +35,26 @@ Non sono raggiungibili dal login perché nessuna voce di `UTENTI` ha quelle
 strutture. **Non rimuoverli**: possono tornare come moduli separati e
 riattivarli costa una riga.
 
+`Extra.jsx`, che conteneva anche una vecchia pagina `PazientiRSA`, è stato
+rimosso il 12 settembre 2026 perché interamente codice morto (vedi
+`../MAVI_Stato_Progetto.md`): quel frammento RSA non esiste più, resta solo
+`OspitiRsa` in `Modelli.jsx`.
+
 Anche `Landing.jsx` (vecchia pagina di scelta portale) e le schermate `Accesso`
 interne ai portali sono fuori dal flusso ma vive nel codice.
 
 ## Difetti da correggere
 
-### Tabella "Quantità da produrre" con intestazioni sfasate
+### `CONTRIBUTI_STRUTTURE` in `Fornitore.jsx` elenca ancora RSA e Scuola
 
-In `Fornitore.jsx`, componente `Produzione`. Con filtro "tutte" l'intestazione
-dichiara quattro colonne struttura (Azienda, RSA, Comunità, Scuola) ma il corpo
-ne rende due, perché `perStruttura` ha solo `azienda` e `comunita`. Le celle
-non corrispondono alle intestazioni. Serve una decisione: aggiungere dati
-dimostrativi per RSA e scuola, oppure togliere quelle due colonne.
-
-### `Extra.jsx` è interamente codice morto
-
-Nessuno dei sette export è importato da alcun file di `src/`. Duplica in forma
-più vecchia pagine oggi attive altrove (`Giri`→`GiriConsegna`,
-`Etichette`→`EtichettePasto`, `ImpostazioniCommittente`→`ImpostazioniServizio`,
-`PazientiRSA`→`OspitiRsa`). Da eliminare o da ricollegare: è una decisione di
-prodotto, non un fix.
-
-### CSS morto in `styles.css`
-
-Intere famiglie di classi non sono più referenziate da alcun JSX: `.tessera*`,
-`.tv-*`, `.cassetto*`, `.piatto-card*`, `.riga-piatto`, `.fase*`, `.roadmap`,
-`.so-anteprima*`, `.comm-card`, `.cat-tab*`, `.filtri-colore`. Non rimosse
-perché intrecciate con regole vive nello stesso intorno (esempio: `.btn:disabled`
-sta dentro il blocco morto "Cronoprogramma"). Serve una passata dedicata con
-verifica visiva a `npm run dev` aperto.
-
-### "Prenota per lui" non alimenta ordini e distinta
-
-Nel cruscotto del referente la prenotazione per conto di un dipendente scrive
-solo un toast e una riga di log: non passa da `st.scegli` / `st.conferma`,
-quindi non compare nel vassoio né nella distinta di produzione. Va deciso con
-il cliente se collegarla.
+Nella Distinta di produzione, tabella "Contributi per struttura": l'array
+`CONTRIBUTI_STRUTTURE` (riga 79) ha righe per "RSA Villa Serena" e "Istituto
+Sant'Anna", mostrate come committenti serviti con dati dimostrativi (numero
+pasti duplicato da `aggComunita`). È una pagina raggiungibile dal login
+Cucina MAVI, quindi il perimetro RSA/Scuola torna visibile in demo, al
+contrario di quanto documentato in "Perimetro attuale" sopra. Non toccato:
+va deciso con il cliente/con Filippo se togliere le due righe o lasciarle
+come dato dimostrativo dichiarato.
 
 ## Prima della prossima demo
 

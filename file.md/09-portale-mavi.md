@@ -3,9 +3,8 @@
 Accento verde bosco (`data-area="fornitore"`). Utente demo: Cucina MAVI.
 È il portale più ricco, dodici voci di menu.
 
-Le pagine stanno in tre file: `Fornitore.jsx` (la maggior parte),
-`Modelli.jsx` (`ModelliServizio`, i componenti dei modelli di ordinazione) ed
-`Extra.jsx` (pagine accessorie).
+Le pagine stanno in due file: `Fornitore.jsx` (la maggior parte) e
+`Modelli.jsx` (`ModelliServizio`, i componenti dei modelli di ordinazione).
 
 ## Produzione — `Produzione`
 

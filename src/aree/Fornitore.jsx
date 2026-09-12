@@ -96,7 +96,7 @@ function Produzione() {
     return a;
   }, [st.ordini, st.confermati]);
 
-  /* aggregato RSA e comunità: contiamo le teste per dieta e supponiamo il menu del giorno */
+  /* aggregato comunità: contiamo le teste per dieta e supponiamo il menu del giorno */
   const contaUnita = (righe) =>
     righe.reduce((s, r) => s + Object.keys(r).filter((k) => k !== "unita").reduce((x, k) => x + r[k], 0), 0);
   const aggComunita = contaUnita(st.unita.comunita || []);
@@ -124,7 +124,7 @@ function Produzione() {
   return (
     <>
       <Intestazione
-        occhiello="Mercoledì 2 settembre 2026"
+        occhiello="Mercoledì 16 settembre 2026"
         titolo="Distinta di produzione"
         sotto="Documento unico, aggrega quello che arriva da tutte le strutture servite"
         azioni={<>
@@ -224,7 +224,7 @@ function Produzione() {
                   <th>Piatto</th>
                   <th>Colore</th>
                   {filtro === "tutte" && <>
-                    <th>Azienda</th><th>RSA</th><th>Comunità</th><th>Scuola</th>
+                    <th>Azienda</th><th>Comunità</th>
                   </>}
                   <th>Totale</th>
                 </tr>
@@ -273,13 +273,13 @@ function Settimana() {
   const [categoria, setCategoria] = React.useState("primo");
   const [cerca, setCerca] = React.useState("");
   const [stampa, setStampa] = React.useState(false);
-  const [settimanaIdx, setSettimanaIdx] = React.useState(0);
   const SETTIMANE = [
     "Settimana 35, 24 · 28 agosto 2026",
     "Settimana 36, 31 agosto · 4 settembre 2026",
     "Settimana 37, 7 · 11 settembre 2026",
     "Settimana 38, 14 · 18 settembre 2026",
   ];
+  const [settimanaIdx, setSettimanaIdx] = React.useState(SETTIMANE.length - 1); // settimana coperta da GIORNI/menu reale
 
   const fissi = st.menu.fissi[categoria] || [];
   const delGiorno = (st.menu.variabili[giorno] || {})[categoria] || [];
@@ -484,7 +484,7 @@ function GrigliaStampa({ onIndietro }) {
   return (
     <>
       <Intestazione
-        occhiello="Settimana 36" titolo="Griglia della settimana"
+        occhiello="Settimana 38" titolo="Griglia della settimana"
         sotto="Vista di sola lettura, pronta per la stampa e la bacheca"
         azioni={<>
           <button className="btn linea piccolo" onClick={onIndietro}><Icone.sx size={16} /> Torna a comporre</button>
@@ -978,7 +978,7 @@ function FlussiOrdine() {
   return (
     <>
       <Intestazione
-        occhiello="Mercoledì 2 settembre 2026"
+        occhiello="Mercoledì 16 settembre 2026"
         titolo="Ordini in arrivo"
         sotto="Chi ha trasmesso il pasto di oggi, quando, e cosa ha dichiarato"
         azioni={<>
@@ -1197,7 +1197,7 @@ function EtichettePasto() {
               <div className="numero"><div className="n-lab">Etichette totali</div><div className="n-val">{totale}</div><div className="n-nota">azienda + comunità</div></div>
               <div className="numero"><div className="n-lab">Azienda</div><div className="n-val">{azFiltrate.length}</div><div className="n-nota">anonime, solo piatto</div></div>
               <div className="numero"><div className="n-lab">Comunità</div><div className="n-val">{comFiltrate.length}</div><div className="n-nota">nominative, per paziente</div></div>
-              <div className="numero"><div className="n-lab">Pasto</div><div className="n-val" style={{ fontSize: 20 }}>Pranzo</div><div className="n-nota">mer 2 set 2026</div></div>
+              <div className="numero"><div className="n-lab">Pasto</div><div className="n-val" style={{ fontSize: 20 }}>Pranzo</div><div className="n-nota">mer 16 set 2026</div></div>
             </div>
 
             {/* ---- SEZIONE AZIENDA (etichette anonime, raggruppate per piatto) ---- */}

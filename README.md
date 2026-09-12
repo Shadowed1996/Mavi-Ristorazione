@@ -160,7 +160,6 @@ La sequenza consigliata per la demo è in [`file.md/13-demo.md`](file.md/13-demo
 | `aree/Comunita.jsx` | pagine della comunità: pazienti, diete, presenze, resoconti |
 | `aree/Fornitore.jsx` | portale della cucina MAVI, il modulo più esteso |
 | `aree/Modelli.jsx` | componenti condivisi fra i modelli di ordinazione |
-| `aree/Extra.jsx` | versioni più vecchie di pagine oggi attive altrove; nessun file le importa più |
 
 ## Configurazione
 

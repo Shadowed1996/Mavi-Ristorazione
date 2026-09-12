@@ -113,7 +113,7 @@ export function Provider({ children }) {
   const [logOperazioni, setLogOperazioni] = React.useState([
     { id: "s1", ora: "06:00", utente: "Sistema", ruolo: "Automatico", azione: "Backup giornaliero completato", dettaglio: "Database e file multimediali", tipo: "sistema" },
     { id: "s2", ora: "06:02", utente: "Sistema", ruolo: "Automatico", azione: "Menu ciclico: rotazione settimana", dettaglio: "Passaggio a settimana 2 del ciclo autunnale", tipo: "sistema" },
-    { id: "s3", ora: "07:00", utente: "Sistema", ruolo: "Automatico", azione: "Cutoff prenotazioni applicato", dettaglio: "Lunedì 31 ago e Martedì 1 set chiusi", tipo: "sistema" },
+    { id: "s3", ora: "07:00", utente: "Sistema", ruolo: "Automatico", azione: "Cutoff prenotazioni applicato", dettaglio: "Lunedì 14 e Martedì 15 set chiusi", tipo: "sistema" },
     { id: "l0", ora: "07:18", utente: "Marco Pallino", ruolo: "Operatore RSA", azione: "Ordine trasmesso", dettaglio: "34 pasti, RSA Villa Serena, Nucleo Glicine", tipo: "ordine" },
     { id: "l1", ora: "07:22", utente: "Elena Vergani", ruolo: "Operatore RSA", azione: "Ordine trasmesso", dettaglio: "27 pasti, RSA Villa Serena, Nucleo Magnolia", tipo: "ordine" },
     { id: "l2", ora: "07:45", utente: "Cucina MAVI", ruolo: "Operatore", azione: "Ordine approvato", dettaglio: "RSA Villa Serena, Nucleo Magnolia", tipo: "approvazione" },
@@ -215,10 +215,10 @@ export function Provider({ children }) {
   );
 
   const conferma = React.useCallback(
-    (giorno) => {
+    (giorno, chi = { nome: "Antonella Rossi", ruolo: "Dipendente" }) => {
       setConfermati((c) => ({ ...c, [giorno]: true }));
       avvisa("Prenotazione confermata, entra nella distinta di MAVI");
-      logga("Antonella Rossi", "Dipendente", "Prenotazione confermata", GIORNI[giorno]?.n + " " + GIORNI[giorno]?.breve + ", portale dipendente", "ordine");
+      logga(chi.nome, chi.ruolo, "Prenotazione confermata", GIORNI[giorno]?.n + " " + GIORNI[giorno]?.breve + ", portale dipendente", "ordine");
     },
     [avvisa, logga]
   );

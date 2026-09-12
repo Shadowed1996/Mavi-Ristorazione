@@ -116,7 +116,6 @@ PROTOTIPO/
       Comunita.jsx          pagine del portale comunità
       Fornitore.jsx         portale MAVI (cucina)
       Modelli.jsx           componenti condivisi fra modelli di ordinazione
-      Extra.jsx             pagine accessorie del portale MAVI
 ```
 
 ## 4. Documentazione tematica

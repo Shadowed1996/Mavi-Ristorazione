@@ -53,7 +53,7 @@ export default function Landing() {
           <div className="home-marchio">
             <Marchio sotto="Ristorazione" />
           </div>
-          <span className="home-data">Settimana 36 · 31 agosto 2026</span>
+          <span className="home-data">Settimana 38 · 14 settembre 2026</span>
         </header>
 
         <section className="home-apertura">

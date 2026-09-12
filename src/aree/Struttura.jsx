@@ -348,7 +348,7 @@ function MenuStruttura({ cfg }) {
       />
       <div className="tela">
         <div className="pannello">
-          <div className="pannello-testa"><h2>31 agosto · 4 settembre 2026</h2></div>
+          <div className="pannello-testa"><h2>14 · 20 settembre 2026</h2></div>
           <div className="elenco-voci">
             {["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì"].map((g, i) => (
               <div className="voce-semplice" key={g}>

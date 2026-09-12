@@ -8,8 +8,11 @@ non c'è database né salvataggio.
 ### Modo veloce, senza installare nulla
 
 Apri il file `dist/index.html` con un doppio clic. Funziona in qualsiasi
-browser, anche senza connessione e senza Node installato. È la via
-consigliata il giorno della presentazione.
+browser, senza Node installato, anche senza connessione. Senza rete restano
+solo i due caratteri scaricati da Google Fonts (Fraunces e Inter): il
+browser usa quelli di sistema al loro posto, l'interfaccia resta comunque
+utilizzabile. Se possibile, il giorno della presentazione conviene comunque
+avere una connessione per la resa grafica migliore.
 
 ### Modo sviluppo
 
@@ -25,22 +28,21 @@ Per ricompilare la versione statica: `npm run build`.
 
 ## Cosa contiene
 
-Cinque portali separati, ognuno con il proprio indirizzo, il proprio
-accesso e la propria identità cromatica. Chi entra da uno non vede
-nemmeno che esistono gli altri.
+Tre portali attivi in questa demo, ognuno con il proprio accesso e la
+propria identità cromatica. Chi entra da uno non vede nemmeno che esistono
+gli altri.
 
 1. Portale azienda, accento terracotta. Due ruoli, il dipendente che
    compone il proprio pasto e il referente che amministra.
-2. Portale RSA, accento verde ottanio. L'operatore di nucleo dichiara
-   quantità, diete e consistenze, il coordinatore controlla e fattura.
-   Comandi e cifre più grandi, perché si compila di corsa la mattina.
-3. Portale comunità, accento prugna. Educatore di turno e responsabile,
+2. Portale comunità, accento prugna. Educatore di turno e responsabile,
    ordine essenziale per casa.
-4. Portale scuola, accento blu. L'insegnante conferma i presenti della
-   classe, la segreteria amministra. Menu vidimato e grammature per
-   fascia d'età.
-5. Portale MAVI, accento verde bosco. Composizione dei menu, distinte di
+3. Portale MAVI, accento verde bosco. Composizione dei menu, distinte di
    produzione da tutte le strutture, catalogo, documenti e fatturazione.
+
+Il prototipo contiene anche il codice per un portale RSA (accento verde
+ottanio) e un portale scuola (accento blu), pensati sullo stesso schema:
+non sono raggiungibili da questa demo, restano pronti per essere riattivati
+come moduli separati quando servirà.
 
 Le credenziali di prova sono già precompilate in ogni schermata di
 accesso.
