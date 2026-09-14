@@ -102,9 +102,12 @@ leggibile ("Martedì 15 settembre"), la stessa ovunque: non comporla a mano.
 
 | Costante | Cosa contiene |
 |---|---|
-| `UTENTI` | i cinque profili di accesso, con struttura e ruolo. Chi ha `ruolo: "operatore"` in comunità ha anche `reparto` (es. "Spazio Giovani SGA"): decide quali pazienti vede e può modificare, vedi `08-portale-comunita.md` |
-| `ETICHETTE_STRUTTURA`, `ETICHETTE_RUOLO` | nomi leggibili per il login |
-| `trovaUtente(nome)` | risolve il nome utente, case insensitive |
+| `UTENTI` | seed di `st.utenti`: i cinque profili di prova con `id`, `attivo`, email, struttura e `ruolo` (id di un ruolo). Chi non ha `pazienti.tuttiReparti` usa `reparto` (es. "Spazio Giovani SGA") per vedere solo i propri pazienti, vedi `08-portale-comunita.md` |
+| `PERMESSI` | 68 voci `{ k, portale, gruppo, n }`: chiave (`<pagina>.vedi` per la voce di menu, `<pagina>.<azione>` per le azioni), portale `mavi` / `azienda` / `comunita`, gruppo = pagina, nome leggibile. Le chiavi sono uniche dentro un portale, non fra portali. `permessiDelPortale(p)` filtra |
+| `RUOLI_INIZIALI` | `{ id, nome, portale, vista?, bloccato?, permessi }`: `dipendente` e `referente` (portale `azienda`, `vista` sceglie il telaio), `operatore` (Educatore), `responsabile`, `fornitore` (`bloccato: true`, tutti i permessi MAVI). Riproducono il comportamento precedente alla matrice |
+| `ETICHETTE_STRUTTURA`, `ETICHETTE_RUOLO`, `ETICHETTE_PORTALE` | nomi leggibili; i nomi veri dei ruoli arrivano da `st.ruoli` |
+
+`trovaUtente` non è più qui: sta nello store, perché lavora su `st.utenti`.
 | `DIPENDENTI` | otto dipendenti Rossi Manifatture con matricola, reparto, dieta, stato, pasti |
 | `anagraficaAzienda(nome)` | matricola e reparto veri di chi ordina in azienda: prima `DIPENDENTI`, poi la `mansione` di `UTENTI` (Antonella Rossi è un profilo demo, non è in `DIPENDENTI`) |
 | `COMMITTENTI` | i due committenti di partenza (azienda e comunità): modello, unità, etichetta unità, **più** anagrafica (indirizzo, P.IVA, `cf`, `pec`, `codiceSdi`, referente), configurazione (cutoff, regola pasto, frutta, monoporzione), listino (`prezzoUnitario`, `ivaPercentuale`, `pastiMeseDemo`) e **condizioni di fatturazione** (`termini`, `metodoPagamento`, `regimeIva`, `dicituraIva`) — un solo record. È solo il seed: lo stato vero è `st.committenti` in `store.jsx`, esteso da "Nuovo committente". Demo: Rossi a 30 gg d.f. con IVA 10 %, Il Ponte a 60 gg d.f.f.m. senza IVA con dicitura |

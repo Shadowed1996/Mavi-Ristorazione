@@ -89,7 +89,12 @@ utente.
 19. **Modifica profilo** (icona matita accanto al nome, in fondo alla barra
     laterale, in qualsiasi portale) → cambiare foto e telefono.
 20. **Gestione portale** → Aspetto → provare il tema scuro. Utenti → aprire
-    Samuele Ferri, far notare il campo Reparto.
+    Samuele Ferri, far notare il campo Reparto. **Ruoli e permessi** → portale
+    Comunità, togliere "Trasmetti le presenze" a Educatore; poi "Nuovo ruolo"
+    Cuoco su MAVI con solo Produzione ed Etichette e un nuovo utente con quel
+    ruolo. Rientrare come Samuele Ferri: il bottone Trasmetti non c'è più,
+    senza rifare nulla; entrare con il nuovo utente: solo due voci di menu.
+    Provare a disattivare Cucina MAVI: rifiutato.
 21. **Log operazioni** → filtrare per Sistema.
 
 ## I momenti che colpiscono di più

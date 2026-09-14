@@ -174,9 +174,25 @@ ascolta `prefers-color-scheme` e si aggiorna al volo.
 | Nome | Cosa |
 |---|---|
 | `datiAziendali`, `setDatiAziendali` | ragione sociale, P.IVA, CF, indirizzo, contatti, PEC, IBAN, note proforma, più le **condizioni predefinite** per i nuovi committenti (`terminiDefault`, `metodoDefault`, `regimeIvaDefault`, `dicituraIvaDefault`). Si compilano nella Gestione portale e finiscono in testata di ogni documento stampabile, nell'intestazione Excel e nella proforma (IBAN, note) |
-| `utenti`, `setUtenti` | tabella utenti con CRUD dalla Gestione portale |
 | `notifiche`, `setNotifiche` | sei flag booleani |
 | `profili`, `aggiornaProfilo(chiave, patch)` | override del profilo personale per username (`chiave`), letti da `Telaio`/`ModificaProfilo` in `ui.jsx`. Si sommano a `UTENTI`, non lo sostituiscono mai |
+
+## Sessione, ruoli e permessi (dal 14 settembre 2026)
+
+| Nome | Cosa |
+|---|---|
+| `sessione` | l'utente collegato, riletto da `utenti` a ogni render: cambi di ruolo e disattivazioni si applicano subito |
+| `ruoloSessione` | il ruolo di `ruoli` con `portale` e `permessi`; `null` se il ruolo non esiste più |
+| `entra(utente)`, `esci()` | apertura e chiusura della sessione (prima erano in `App.jsx`) |
+| `puo(chiave)` | `true` se il ruolo della sessione ha quel permesso; ricalcolato a ogni modifica della matrice, senza rifare il login |
+| `trovaUtente(u)` | risolve lo username su `utenti`, scarta i disattivati (usata dal login) |
+| `loggaSessione(azione, dettaglio, tipo)` | `logga` con l'utente reale della sessione: lo usano store e portali al posto dei nomi cablati |
+| `ruoli`, `salvaRuolo(ruolo)`, `eliminaRuolo(id)`, `commutaPermesso(ruoloId, k)` | seed `RUOLI_INIZIALI`; un ruolo `bloccato` (Cucina MAVI) non si modifica né elimina; un ruolo assegnato a qualcuno non si elimina; nome univoco |
+| `utenti`, `salvaUtente(utente)`, `commutaAttivoUtente(id)` | seed `UTENTI`; username obbligatorio e univoco |
+
+Guardia anti chiusura: l'ultimo utente attivo con `gestione.ruoli` non si
+disattiva né cambia ruolo, e `gestione.ruoli` non si toglie all'ultimo ruolo
+che ce l'ha. Le chiavi dei permessi sono in `PERMESSI` (`04-dati.md`).
 
 ## Messaggi a schermo
 

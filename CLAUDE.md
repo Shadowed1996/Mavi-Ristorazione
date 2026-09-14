@@ -170,8 +170,10 @@ Login unico, password `dimostrazione` per tutti.
 |---|---|---|
 | Antonella Rossi | azienda | dipendente |
 | Roberto Manzi | azienda | referente |
-| Samuele Ferri | comunità | educatore (sola lettura sulle diete) |
+| Samuele Ferri | comunità | educatore (solo il proprio reparto, ruolo configurabile) |
 | Ilaria Gatti | comunità | responsabile |
-| Cucina MAVI | mavi | fornitore |
+| Cucina MAVI | mavi | fornitore (ruolo bloccato, non può chiudersi fuori) |
 
-Dettagli in `file.md/13-demo.md`.
+Ruoli e permessi si configurano da Cucina MAVI › Gestione portale › Ruoli e
+permessi e si applicano subito a voci di menu e azioni. Dettagli in
+`file.md/13-demo.md` e `file.md/09b-portale-mavi-gestione.md`.

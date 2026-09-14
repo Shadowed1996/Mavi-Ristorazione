@@ -2,9 +2,9 @@
 
 Documento vivo. Va riletto all'inizio di ogni nuova sessione e aggiornato alla fine di ogni task.
 
-**Ultimo aggiornamento**: 12 settembre 2026 — Etichette pasto riscritta per reggere molte strutture: raggruppata per Aziende/Comunità, una struttura alla volta con ricerca e stampa dedicata, pallino "etichette arrivate" (sezione 20).
+**Ultimo aggiornamento**: 14 settembre 2026 — TO DO MAVI in nove punti, lavorati da agenti paralleli su un clone git: `documento.js` e PDF veri ovunque, pranzo e cena indipendenti, fatturazione per committente con proforma a mano, piatti fissi, riepilogo del giorno del referente, Produzione per giorno e settimana, permessi e ruoli applicati (sezione 21).
 
-**Precedente**: 12 settembre 2026 — rifinitura del lavoro della sessione precedente: reparti gestibili con tendina al posto del testo libero, tolti i toggle frutta/monoporzione, "Rotazione menu" sostituita dai Reparti, CSS dell'IVA sistemato, Fatturazione riscritta una seconda volta a schede per struttura (sezione 19).
+**Precedente**: 12 settembre 2026 — Etichette pasto riscritta per reggere molte strutture: raggruppata per Aziende/Comunità, una struttura alla volta con ricerca e stampa dedicata, pallino "etichette arrivate" (sezione 20).
 
 ---
 
@@ -42,7 +42,10 @@ React 19 + Vite 8. Font Fraunces (serif, titoli) + Inter (sans). Sistema visivo 
 | `styles.css` | Sistema visivo completo + tema scuro |
 | `excel.js` | Export Excel professionale (intestazione MAVI, bordi, righe alternate, riga totale) |
 | `diete.js` | Template Excel per il dietista + parser import diete |
-| `proforma.js` | Generazione proforma stile WHMCS, apre in nuova tab |
+| `documento.js` | Impaginazione A4 condivisa dei documenti stampabili, `testoHtml`, `apriDocumento` con avviso se i popup sono bloccati |
+| `proforma.js` | Proforma di `st.proforme` con destinatario, condizioni e scadenza, su `documento.js` |
+| `manifesto.js` | Manifesto di consegna nominativo per giornata, riservato al fornitore |
+| `resoconto.js` | Resoconti del referente, della comunità e della struttura, distinta di produzione per giorno e settimana, riepilogo prenotazioni |
 | `Accesso.jsx` | Login unico con piatto SVG illustrato |
 | `App.jsx` | Instradamento per profilo |
 | `Preloader.jsx` | Animazione di apertura |
@@ -57,7 +60,7 @@ React 19 + Vite 8. Font Fraunces (serif, titoli) + Inter (sans). Sistema visivo 
 Login unico per tutti, password `dimostrazione`. Profili demo:
 - **Antonella Rossi** → azienda, dipendente
 - **Roberto Manzi** → azienda, referente
-- **Samuele Ferri** → comunità, educatore (sola lettura sulle diete)
+- **Samuele Ferri** → comunità, educatore (solo il proprio reparto; dal 14 settembre 2026 i ruoli sono configurabili da Gestione portale)
 - **Ilaria Gatti** → comunità, responsabile (può modificare diete e anagrafica)
 - **Cucina MAVI** → fornitore
 
@@ -782,5 +785,120 @@ i suoi pazienti (la ricerca a schermo non la restringe: si stampa sempre
 tutto quello che appartiene alla struttura), e aprire il dettaglio di Rossi
 Manifatture Spa faceva sparire il suo pallino lasciando intatto quello di
 Comunità Il Ponte.
+
+---
+
+## 21. TO DO MAVI in nove punti — 14 settembre 2026
+
+Filippo ha lasciato sul Desktop `TO DO MAVI.txt` con otto richieste del
+cliente, più una nona (Produzione) arrivata a lavoro in corso. Per la prima
+volta il lavoro è stato organizzato da un orchestratore con nove agenti
+separati, uno per punto, ciascuno in un proprio worktree git su un clone vero
+del repository (branch `todo-14-settembre`), in tre ondate: prima i punti
+indipendenti e la base comune dei documenti, poi quelli che la usano, infine
+permessi e Produzione. Ogni agente ha riportato branch, diff e criteri
+verificati; l'orchestratore ha fatto revisione, merge e documentazione.
+
+**Decisioni prese con Filippo prima di partire**: pranzo e cena come flag in
+anagrafica paziente con presenze separate per pasto; condizioni di
+fatturazione per committente e proforma create a mano da MAVI, niente più
+proforma unica; permessi completi e applicati davvero; il referente stampa
+il riepilogo nominativo della sua sola azienda.
+
+Cosa è cambiato, punto per punto:
+
+1. **CSS di email e telefono in Modifica profilo** — il selettore globale di
+   `styles.css` copriva solo `text` e `password`: aggiunti `email` e `tel`,
+   anche in `.impo-riga`.
+2. **Pranzo e cena indipendenti** — campo `pasti` sul paziente (Beatrice e
+   Zied solo pranzo), `presenzeComunita` per paziente e pasto,
+   `trasmettiPresenze` che deduplica per `id` + `pasto`: prima trasmettere la
+   cena cancellava il pranzo. Etichette con chiave per pasto, resoconti con
+   una tabella per pasto.
+3. **Fatturazione per committente e proforma manuali** — termini, metodo,
+   regime IVA con dicitura, CF/PEC/SDI sul committente; condizioni predefinite
+   in Gestione portale; `st.proforme` con `emettiProforma` e
+   `annullaProforma`; modale "Nuova proforma" con righe e condizioni
+   modificabili per il singolo documento; i portali cliente vedono solo le
+   proprie (prima `FATTURE` era condiviso: Il Ponte vedeva gli importi di
+   Rossi). Regola di scadenza "fine mese": giorni contati dall'ultimo giorno
+   del mese di emissione, da confermare con MAVI.
+4. **Permessi e ruoli** — `PERMESSI` (68 chiavi in tre portali) e
+   `RUOLI_INIZIALI` in `data.js`; sessione, `puo`, ruoli e utenti nello
+   store, con `loggaSessione` al posto dei nomi cablati nel log. Nuova tab
+   "Ruoli e permessi" con la matrice per portale; il modale Utenti lavora sui
+   ruoli veri e un utente creato lì entra davvero. Ogni voce di menu e ogni
+   azione è sotto una chiave (`usaVociPermesse` in `ui.jsx` sceglie la prima
+   pagina permessa). Con la matrice iniziale i cinque profili vedono
+   esattamente le voci di prima; togliere una spunta si applica senza rifare
+   il login; Cucina MAVI è un ruolo bloccato e l'ultimo amministratore non si
+   disattiva. Scelta non prevista dal brief: il campo `vista` sui ruoli del
+   portale azienda, che ha due telai (dipendente e referente) e un solo
+   portale.
+5. **Piatti fissi** — ogni voce del catalogo ha "Aggiungi al giorno" e
+   "Rendi fisso", anche dalla riga del giorno; sparito "Aggiungi il primo come
+   piatto fisso", che promuoveva d'ufficio il primo della lista filtrata.
+6. **Export PDF strutturato** — nuovo `documento.js`: un solo CSS A4,
+   intestazione ripetuta, mittente dai dati aziendali, apertura sincrona
+   dentro il gesto di click con avviso e download di ripiego se il browser
+   blocca la scheda. `proforma.js`, `manifesto.js`, `schedaPdf` ed `excel.js`
+   riscritti sopra; sparite le tre copie di `testoHtml`.
+7. **PDF finti** — `Resoconti › PDF` del referente mostrava solo un toast
+   (anche in `dist/`), come i resoconti comunità e struttura, il riepilogo del
+   dipendente e l'export del log: ora `resoconto.js` produce documenti veri
+   con gli stessi numeri dell'Excel (`calcolaResoconto` condivisa).
+8. **Riepilogo del giorno del referente** — `GIORNI` con data ISO,
+   `nominativiAzienda` con `indiceGiorno` e reparto vero,
+   `conferma(giorno, chi, piatti?)`. Corretto il bug di "Prenota per lui",
+   che sporcava il carrello di Antonella e leggeva gli ordini da una closure
+   vecchia (righe vuote o con i piatti sbagliati, doppioni con il seme).
+   Pannello "Ordini del giorno" con selettore dei cinque giorni e "Stampa
+   riepilogo" intestato `MARTEDÌ - 15/09/2026`; manifesto MAVI per giornata.
+9. **Produzione per giorno e per settimana** — richiesta testuale di Filippo:
+   "deve funzionare sia giorno per giorno sia settimana per settimana, così
+   stampano ogni volta il riepilogo da portare in cucina; deve apparire
+   sempre la data". Sette difetti chiusi come criteri obbligatori: data fissa,
+   somma di tutti i giorni confermati più `AGGREGATO`, comunità con menu fisso
+   e teste divise per tre, Excel e PDF finti, `window.print()` che nascondeva
+   la data, numeri fissi (diete "+ 4", "ultima chiusura" delle scuole), piè di
+   pagina fuorviante. Ora azienda dai nominativi del giorno più una stima
+   dichiarata, comunità dalle presenze trasmesse per giorno e pasto o stima
+   dalle diete, documento "Stampa / PDF" con data e filtro, Excel vero.
+
+**Metodo, cosa ha funzionato e cosa no**: gli agenti hanno lavorato senza
+aprire il server di sviluppo (il primo era stato interrotto proprio
+all'avvio di `npm run dev`), verificando con `npm run build`, lettura del
+codice e script Node sui moduli senza JSX. Nel clone mancava l'identità git e
+la scrittura di `git config` è stata rifiutata: i commit passano l'identità
+al singolo comando con l'indirizzo noreply GitHub. Due merge sono finiti su
+`origin` con la build rotta (marcatori di conflitto residui, import
+duplicato) e sono stati corretti subito dopo; da lì in poi ogni merge è stato
+fatto con `--no-commit`, build e `git grep` dei marcatori prima del commit.
+`file.md/09-portale-mavi.md` ha superato le 200 righe ed è stato diviso in
+due (`09b-portale-mavi-gestione.md`).
+
+**Da riprendere** (sessione chiusa per esaurimento, 14 settembre 2026):
+- branch `todo-14-settembre` su `origin`, PR in bozza verso `main`; i nove
+  punti sono integrati e la build è verde, `dist/` rigenerata;
+- **verifica end-to-end dal vivo non fatta**: gli agenti hanno verificato per
+  lettura del codice e script Node, mai nel browser. Da fare con i cinque
+  profili seguendo `file.md/13-demo.md` (in particolare: proforma manuale,
+  riepilogo del giorno, Produzione per giorno e settimana, matrice permessi,
+  popup bloccati);
+- **punto 10** (date fisse in Ordini in arrivo e pagine comunità): agente
+  lanciato, lavoro sul suo branch `worktree-agent-*` pushato se è arrivato a
+  committare; da unire con `merge --no-commit`, build e `git grep` dei
+  marcatori prima del commit;
+- `produzione.stampa` è collegato ai bottoni di Produzione (commit `d8e32af`);
+- documentazione già allineata per tutti i punti (`file.md/`, `CHANGELOG.md`,
+  `CLAUDE.md`), da rileggere dopo il punto 10.
+
+**Rimandi e cose da verificare con MAVI**: regola di scadenza "fine mese" e
+dicitura di esenzione IVA; se la stima di base di Produzione (che si somma
+alle conferme reali) va tenuta o se la conferma deve scalarla; le presenze
+comunità restano trasmesse solo per mercoledì (`GIORNO_DEMO`), negli altri
+giorni la comunità è per forza in stima; i quattro numeri in cima al cruscotto
+del referente restano fissi; il "Resoconto mensile" della struttura riporta la
+situazione corrente del cruscotto, lo dichiara in nota.
 
 ---

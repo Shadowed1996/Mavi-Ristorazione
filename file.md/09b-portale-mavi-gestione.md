@@ -123,14 +123,15 @@ con le righe del filtro attivo (dal 14 settembre 2026).
 
 ## Gestione portale — `GestionePortale`
 
-Sei tab:
+Sette tab (`TAB_GESTIONE`, ognuna sotto un permesso `gestione.*`):
 
 | Tab | Contenuto |
 |---|---|
 | Dati aziendali | ragione sociale, P.IVA, CF, indirizzo, telefono, email, PEC, IBAN. Finiscono in testata di ogni documento stampabile e nell'intestazione degli Excel |
 | Fatturazione | **condizioni predefinite per i nuovi committenti** (termini, metodo, regime IVA, dicitura), IBAN e note standard usati davvero nella proforma |
 | Aspetto | tre bottoni Chiaro / Scuro / Automatico |
-| Utenti | tabella con CRUD completo; il modale mostra nome, username, ruolo, struttura, email, telefono, i permessi assegnati automaticamente per ruolo e — solo per ruolo Educatore — il reparto assegnato (vedi `08-portale-comunita.md`) |
+| Utenti | `st.utenti`, **collegati al login** dal 14 settembre 2026: un utente creato qui entra davvero. Il modale (`ModaleUtente`) ha ruoli da `st.ruoli` filtrati per il portale della struttura, committenti da `st.committenti` più MAVI, username obbligatorio e univoco, reparto obbligatorio per chi non ha `pazienti.tuttiReparti` in una comunità, e mostra i permessi ricavati dal ruolo. Disattivare un utente gli impedisce il login; l'ultimo con `gestione.ruoli` non si disattiva |
+| Ruoli e permessi | matrice permessi × ruoli per portale (selettore Mavi / Azienda / Comunità), spunte disattivate sul ruolo bloccato Cucina MAVI; "Nuovo ruolo" con nome, portale, telaio (solo azienda) e copia da un ruolo esistente; elimina ruolo se nessun utente lo usa. Ogni voce di menu e ogni azione del portale è condizionata da una chiave (`st.puo`), applicata al volo |
 | Notifiche | sei toggle: promemoria, cutoff, ordine ricevuto, presenze mancanti, report mensile, digest email |
 | Backup | numeri e pulsanti backup manuale, export completo, ripristino |
 

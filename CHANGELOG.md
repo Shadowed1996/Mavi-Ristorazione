@@ -38,6 +38,13 @@ e il progetto adotta il [Versionamento Semantico](https://semver.org/lang/it/).
 - **Menu della settimana**: ogni piatto di ogni portata si rende fisso dal
   catalogo o dalla riga del giorno; tolto "Aggiungi il primo come piatto
   fisso".
+- **Permessi e ruoli applicati davvero**: `PERMESSI` (68 chiavi per i tre
+  portali) e `RUOLI_INIZIALI`; sessione, `puo(chiave)`, ruoli e utenti nello
+  store; tab "Ruoli e permessi" in Gestione portale con matrice per portale,
+  nuovo ruolo e copia; utenti creati da interfaccia che entrano davvero,
+  disattivati che non entrano; voci di menu e azioni di ogni portale
+  condizionate al volo; Cucina MAVI bloccata e guardia sull'ultimo
+  amministratore; log con l'utente reale della sessione.
 - **Produzione per giorno e per settimana**: navigazione fra le cinque
   giornate con la data sempre visibile, vista settimanale piatto × lun–ven,
   filtro per tipo, committente e pasto; azienda dai nominativi del giorno più

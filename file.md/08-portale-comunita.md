@@ -18,41 +18,38 @@ const DATA_DEMO   = "2026-09-16";   // per i titoli dei documenti stampabili
 
 ## Ruoli e permessi
 
-Rivisti il 12 settembre 2026: prima l'educatore era in sola lettura su tutto.
-Ora il modello è "ogni reparto ha il suo educatore, il responsabile li vede e
-coordina tutti", indicazione diretta di Filippo.
+Il modello è "ogni reparto ha il suo educatore, il responsabile li vede e
+coordina tutti" (Filippo, 12 settembre 2026). Dal 14 settembre 2026 non è più
+cablato: viene dalla matrice **Ruoli e permessi** di Gestione portale
+(`09b-portale-mavi-gestione.md`), con le chiavi del portale `comunita` in
+`PERMESSI` (`04-dati.md`). I due ruoli iniziali riproducono il comportamento
+precedente:
 
-| | Educatore (`operatore`) | Responsabile |
+| Permesso | Educatore (`operatore`) | Responsabile |
 |---|---|---|
-| Cruscotto | no | sì |
-| Pazienti | solo il proprio reparto | tutti i reparti |
-| Modifica dieta, carica dieta, scarica template | sì, solo per i pazienti del proprio reparto | sì, per tutti |
-| Elimina, modifica anagrafica, nuovo paziente | no | sì |
-| Presenze del giorno | solo il proprio reparto | tutti i reparti |
-| Resoconti | solo il proprio reparto | tutti i reparti |
-| Fatture | no | sì |
+| `cruscotto.vedi`, `fatture.vedi`, `fatture.pdf` | no | sì |
+| `pazienti.vedi`, `presenze.vedi`, `resoconti.vedi`, `documenti.vedi` | sì | sì |
+| `pazienti.tuttiReparti` | no: solo il proprio `reparto` | sì |
+| `pazienti.dieta` (modifica, carica, template) | sì, sui pazienti che vede | sì |
+| `pazienti.anagrafica` (nuovo, modifica, elimina) | no | sì |
+| `presenze.segna`, `presenze.trasmetti` | sì | sì |
+| `resoconti.export` | sì | sì |
+| `documenti.riservati` | no | sì |
 
 Il **reparto** è il valore del campo `stanza` del paziente (riusato come
 unità/struttura: nei quattro pazienti demo vale "Spazio Giovani SGA" o "CSS
-Sole Luna, Desio", non un numero di stanza). L'educatore lo riceve
-dall'anagrafica di accesso — `UTENTI` in `data.js`, campo `reparto` — e
-`Struttura.jsx` lo passa come prop `reparto` a `Comunita.Pazienti`,
-`.Presenze` e `.Resoconti`; quando `reparto` è assente (responsabile, o il
-vecchio flusso senza login reale) si vede tutto. `Comunita.jsx` non filtra
-altrove: `Etichette` resta irraggiungibile dal portale comunità (la versione
-operativa vive nel portale MAVI).
+Sole Luna, Desio"). Chi non ha `pazienti.tuttiReparti` lo riceve dal proprio
+record utente (`st.utenti`, campo `reparto`, modificabile dal modale Utenti di
+Gestione portale, che ora è collegato al login) e `Struttura.jsx` lo passa
+come prop `reparto` a `Comunita.Pazienti`, `.Presenze` e `.Resoconti`:
+`null` = tutti i reparti, stringa = solo quello, stringa vuota = nessun
+paziente con banner dedicato. `Etichette` resta irraggiungibile dal portale
+comunità (la versione operativa vive nel portale MAVI).
 
-`soloLettura={operatore}` continua a gestire solo Elimina/Modifica
-anagrafica/Nuovo paziente: **non è più lo stesso interruttore** che decide
-Modifica dieta. Quel permesso ha una prop dedicata, `puoDieta`, calcolata in
-`Pazienti` come `!soloLettura || !!reparto` (responsabile sempre, educatore
-sempre — perché la lista che vede è già filtrata al suo reparto) e passata a
-`SchedaPaziente`.
-
-Per assegnare un educatore a un reparto diverso dal demo, si cambia il campo
-`reparto` in `UTENTI` (login) — e, solo per coerenza visiva nell'amministrazione
-MAVI, il campo omonimo nel modale Utenti di `Gestione portale` (vedi
-`09-portale-mavi.md`), che resta comunque scollegato dal login reale.
+`soloLettura` (da `pazienti.anagrafica`) gestisce Elimina / Modifica
+anagrafica / Nuovo paziente; `puoDieta` (da `pazienti.dieta`) gestisce
+Modifica dieta, Carica dieta e Scarica template. Togliere una spunta dalla
+matrice si applica subito, senza rifare il login.
 
 ## Pazienti — `Pazienti`
 
