@@ -479,7 +479,7 @@ function Produzione() {
         occhiello={vista === "giorno" ? giornoDataIt(giornoCorrente.data) : ETICHETTA_SETTIMANA}
         titolo={"Distinta di produzione · " + etichettaVista}
         sotto="Quanto produrre, un giorno alla volta o sull'intera settimana, sommando quello che arriva dalle strutture servite"
-        azioni={<>
+        azioni={st.puo("produzione.stampa") && <>
           <button className="btn linea piccolo" onClick={scaricaDistinta}>
             <Icone.scarica size={16} /> Excel
           </button>
