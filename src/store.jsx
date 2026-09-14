@@ -1,7 +1,8 @@
 import React from "react";
 import {
   PIATTI, GIORNI, MENU_INIZIALE, COMMITTENTI, ORDINI_UNITA, PAZIENTI_COMUNITA,
-  ETICHETTE_AZIENDA_DEMO, PROFORME_INIZIALI, anagraficaAzienda, etichettaGiorno, regimeIva, scadenzaPagamento,
+  ETICHETTE_AZIENDA_DEMO, PROFORME_INIZIALI, RUOLI_INIZIALI, UTENTI,
+  anagraficaAzienda, etichettaGiorno, regimeIva, scadenzaPagamento,
 } from "./data.js";
 
 const Ctx = React.createContext(null);
@@ -145,13 +146,15 @@ export function Provider({ children }) {
     terminiDefault: "30gg", metodoDefault: "bonifico",
     regimeIvaDefault: "ordinaria", dicituraIvaDefault: "",
   });
-  const [utenti, setUtenti] = React.useState([
-    { id: "u1", nome: "Antonella Rossi", ruolo: "Dipendente", struttura: "Rossi Manifatture Spa", attivo: true },
-    { id: "u2", nome: "Roberto Manzi", ruolo: "Referente aziendale", struttura: "Rossi Manifatture Spa", attivo: true },
-    { id: "u3", nome: "Samuele Ferri", ruolo: "Educatore", struttura: "Comunità Il Ponte", reparto: "Spazio Giovani SGA", attivo: true },
-    { id: "u4", nome: "Ilaria Gatti", ruolo: "Responsabile", struttura: "Comunità Il Ponte", attivo: true },
-    { id: "u5", nome: "Cucina MAVI", ruolo: "Operatore cucina", struttura: "MAVI Ristorazione", attivo: true },
-  ]);
+  /* utenti gestiti: stessa anagrafica che alimenta il login (UTENTI è solo il
+     seed) e la tabella di Gestione portale › Utenti. `ruolo` è l'id di un
+     record di `ruoli`, da cui dipendono voci di menu e azioni visibili. */
+  const [utenti, setUtenti] = React.useState(UTENTI);
+  const [ruoli, setRuoli] = React.useState(RUOLI_INIZIALI);
+  /* la sessione tiene il solo nome utente: l'oggetto si rilegge da `utenti` a
+     ogni render, così cambiare ruolo o disattivare qualcuno mentre è dentro
+     si applica subito, senza rifare il login */
+  const [sessioneU, setSessioneU] = React.useState(null);
   const [notifiche, setNotifiche] = React.useState({
     promemoria: true, cutoff: true, ordineRicevuto: true,
     presenzeMancanti: true, reportMensile: true, emailDigest: false,
@@ -199,6 +202,35 @@ export function Provider({ children }) {
     setLogOperazioni((p) => [{ id, ora: nowHM(), utente, ruolo, azione, dettaglio, tipo }, ...p]);
   }, []);
 
+  /* ---------- sessione e permessi ---------- */
+  const sessione = React.useMemo(
+    () => (sessioneU ? utenti.find((x) => x.u === sessioneU && x.attivo !== false) || null : null),
+    [sessioneU, utenti]
+  );
+  const ruoloSessione = React.useMemo(
+    () => (sessione ? ruoli.find((r) => r.id === sessione.ruolo) || null : null),
+    [sessione, ruoli]
+  );
+  const permessiSessione = React.useMemo(
+    () => new Set(ruoloSessione ? ruoloSessione.permessi : []),
+    [ruoloSessione]
+  );
+  const puo = React.useCallback((chiave) => !!chiave && permessiSessione.has(chiave), [permessiSessione]);
+
+  const entra = React.useCallback((utente) => {
+    setSessioneU(utente.u);
+    if (utente.struttura !== "mavi") setCommittente(utente.struttura);
+  }, []);
+  const esci = React.useCallback(() => setSessioneU(null), []);
+
+  /* riga di log attribuita a chi sta davvero usando il portale, invece del
+     nome cablato che c'era prima in ogni chiamata */
+  const loggaSessione = React.useCallback((azione, dettaglio, tipo = "generico") => {
+    const nome = sessione ? sessione.nome : "Sistema";
+    const ruolo = ruoloSessione ? ruoloSessione.nome : (sessione ? sessione.mansione || "—" : "Automatico");
+    logga(nome, ruolo, azione, dettaglio, tipo);
+  }, [sessione, ruoloSessione, logga]);
+
   /* aggiorna per id E pasto invece di sovrascrivere: un educatore trasmette
      solo il proprio reparto, il responsabile può trasmettere il resto più
      tardi, e la cena non deve far perdere il pranzo già trasmesso */
@@ -211,8 +243,8 @@ export function Provider({ children }) {
     });
     const pasti = [...new Set(lista.map((r) => r.pasto).filter(Boolean))];
     const dettaglio = lista.length + " pazienti presenti" + (pasti.length ? ", " + pasti.join(" e ") : "");
-    logga("Comunità", "Operatore", "Presenze trasmesse", dettaglio, "presenze");
-  }, [logga]);
+    loggaSessione("Presenze trasmesse", dettaglio, "presenze");
+  }, [loggaSessione]);
 
   const commutaAssente = React.useCallback((id) => {
     setAssenti((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
@@ -237,9 +269,9 @@ export function Provider({ children }) {
       dicituraIva: datiAziendali.dicituraIvaDefault,
     };
     setCommittenti((p) => [...p, { ...base, ...dati, id }]);
-    logga("Cucina MAVI", "Admin", "Nuovo committente creato", dati.nome + " (" + dati.tipo + ")", "modifica");
+    loggaSessione("Nuovo committente creato", dati.nome + " (" + dati.tipo + ")", "modifica");
     return id;
-  }, [logga, datiAziendali]);
+  }, [loggaSessione, datiAziendali]);
   const aggiornaCommittente = React.useCallback((id, patch) => {
     setCommittenti((p) => p.map((c) => (c.id === id ? { ...c, ...patch } : c)));
   }, []);
@@ -256,6 +288,126 @@ export function Provider({ children }) {
     setMessaggi((m) => [...m, { id, testo }]);
     setTimeout(() => setMessaggi((m) => m.filter((x) => x.id !== id)), 3200);
   }, []);
+
+  /* ---------- ruoli, permessi e utenti gestiti ---------- */
+
+  /* chi può ancora aprire "Ruoli e permessi": se resta uno solo, il portale
+     non deve permettergli di chiudersi fuori da sé stesso */
+  const amministratori = React.useCallback((elencoUtenti, elencoRuoli) =>
+    elencoUtenti.filter((u) => {
+      if (u.attivo === false) return false;
+      const r = elencoRuoli.find((x) => x.id === u.ruolo);
+      return !!r && r.permessi.includes("gestione.ruoli");
+    }), []);
+
+  const trovaUtente = React.useCallback((nomeUtente) => {
+    const pulito = String(nomeUtente || "").trim().toLowerCase();
+    return utenti.find((x) => x.u === pulito && x.attivo !== false) || null;
+  }, [utenti]);
+
+  const salvaRuolo = React.useCallback((ruolo) => {
+    const esistente = ruoli.find((r) => r.id === ruolo.id);
+    if (esistente && esistente.bloccato) {
+      avvisa("Il ruolo " + esistente.nome + " è di sistema e non si modifica");
+      return false;
+    }
+    const nome = String(ruolo.nome || "").trim();
+    if (!nome) {
+      avvisa("Il ruolo ha bisogno di un nome");
+      return false;
+    }
+    if (ruoli.some((r) => r.id !== ruolo.id && r.nome.toLowerCase() === nome.toLowerCase())) {
+      avvisa("Esiste già un ruolo con questo nome");
+      return false;
+    }
+    const id = ruolo.id || "r" + Date.now();
+    const record = { ...ruolo, id, nome, permessi: [...new Set(ruolo.permessi || [])] };
+    setRuoli((p) => (esistente ? p.map((r) => (r.id === id ? { ...r, ...record } : r)) : [...p, record]));
+    loggaSessione(esistente ? "Ruolo modificato" : "Ruolo creato", nome + ", " + record.permessi.length + " permessi", "modifica");
+    return true;
+  }, [ruoli, avvisa, loggaSessione]);
+
+  const eliminaRuolo = React.useCallback((id) => {
+    const r = ruoli.find((x) => x.id === id);
+    if (!r) return false;
+    if (r.bloccato) {
+      avvisa("Il ruolo " + r.nome + " è di sistema e non si elimina");
+      return false;
+    }
+    const assegnati = utenti.filter((u) => u.ruolo === id);
+    if (assegnati.length) {
+      avvisa("Ci sono ancora " + assegnati.length + (assegnati.length === 1 ? " utente" : " utenti") + " con il ruolo " + r.nome);
+      return false;
+    }
+    setRuoli((p) => p.filter((x) => x.id !== id));
+    loggaSessione("Ruolo eliminato", r.nome, "eliminazione");
+    return true;
+  }, [ruoli, utenti, avvisa, loggaSessione]);
+
+  const commutaPermesso = React.useCallback((ruoloId, chiave) => {
+    const r = ruoli.find((x) => x.id === ruoloId);
+    if (!r) return false;
+    if (r.bloccato) {
+      avvisa("Il ruolo " + r.nome + " è di sistema, i suoi permessi non si toccano");
+      return false;
+    }
+    const aveva = r.permessi.includes(chiave);
+    if (aveva && chiave === "gestione.ruoli") {
+      const dopo = ruoli.map((x) => (x.id === ruoloId ? { ...x, permessi: x.permessi.filter((k) => k !== chiave) } : x));
+      if (amministratori(utenti, dopo).length === 0) {
+        avvisa("Non resterebbe nessuno a gestire ruoli e permessi");
+        return false;
+      }
+    }
+    setRuoli((p) => p.map((x) => (x.id === ruoloId
+      ? { ...x, permessi: aveva ? x.permessi.filter((k) => k !== chiave) : [...x.permessi, chiave] }
+      : x)));
+    return true;
+  }, [ruoli, utenti, avvisa, amministratori]);
+
+  const salvaUtente = React.useCallback((dati) => {
+    const nome = String(dati.nome || "").trim();
+    const username = String(dati.u || "").trim().toLowerCase();
+    if (!nome) { avvisa("Il nome è obbligatorio"); return false; }
+    if (!username) { avvisa("Il nome utente è obbligatorio: senza, la persona non entra"); return false; }
+    if (utenti.some((x) => x.u === username && x.id !== dati.id)) {
+      avvisa("Il nome utente " + username + " è già assegnato");
+      return false;
+    }
+    const esistente = utenti.find((x) => x.id === dati.id);
+    if (esistente && esistente.ruolo !== dati.ruolo) {
+      const dopo = utenti.map((x) => (x.id === dati.id ? { ...x, ruolo: dati.ruolo } : x));
+      if (amministratori(utenti, ruoli).length > 0 && amministratori(dopo, ruoli).length === 0) {
+        avvisa("È l'ultimo utente che può gestire ruoli e permessi: il ruolo non si cambia");
+        return false;
+      }
+    }
+    const iniziali = nome.split(" ").filter(Boolean).map((x) => x[0]).join("").slice(0, 2).toUpperCase();
+    const record = { ...dati, nome, u: username, iniziali: dati.iniziali || iniziali };
+    if (esistente) {
+      setUtenti((p) => p.map((x) => (x.id === dati.id ? { ...x, ...record } : x)));
+    } else {
+      setUtenti((p) => [...p, { attivo: true, ...record, id: "u" + Date.now() }]);
+    }
+    loggaSessione(esistente ? "Utente modificato" : "Utente creato", nome + " — " + username, "modifica");
+    return true;
+  }, [utenti, ruoli, avvisa, loggaSessione, amministratori]);
+
+  const commutaAttivoUtente = React.useCallback((id) => {
+    const u = utenti.find((x) => x.id === id);
+    if (!u) return false;
+    if (u.attivo !== false) {
+      const dopo = utenti.map((x) => (x.id === id ? { ...x, attivo: false } : x));
+      if (amministratori(dopo, ruoli).length === 0) {
+        avvisa("È l'ultimo utente che può gestire ruoli e permessi: non si disattiva");
+        return false;
+      }
+    }
+    setUtenti((p) => p.map((x) => (x.id === id ? { ...x, attivo: x.attivo === false } : x)));
+    avvisa(u.nome + (u.attivo !== false ? " disattivato" : " riattivato"));
+    loggaSessione(u.attivo !== false ? "Utente disattivato" : "Utente riattivato", u.nome, "modifica");
+    return true;
+  }, [utenti, ruoli, avvisa, loggaSessione, amministratori]);
 
   const coperte = React.useCallback(
     (giorno) => {
@@ -555,17 +707,17 @@ export function Provider({ children }) {
       scadenza: isoGiorno(scadenzaPagamento(dataEmissione, dati.termini)),
     };
     setProforme((p) => [proforma, ...p]);
-    logga("Cucina MAVI", "Operatore", "Proforma emessa",
+    loggaSessione("Proforma emessa",
       proforma.numero + ", " + (dati.nomeCommittente || proforma.committenteId) + ", " + (proforma.periodo || "periodo non indicato"), "generico");
     return proforma;
-  }, [proforme, logga]);
+  }, [proforme, loggaSessione]);
 
   const annullaProforma = React.useCallback((id) => {
     const p = proforme.find((x) => x.id === id);
     setProforme((prec) => prec.map((x) => (x.id === id ? { ...x, stato: "annullata" } : x)));
-    logga("Cucina MAVI", "Operatore", "Proforma annullata", p ? p.numero : id, "generico");
+    loggaSessione("Proforma annullata", p ? p.numero : id, "generico");
     avvisa("Proforma annullata, resta in elenco per tracciabilità");
-  }, [proforme, logga, avvisa]);
+  }, [proforme, loggaSessione, avvisa]);
 
   /* documenti condivisi, caricati da MAVI */
   const aggiungiDocumento = React.useCallback((doc) => {
@@ -583,7 +735,10 @@ export function Provider({ children }) {
     committente, setCommittente, committenti, aggiungiCommittente, aggiornaCommittente, unita, cambiaUnita, aggiungiOspitePresente, presenze, cambiaPresenze, assenti, commutaAssente, ospitiExtra, aggiungiOspite, presenzeTrasmesse, trasmettiPresenze,
     oraConferma, nominativiAzienda,
     presenzeComunita, setPresenzeComunita, logOperazioni, logga,
-    tema, setTema, datiAziendali, setDatiAziendali, utenti, setUtenti, notifiche, setNotifiche, profili, aggiornaProfilo,
+    tema, setTema, datiAziendali, setDatiAziendali, notifiche, setNotifiche, profili, aggiornaProfilo,
+    sessione, ruoloSessione, entra, esci, puo, loggaSessione, trovaUtente,
+    utenti, salvaUtente, commutaAttivoUtente,
+    ruoli, salvaRuolo, eliminaRuolo, commutaPermesso,
     ordiniTrasmessi, trasmettiOrdine, approvaOrdine, respingiOrdine, allergeniUtente, dietaUtente, setDietaUtente, avvisa, scegli, conferma,
     disdici, coperte, mancanti, cambiaMenu, ripristinaMenu, commutaAllergene,
   };

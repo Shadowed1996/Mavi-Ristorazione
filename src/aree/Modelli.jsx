@@ -297,9 +297,11 @@ export function ModelliServizio() {
         occhiello="Gestione servizio"
         titolo="Committenti"
         sotto="Anagrafica e stato operativo delle strutture servite"
-        azioni={<button className="btn piccolo" onClick={() => setNuovo(true)}>
-          <Icone.piu size={16} /> Nuovo committente
-        </button>}
+        azioni={st.puo("modelli.nuovo") && (
+          <button className="btn piccolo" onClick={() => setNuovo(true)}>
+            <Icone.piu size={16} /> Nuovo committente
+          </button>
+        )}
       />
       <div className="tela">
         <div className="numeri">
@@ -394,11 +396,13 @@ export function ModelliServizio() {
               </div>
               <div className="pannello-piede" style={{ display: "flex", gap: 10, justifyContent: "flex-end", alignItems: "center" }}>
                 <span style={{ flex: 1 }}>Prezzo, cutoff e condizioni di fatturazione si modificano da Impostazioni per committente.</span>
-                <button className="btn linea piccolo" onClick={() => { st.setCommittente(c.id); st.avvisa(c.nome + " impostato come committente attivo"); }}>Imposta attivo</button>
-                <button className="btn piccolo" style={attivo ? { color: "#d9534f", background: "transparent", border: "1px solid #d9534f" } : { background: "#5cb85c" }}
-                  onClick={() => { st.aggiornaCommittente(c.id, { attivo: !attivo }); st.avvisa(c.nome + (attivo ? " sospeso" : " riattivato")); }}>
-                  {attivo ? "Sospendi servizio" : "Riattiva servizio"}
-                </button>
+                {st.puo("modelli.attivo") && <>
+                  <button className="btn linea piccolo" onClick={() => { st.setCommittente(c.id); st.avvisa(c.nome + " impostato come committente attivo"); }}>Imposta attivo</button>
+                  <button className="btn piccolo" style={attivo ? { color: "#d9534f", background: "transparent", border: "1px solid #d9534f" } : { background: "#5cb85c" }}
+                    onClick={() => { st.aggiornaCommittente(c.id, { attivo: !attivo }); st.avvisa(c.nome + (attivo ? " sospeso" : " riattivato")); }}>
+                    {attivo ? "Sospendi servizio" : "Riattiva servizio"}
+                  </button>
+                </>}
               </div>
             </div>
           );

@@ -3,7 +3,10 @@ import {
   CATEGORIE, DIPENDENTI, GIORNI, PIATTI, PREZZO_PASTO, QUOTA_DIPENDENTE, RESOCONTO_MENSILE,
   etichettaGiorno, menuDelGiorno, ordinaProforme, testoCondizioni, totaliProforma,
 } from "../data.js";
-import { Accesso, DiscoColore, Documenti, Icone, Intestazione, Messaggi, PastigliaProforma, Telaio, Velo } from "../ui.jsx";
+import {
+  Accesso, DiscoColore, Documenti, Icone, Intestazione, Messaggi, NessunPermesso,
+  PastigliaProforma, Telaio, Velo, usaVociPermesse,
+} from "../ui.jsx";
 import { usaStato } from "../store.jsx";
 import { generaProformaPDF } from "../proforma.js";
 import { generaResocontoPDF } from "../resoconto.js";
@@ -19,12 +22,20 @@ const VOCI = [
 
 
 
+const PERMESSO_PAGINA = {
+  cruscotto: "cruscotto.vedi",
+  dipendenti: "dipendenti.vedi",
+  resoconti: "resoconti.vedi",
+  fatture: "fatture.vedi",
+  documenti: "documenti.vedi",
+};
+
 const eur = (n) => "€ " + n.toFixed(2).replace(".", ",");
 
 export default function Cliente({ onEsci, utente }) {
   const [dentro, setDentro] = React.useState(!!utente);
-  const [pagina, setPagina] = React.useState("cruscotto");
   const st = usaStato();
+  const [voci, pagina, setPagina] = usaVociPermesse(VOCI, PERMESSO_PAGINA);
 
   if (!dentro)
     return (
@@ -51,16 +62,17 @@ export default function Cliente({ onEsci, utente }) {
       ruolo="Admin cliente"
       utente={{ iniziali: utente ? utente.iniziali : "RM", nome: utente ? utente.nome : "Roberto Manzi", sotto: utente ? utente.committente : "Rossi Manifatture Spa" }}
       chiaveUtente={utente ? utente.u : "admin.rossi"}
-      voci={VOCI}
+      voci={voci}
       pagina={pagina}
       setPagina={setPagina}
       onEsci={() => (onEsci ? onEsci() : null)}
     >
+      {voci.length === 0 && <NessunPermesso onEsci={onEsci} />}
       {pagina === "cruscotto" && <Cruscotto utente={utente} />}
       {pagina === "dipendenti" && <Dipendenti />}
       {pagina === "resoconti" && <Resoconti />}
       {pagina === "fatture" && <Fatture />}
-      {pagina === "documenti" && <Documenti />}
+      {pagina === "documenti" && <Documenti soloPubblici={!st.puo("documenti.riservati")} />}
       <Messaggi lista={st.messaggi} />
     </Telaio>
   );
@@ -142,11 +154,13 @@ function Cruscotto({ utente }) {
           <div className="pannello-testa">
             <h2>Ordini del giorno</h2>
             <span className="pastiglia p-neu">{ordinati.length} {ordinati.length === 1 ? "pasto" : "pasti"}</span>
-            <div className="az">
-              <button className="btn piccolo" onClick={stampaRiepilogo}>
-                <Icone.stampa size={16} /> Stampa riepilogo
-              </button>
-            </div>
+            {st.puo("riepilogo.stampa") && (
+              <div className="az">
+                <button className="btn piccolo" onClick={stampaRiepilogo}>
+                  <Icone.stampa size={16} /> Stampa riepilogo
+                </button>
+              </div>
+            )}
           </div>
           <div className="scelta-giorno">
             <div className="giorni-tab">
@@ -203,10 +217,12 @@ function Cruscotto({ utente }) {
                     <td><b>{d.n}</b></td>
                     <td>{d.rep}</td>
                     <td>
-                      <button className="btn linea piccolo" disabled={GIORNI[giorno].chiuso}
-                        onClick={() => { setPrenota(d); setScelte({}); }}>
-                        Prenota per lui
-                      </button>
+                      {st.puo("prenota.perConto") && (
+                        <button className="btn linea piccolo" disabled={GIORNI[giorno].chiuso}
+                          onClick={() => { setPrenota(d); setScelte({}); }}>
+                          Prenota per lui
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -300,7 +316,7 @@ function Dipendenti() {
     <>
       <Intestazione
         occhiello="Anagrafica" titolo="Dipendenti" sotto="Utenze abilitate al servizio mensa"
-        azioni={<>
+        azioni={st.puo("dipendenti.modifica") && <>
           <button className="btn linea piccolo" onClick={() => st.avvisa("Importazione da file avviata")}>Importa da Excel</button>
           <button className="btn piccolo" onClick={() => st.avvisa("Nuovo dipendente creato")}>Aggiungi dipendente</button>
         </>}
@@ -323,9 +339,11 @@ function Dipendenti() {
                     </td>
                     <td>{d.stato === "attivo" ? <span className="pastiglia p-ok">attivo</span> : <span className="pastiglia p-att">sospeso</span>}</td>
                     <td>
-                      <button className="btn linea piccolo" onClick={() => st.avvisa("Password reimpostata, email inviata")}>
-                        Reimposta password
-                      </button>
+                      {st.puo("dipendenti.modifica") && (
+                        <button className="btn linea piccolo" onClick={() => st.avvisa("Password reimpostata, email inviata")}>
+                          Reimposta password
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -450,7 +468,7 @@ function Resoconti() {
     <>
       <Intestazione
         occhiello="Agosto 2026" titolo="Resoconti" sotto="Consumi per dipendente e dettaglio giornaliero dei piatti"
-        azioni={<>
+        azioni={st.puo("resoconti.export") && <>
           <button className="btn linea piccolo" onClick={esportaExcel}><Icone.scarica size={16} /> Excel</button>
           <button className="btn linea piccolo" onClick={esportaPDF}><Icone.stampa size={16} /> PDF</button>
           <button className="btn piccolo" onClick={esportaPaghe}><Icone.scarica size={16} /> Export paghe</button>
@@ -561,9 +579,11 @@ function Fatture() {
                       <td style={{ fontSize: 12, color: "var(--muto)" }}>{testoCondizioni(p)}</td>
                       <td><PastigliaProforma stato={p.stato} /></td>
                       <td>
-                        <button className="btn linea piccolo" onClick={() => {
-                          generaProformaPDF(p, { datiAziendali: st.datiAziendali, committente, avvisa: st.avvisa });
-                        }}>PDF</button>
+                        {st.puo("fatture.pdf") && (
+                          <button className="btn linea piccolo" onClick={() => {
+                            generaProformaPDF(p, { datiAziendali: st.datiAziendali, committente, avvisa: st.avvisa });
+                          }}>PDF</button>
+                        )}
                       </td>
                     </tr>
                   );
