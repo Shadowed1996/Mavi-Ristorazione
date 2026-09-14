@@ -1,15 +1,18 @@
 import React from "react";
 import {
-  AGGREGATO, ALLERGENI, CATEGORIE, splitPiatto, COLORI, GIORNI, GIRI, INGREDIENTI_DIETE, MARCATORI,
-  METODI_PAGAMENTO, PIATTI, REGIMI_IVA, TERMINI_PAGAMENTO, catalogoPerCategoria, etichettaGiorno, metodoPagamento,
-  ordinaProforme, regimeIva, scadenzaPagamento, sostituisce, terminiPagamento, testoCondizioni, totaliProforma,
+  ALLERGENI, CATEGORIE, splitPiatto, COLORI, DIPENDENTI, GIORNI, GIORNI_SETT, GIRI, INGREDIENTI_DIETE,
+  MARCATORI, METODI_PAGAMENTO, PASTI_TIPO, PAZIENTI_COMUNITA, PIATTI, REGIMI_IVA, TERMINI_PAGAMENTO,
+  catalogoPerCategoria, etichettaGiorno, menuDelGiorno, metodoPagamento, ordinaProforme, pastiDi,
+  portateServite, regimeIva, scadenzaPagamento, sostituisce, terminiPagamento, testoCondizioni,
+  totaliProforma,
 } from "../data.js";
 import {
   Accesso, DiscoColore, Documenti, Icone, Illustrazione, Intestazione, Messaggi,
   PastigliaProforma, Telaio, Velo, schedaPdf,
 } from "../ui.jsx";
 import { usaStato } from "../store.jsx";
-import { dataIt } from "../documento.js";
+import { dataIt, giornoDataIt } from "../documento.js";
+import { generaDistintaPDF, generaDistintaSettimanaPDF } from "../resoconto.js";
 import { generaProformaPDF } from "../proforma.js";
 import { generaManifestoConsegna } from "../manifesto.js";
 import { ModelliServizio } from "./Modelli.jsx";
@@ -81,80 +84,466 @@ export default function Fornitore({ diretto, onEsci }) {
   );
 }
 
-/* ==================== distinta di produzione, multi struttura ==================== */
+/* ==================== distinta di produzione, per giorno e per settimana ==================== */
+
+/* La settimana della demo è quella di GIORNI; si apre sul mercoledì, il giorno
+   su cui sono seminati gli ordini nominativi dell'azienda. */
+const GIORNO_APERTURA = 2;
+const ETICHETTA_SETTIMANA = "Settimana dal " + dataIt(GIORNI[0].data).slice(0, 5)
+  + " al " + dataIt(GIORNI[GIORNI.length - 1].data);
+
+/* Coperti stimati dell'azienda, uno per giornata. Finché i dipendenti non
+   confermano, la cucina deve comunque avere un ordine di grandezza su cui
+   lavorare: sono numeri deterministici, dichiarati sempre come stima e mai
+   confusi con un ordine trasmesso. */
+const COPERTI_STIMA_AZIENDA = [26, 24, 28, 25, 22];
+
+/* Peso di scelta per posizione nel menu del giorno: il primo piatto in elenco è
+   il più richiesto. I pesi si normalizzano sul numero di piatti realmente a
+   menu, così la somma delle porzioni resta esattamente il numero di coperti. */
+const PESI_SCELTA = [40, 26, 18, 10, 6];
+const PORTATE_STIMA = ["primo", "secondo", "contorno"];
+const NOME_CATEGORIA = CATEGORIE.reduce((o, c) => { o[c.id] = c.nome; return o; }, {});
+const ORDINE_CATEGORIA = CATEGORIE.map((c) => c.id);
+
+function ripartisci(totale, quanti) {
+  if (quanti <= 0 || totale <= 0) return [];
+  const pesi = Array.from({ length: quanti }, (unused, i) => PESI_SCELTA[i] || 4);
+  const somma = pesi.reduce((a, b) => a + b, 0);
+  const quote = pesi.map((p) => Math.floor((totale * p) / somma));
+  let resto = totale - quote.reduce((a, b) => a + b, 0);
+  for (let i = 0; resto > 0; i = (i + 1) % quanti) {
+    quote[i] += 1;
+    resto -= 1;
+  }
+  return quote;
+}
+
+function ordinaVoci(a, b) {
+  const posA = ORDINE_CATEGORIA.indexOf(a.categoria);
+  const posB = ORDINE_CATEGORIA.indexOf(b.categoria);
+  if (posA !== posB) return posA - posB;
+  if (b.totale !== a.totale) return b.totale - a.totale;
+  return a.nome.localeCompare(b.nome, "it");
+}
+
+/* dieta dichiarata in anagrafica dipendenti: "riservata" resta riservata, il
+   portale sa che c'è una prescrizione, non cosa contiene */
+function dietaDipendente(nome) {
+  const chiave = String(nome || "").trim().toLowerCase();
+  const d = DIPENDENTI.find((x) => x.n.toLowerCase() === chiave);
+  if (!d || d.dieta === "nessuna") return null;
+  if (d.dieta === "riservata") {
+    return { tipoDieta: "Riservata", note: "Prescrizione non visibile al portale, chiedere al referente aziendale" };
+  }
+  return { tipoDieta: d.dieta.charAt(0).toUpperCase() + d.dieta.slice(1), note: "" };
+}
+
+/* Distinta di una giornata: una voce per piatto con il contributo di ogni
+   committente, i coperti per committente e le diete particolari delle persone
+   in elenco. `pasti` sono i pasti chiesti alla comunità (pranzo, cena o
+   entrambi); l'azienda serve solo il pranzo.
+   L'azienda somma le righe nominative già confermate per quel giorno e una
+   stima deterministica sul menu del giorno; la comunità usa le presenze
+   trasmesse per quel giorno e pasto e, se non ce ne sono, stima dalle diete
+   dei pazienti censiti. */
+function distintaDelGiorno({ committenti, indiceGiorno, menu, nominativi, presenze, pasti, idPerNome }) {
+  const voci = new Map();
+  const contributi = new Map();
+  const diete = new Map();
+
+  const contributo = (id) => {
+    if (!contributi.has(id)) contributi.set(id, { coperti: 0, porzioni: 0, trasmesso: false, stima: false });
+    return contributi.get(id);
+  };
+
+  const aggiungi = (testo, categoria, idCommittente, quanti) => {
+    const nome = splitPiatto(testo).nome;
+    if (!nome || nome === "—" || !(quanti > 0)) return;
+    const chiave = categoria + "|" + nome.toLowerCase();
+    if (!voci.has(chiave)) {
+      const idPiatto = idPerNome.get(nome.toLowerCase()) || "";
+      voci.set(chiave, {
+        chiave, nome, categoria, idPiatto,
+        colore: idPiatto ? PIATTI[idPiatto].col : "",
+        per: {}, totale: 0,
+      });
+    }
+    const voce = voci.get(chiave);
+    voce.per[idCommittente] = (voce.per[idCommittente] || 0) + quanti;
+    voce.totale += quanti;
+    contributo(idCommittente).porzioni += quanti;
+  };
+
+  const azienda = committenti.find((c) => c.id === "azienda");
+  if (azienda) {
+    const confermati = nominativi.filter((n) => n.indiceGiorno === indiceGiorno);
+    confermati.forEach((r) => {
+      aggiungi(r.primo, "primo", azienda.id, 1);
+      aggiungi(r.secondo, "secondo", azienda.id, 1);
+      aggiungi(r.contorno, "contorno", azienda.id, 1);
+      aggiungi(r.unico, "unico", azienda.id, 1);
+      const dieta = dietaDipendente(r.nome);
+      if (dieta) {
+        diete.set("az|" + r.nome, {
+          committente: azienda.id, nome: r.nome,
+          reparto: r.reparto || azienda.nome, tipoDieta: dieta.tipoDieta, note: dieta.note,
+        });
+      }
+    });
+    if (confermati.length) {
+      contributo(azienda.id).coperti += confermati.length;
+      contributo(azienda.id).trasmesso = true;
+    }
+    const stimati = COPERTI_STIMA_AZIENDA[indiceGiorno] || 0;
+    if (stimati > 0) {
+      PORTATE_STIMA.forEach((categoria) => {
+        const lista = menuDelGiorno(menu, indiceGiorno, categoria).filter((id) => PIATTI[id]);
+        ripartisci(stimati, lista.length).forEach((q, i) => aggiungi(PIATTI[lista[i]].n, categoria, azienda.id, q));
+      });
+      contributo(azienda.id).coperti += stimati;
+      contributo(azienda.id).stima = true;
+    }
+  }
+
+  const comunita = committenti.find((c) => c.id === "comunita");
+  if (comunita) {
+    const giornoSett = GIORNI_SETT[indiceGiorno] || "";
+    const segnaDieta = (chiave, p) => {
+      if (!p.tipo_dieta || p.tipo_dieta === "Standard") return;
+      diete.set(chiave, {
+        committente: comunita.id, nome: p.nome, reparto: p.stanza,
+        tipoDieta: p.tipo_dieta, note: p.note || "",
+      });
+    };
+    pasti.forEach((pasto) => {
+      const trasmesse = presenze.filter((r) => r.giorno === giornoSett && r.pasto === pasto);
+      if (trasmesse.length) {
+        trasmesse.forEach((r) => {
+          portateServite(r.dieta).forEach((categoria) => aggiungi(r.dieta[categoria], categoria, comunita.id, 1));
+          segnaDieta("com|" + r.id, r);
+        });
+        contributo(comunita.id).coperti += trasmesse.length;
+        contributo(comunita.id).trasmesso = true;
+        return;
+      }
+      PAZIENTI_COMUNITA.forEach((p) => {
+        if (!pastiDi(p).includes(pasto)) return;
+        const dieta = (p.dieta || {})[giornoSett] ? p.dieta[giornoSett][pasto] : null;
+        const portate = portateServite(dieta);
+        if (!portate.length) return;
+        portate.forEach((categoria) => aggiungi(dieta[categoria], categoria, comunita.id, 1));
+        segnaDieta("com|" + p.id, p);
+        contributo(comunita.id).coperti += 1;
+        contributo(comunita.id).stima = true;
+      });
+    });
+  }
+
+  return { voci: [...voci.values()], contributi, diete: [...diete.values()] };
+}
+
 function Produzione() {
   const st = usaStato();
   const committenti = st.committenti;
+  const [vista, setVista] = React.useState("giorno");
+  const [giorno, setGiorno] = React.useState(GIORNO_APERTURA);
   const [filtro, setFiltro] = React.useState("tutte");
+  const [pasto, setPasto] = React.useState("entrambi");
 
-  /* aggregato azienda dai vassoi confermati + AGGREGATO base */
-  const aggAzienda = React.useMemo(() => {
-    const a = { ...AGGREGATO };
-    Object.keys(st.confermati).forEach((g) => {
-      Object.values(st.ordini[g] || {}).forEach((id) => { a[id] = (a[id] || 0) + 1; });
-    });
-    return a;
-  }, [st.ordini, st.confermati]);
+  /* i piatti delle diete sono testo libero, non codici: per il colore WHP si
+     risale all'id di catalogo dal nome. Dipende da st.versione perché PIATTI è
+     mutato fuori da React, vedi file.md/11-convenzioni.md */
+  const idPerNome = React.useMemo(() => {
+    const indice = new Map();
+    Object.keys(PIATTI).forEach((id) => indice.set(PIATTI[id].n.trim().toLowerCase(), id));
+    return indice;
+  }, [st.versione]);
 
-  /* aggregato comunità: contiamo le teste per dieta e supponiamo il menu del giorno */
-  const contaUnita = (righe) =>
-    righe.reduce((s, r) => s + Object.keys(r).filter((k) => k !== "unita").reduce((x, k) => x + r[k], 0), 0);
-  const aggComunita = contaUnita(st.unita.comunita || []);
+  const pasti = React.useMemo(() => (pasto === "entrambi" ? PASTI_TIPO : [pasto]), [pasto]);
 
-  /* piatti del giorno per struttura, usiamo i primi tre del menu di mercoledì */
-  const menuOggi = ["ris_fun", "pol_sug", "ver_gri", "pas_arr"];
-  const perStruttura = {
-    azienda: aggAzienda,
-    comunita: menuOggi.slice(0, 3).reduce((o, id, i) => { o[id] = Math.round(aggComunita / 3); return o; }, {}),
+  const giorni = React.useMemo(() => GIORNI.map((unused, i) => distintaDelGiorno({
+    committenti, indiceGiorno: i, menu: st.menu, nominativi: st.nominativiAzienda,
+    presenze: st.presenzeTrasmesse, pasti, idPerNome,
+  })), [committenti, st.menu, st.nominativiAzienda, st.presenzeTrasmesse, pasti, idPerNome]);
+
+  const giornate = vista === "giorno" ? [giorni[giorno]] : giorni;
+  const dentroFiltro = (c) => {
+    if (filtro === "tutte") return true;
+    if (filtro.indexOf("tipo:") === 0) return c.tipo === filtro.slice(5);
+    return c.id === filtro;
   };
 
-  /* somma totale per piatto */
-  const totali = {};
-  Object.entries(perStruttura).forEach(([sId, aggr]) => {
-    if (filtro !== "tutte" && filtro !== sId) return;
-    Object.entries(aggr).forEach(([id, q]) => { totali[id] = (totali[id] || 0) + q; });
+  const contributi = committenti.map((c) => {
+    const parti = giornate.map((g) => g.contributi.get(c.id));
+    return {
+      c,
+      dentro: dentroFiltro(c),
+      coperti: parti.reduce((s, p) => s + (p ? p.coperti : 0), 0),
+      porzioni: parti.reduce((s, p) => s + (p ? p.porzioni : 0), 0),
+      trasmesso: parti.some((p) => p && p.trasmesso),
+      stima: parti.some((p) => p && p.stima),
+    };
   });
-  const righe = Object.keys(totali).sort((a, b) => totali[b] - totali[a]);
-  const massimo = Math.max(1, ...Object.values(totali));
-  const complessivo = Object.values(totali).reduce((a, b) => a + b, 0);
+  const dentro = contributi.filter((r) => r.dentro);
+  const idsDentro = dentro.map((r) => r.c.id);
+  const colonne = dentro.filter((r) => r.porzioni > 0).map((r) => r.c);
+  const conColonne = vista === "giorno" && colonne.length > 1;
 
-  const dietePartic = (st.unita.comunita || []).reduce((s, r) => s + (r.iposodica || 0) + (r.diabetica || 0) + (r.senza_glutine || 0), 0);
-  const consistenze = (st.unita.comunita || []).reduce((s, r) => s + (r.tritato || 0) + (r.frullato || 0), 0);
+  const quotaVoce = (v) => idsDentro.reduce((s, id) => s + (v.per[id] || 0), 0);
+  const righe = React.useMemo(() => {
+    if (vista === "giorno") {
+      return giorni[giorno].voci
+        .map((v) => ({ ...v, totale: quotaVoce(v) }))
+        .filter((v) => v.totale > 0)
+        .sort(ordinaVoci);
+    }
+    const unite = new Map();
+    giorni.forEach((g, i) => g.voci.forEach((v) => {
+      const q = quotaVoce(v);
+      if (q <= 0) return;
+      if (!unite.has(v.chiave)) unite.set(v.chiave, { ...v, perGiorno: GIORNI.map(() => 0), totale: 0 });
+      const riga = unite.get(v.chiave);
+      riga.perGiorno[i] += q;
+      riga.totale += q;
+    }));
+    return [...unite.values()].sort(ordinaVoci);
+  }, [giorni, giorno, vista, idsDentro.join("|")]);
+
+  const massimo = Math.max(1, ...righe.map((v) => v.totale));
+  const porzioni = righe.reduce((s, v) => s + v.totale, 0);
+  const copertiTotali = dentro.reduce((s, r) => s + r.coperti, 0);
+  const copertiAzienda = dentro.filter((r) => r.c.tipo === "Azienda").reduce((s, r) => s + r.coperti, 0);
+  const copertiComunita = dentro.filter((r) => r.c.tipo === "Comunità").reduce((s, r) => s + r.coperti, 0);
+  const trasmessi = dentro.filter((r) => r.trasmesso).length;
+  const copertiPerGiorno = giorni.map((g) =>
+    idsDentro.reduce((s, id) => s + (g.contributi.get(id) ? g.contributi.get(id).coperti : 0), 0));
+
+  const diete = [];
+  const vistiDiete = new Set();
+  giornate.forEach((g) => g.diete.forEach((d) => {
+    if (idsDentro.indexOf(d.committente) < 0) return;
+    const chiave = d.committente + "|" + d.nome;
+    if (vistiDiete.has(chiave)) return;
+    vistiDiete.add(chiave);
+    diete.push(d);
+  }));
+
+  const giornoCorrente = GIORNI[giorno];
+  const etichettaVista = vista === "giorno" ? etichettaGiorno(giorno) : ETICHETTA_SETTIMANA;
+  const etichettaPasto = pasto === "entrambi" ? "pranzo e cena" : pasto;
+  const nomeFiltro = filtro === "tutte" ? "Tutte le strutture"
+    : filtro === "tipo:Azienda" ? "Solo le aziende"
+      : filtro === "tipo:Comunità" ? "Solo le comunità"
+        : (committenti.find((c) => c.id === filtro) || {}).nome || "Struttura non in elenco";
+  const perimetro = nomeFiltro + " · pasto " + etichettaPasto;
+  const nColonne = 4 + (vista === "giorno" ? (conColonne ? colonne.length : 0) : GIORNI.length);
+
+  const sezioniDocumento = (chiave) => ORDINE_CATEGORIA
+    .map((cat) => ({
+      categoria: NOME_CATEGORIA[cat],
+      righe: righe.filter((v) => v.categoria === cat).map((v) => ({
+        piatto: v.nome,
+        colore: v.colore ? COLORI[v.colore].nome : "fuori catalogo",
+        perStruttura: chiave === "perStruttura" && conColonne ? colonne.map((c) => v.per[c.id] || 0) : [],
+        perGiorno: chiave === "perGiorno" ? v.perGiorno : [],
+        totale: v.totale,
+      })),
+    }))
+    .filter((sez) => sez.righe.length);
+
+  const totaliDocumento = [
+    { etichetta: "Pasti", valore: copertiTotali },
+    { etichetta: "Porzioni", valore: porzioni },
+    { etichetta: "Diete particolari", valore: diete.length },
+  ];
+
+  /* import statico dei generatori: apriDocumento deve restare dentro il gesto
+     di click, un await prima dell'apertura farebbe bloccare la scheda */
+  function stampaDistinta() {
+    try {
+      if (vista === "giorno") {
+        generaDistintaPDF({
+          giorno: giornoCorrente.data,
+          perimetro,
+          strutture: conColonne ? colonne.map((c) => c.nome) : [],
+          sezioni: sezioniDocumento("perStruttura"),
+          totali: totaliDocumento,
+          diete,
+          datiAziendali: st.datiAziendali,
+          avvisa: st.avvisa,
+        });
+      } else {
+        generaDistintaSettimanaPDF({
+          periodo: ETICHETTA_SETTIMANA,
+          perimetro,
+          giorni: GIORNI.map((g) => g.n + " " + g.breve),
+          sezioni: sezioniDocumento("perGiorno"),
+          totali: totaliDocumento,
+          diete,
+          datiAziendali: st.datiAziendali,
+          avvisa: st.avvisa,
+        });
+      }
+      st.logga("Cucina MAVI", "Fornitore", "Distinta di produzione generata",
+        etichettaVista + ", " + nomeFiltro + ", " + porzioni + " porzioni", "generico");
+    } catch (errore) {
+      st.avvisa("Non è stato possibile aprire la distinta: " + errore.message);
+    }
+  }
+
+  async function scaricaDistinta() {
+    try {
+      const { scaricaExcel } = await import("../excel.js");
+      const intestazioni = vista === "giorno"
+        ? (conColonne ? colonne.map((c) => c.nome) : [])
+        : GIORNI.map((g) => g.n);
+      const valori = (v) => (vista === "giorno"
+        ? (conColonne ? colonne.map((c) => v.per[c.id] || 0) : [])
+        : v.perGiorno);
+      const dati = righe.map((v) => {
+        const riga = {
+          portata: NOME_CATEGORIA[v.categoria] || v.categoria,
+          piatto: v.nome,
+          colore: v.colore ? COLORI[v.colore].nome : "fuori catalogo",
+          totale: v.totale,
+        };
+        valori(v).forEach((q, i) => { riga["c" + i] = q; });
+        return riga;
+      });
+      if (dati.length) {
+        const somma = { portata: "TOTALE", piatto: "", colore: "", totale: porzioni };
+        intestazioni.forEach((unused, i) => {
+          somma["c" + i] = righe.reduce((s, v) => s + (valori(v)[i] || 0), 0);
+        });
+        dati.push(somma);
+      }
+      await scaricaExcel(
+        "Distinta_" + (vista === "giorno" ? giornoCorrente.data : "settimana_" + GIORNI[0].data) + ".xlsx",
+        [
+          {
+            nome: "Quantità per piatto",
+            colonne: [
+              { header: "Portata", key: "portata", width: 18 },
+              { header: "Piatto", key: "piatto", width: 34 },
+              { header: "Colore WHP", key: "colore", width: 15 },
+              ...intestazioni.map((nome, i) => ({ header: nome, key: "c" + i, width: 18 })),
+              { header: "Porzioni", key: "totale", width: 12 },
+            ],
+            dati,
+          },
+          {
+            nome: "Diete particolari",
+            colonne: [
+              { header: "Nominativo", key: "nome", width: 24 },
+              { header: "Struttura o reparto", key: "reparto", width: 26 },
+              { header: "Tipo di dieta", key: "tipoDieta", width: 28 },
+              { header: "Note di preparazione", key: "note", width: 60 },
+            ],
+            dati: diete.map((d) => ({ nome: d.nome, reparto: d.reparto, tipoDieta: d.tipoDieta, note: d.note })),
+          },
+        ],
+        { datiAziendali: st.datiAziendali }
+      );
+      st.avvisa("Distinta esportata in Excel · " + etichettaVista);
+    } catch (errore) {
+      st.avvisa("Export Excel non riuscito: " + errore.message);
+    }
+  }
 
   return (
     <>
       <Intestazione
-        occhiello="Mercoledì 16 settembre 2026"
-        titolo="Distinta di produzione"
-        sotto="Documento unico, aggrega quello che arriva da tutte le strutture servite"
+        occhiello={vista === "giorno" ? giornoDataIt(giornoCorrente.data) : ETICHETTA_SETTIMANA}
+        titolo={"Distinta di produzione · " + etichettaVista}
+        sotto="Quanto produrre, un giorno alla volta o sull'intera settimana, sommando quello che arriva dalle strutture servite"
         azioni={<>
-          <button className="btn linea piccolo" onClick={() => st.avvisa("Distinta esportata in Excel")}>Excel</button>
-          <button className="btn linea piccolo" onClick={() => st.avvisa("Distinta esportata in PDF")}>PDF</button>
-          <button className="btn linea piccolo" onClick={() => window.print()}><Icone.stampa size={16} /> Stampa</button>
+          <button className="btn linea piccolo" onClick={scaricaDistinta}>
+            <Icone.scarica size={16} /> Excel
+          </button>
+          <button className="btn piccolo" onClick={stampaDistinta}>
+            <Icone.stampa size={16} /> Stampa / PDF
+          </button>
         </>}
       />
       <div className="tela">
+        <div className="dist-barra">
+          <div className="commuta">
+            <button className={vista === "giorno" ? "on" : ""} onClick={() => setVista("giorno")}>Giorno</button>
+            <button className={vista === "settimana" ? "on" : ""} onClick={() => setVista("settimana")}>Settimana</button>
+          </div>
+          {vista === "giorno" ? (
+            <div className="dist-nav">
+              <button type="button" title="Giorno precedente" disabled={giorno === 0}
+                onClick={() => setGiorno((g) => Math.max(0, g - 1))}>
+                <Icone.sx size={17} />
+              </button>
+              <div className="dist-nav-giorno">
+                {etichettaGiorno(giorno)}
+                <small>{copertiPerGiorno[giorno]} pasti · {dataIt(giornoCorrente.data)}</small>
+              </div>
+              <button type="button" title="Giorno successivo" disabled={giorno === GIORNI.length - 1}
+                onClick={() => setGiorno((g) => Math.min(GIORNI.length - 1, g + 1))}>
+                <Icone.dx size={17} />
+              </button>
+            </div>
+          ) : (
+            <div className="dist-nav">
+              <div className="dist-nav-giorno larga">
+                {ETICHETTA_SETTIMANA}
+                <small>{GIORNI.length} giornate, da {GIORNI[0].n.toLowerCase()} a {GIORNI[GIORNI.length - 1].n.toLowerCase()}</small>
+              </div>
+            </div>
+          )}
+          {vista === "giorno" && giornoCorrente.chiuso && (
+            <span className="pastiglia p-att">ordini chiusi</span>
+          )}
+          <div className="commuta">
+            <button className={filtro === "tutte" ? "on" : ""} onClick={() => setFiltro("tutte")}>Tutte</button>
+            <button className={filtro === "tipo:Azienda" ? "on" : ""} onClick={() => setFiltro("tipo:Azienda")}>Aziende</button>
+            <button className={filtro === "tipo:Comunità" ? "on" : ""} onClick={() => setFiltro("tipo:Comunità")}>Comunità</button>
+          </div>
+          <div className="commuta">
+            <button className={pasto === "pranzo" ? "on" : ""} onClick={() => setPasto("pranzo")}>Pranzo</button>
+            <button className={pasto === "cena" ? "on" : ""} onClick={() => setPasto("cena")}>Cena</button>
+            <button className={pasto === "entrambi" ? "on" : ""} onClick={() => setPasto("entrambi")}>Entrambi</button>
+          </div>
+          <span className="dist-nota-barra">Il pasto vale per le comunità: l'azienda serve solo il pranzo.</span>
+        </div>
+
         <div className="numeri">
           <div className="numero">
             <div className="n-lab">Pasti totali</div>
-            <div className="n-val">{complessivo}</div>
-            <div className="n-nota">{committenti.length} strutture servite</div>
+            <div className="n-val">{copertiTotali}</div>
+            <div className="n-nota">{copertiAzienda} azienda · {copertiComunita} comunità</div>
+          </div>
+          <div className="numero">
+            <div className="n-lab">Porzioni da produrre</div>
+            <div className="n-val">{porzioni}</div>
+            <div className="n-nota">{righe.length} {righe.length === 1 ? "piatto diverso" : "piatti diversi"}</div>
           </div>
           <div className="numero">
             <div className="n-lab">Diete particolari</div>
-            <div className="n-val">{dietePartic + 4}</div>
-            <div className="n-nota">terapeutiche, sanitarie e etiche</div>
+            <div className="n-val">{diete.length}</div>
+            <div className="n-nota">persone con prescrizione o dieta dichiarata</div>
           </div>
           <div className="numero">
-            <div className="n-lab">Consistenze modificate</div>
-            <div className="n-val">{consistenze}</div>
-            <div className="n-nota">tritato e frullato</div>
+            <div className="n-lab">Hanno trasmesso</div>
+            <div className="n-val">{trasmessi}<span className="n-su">su {dentro.length}</span></div>
+            <div className="n-nota">
+              {dentro.length - trasmessi === 0
+                ? "nessuna stima nel perimetro"
+                : (dentro.length - trasmessi) + " ancora da confermare"}
+            </div>
           </div>
-          <div className="numero">
-            <div className="n-lab">Ultima chiusura</div>
-            <div className="n-val" style={{ fontSize: 22 }}>mer 9:30</div>
-            <div className="n-nota">rilevazione scuole</div>
-          </div>
+        </div>
+
+        <div className={"dist-banner" + (filtro === "tutte" ? "" : " attivo")}>
+          <Icone.calendario size={16} />
+          <span>Stai guardando <b>{etichettaVista}</b> · {nomeFiltro} · pasto {etichettaPasto}</span>
+          {filtro !== "tutte" && (
+            <button className="btn linea piccolo" onClick={() => setFiltro("tutte")}>Mostra tutte</button>
+          )}
         </div>
 
         <div className="pannello">
@@ -165,28 +554,29 @@ function Produzione() {
           <div className="scorri">
             <table className="dati">
               <thead>
-                <tr><th>Struttura</th><th>Tipo</th><th>Chiusura</th><th>Pasti</th><th>Stato</th><th /></tr>
+                <tr><th>Struttura</th><th>Tipo</th><th>Chiusura</th><th>Pasti</th><th>Porzioni</th><th>Stato</th><th /></tr>
               </thead>
               <tbody>
-                {committenti.map((c) => {
-                  const pasti = c.id === "azienda"
-                    ? Object.values(aggAzienda).reduce((a, b) => a + b, 0)
-                    : c.id === "comunita" ? aggComunita : 0;
-                  const attivo = filtro === c.id;
+                {contributi.map((r) => {
+                  const attivo = filtro === r.c.id;
                   return (
-                    <tr key={c.id} style={{ opacity: c.attivo === false ? 0.5 : 1 }}>
-                      <td><b>{c.nome}</b></td>
-                      <td><span className="pastiglia p-neu">{c.tipo}</span></td>
-                      <td className="cifra">{c.cutoff}</td>
-                      <td className="quantita">{pasti}</td>
+                    <tr key={r.c.id} style={{ opacity: r.c.attivo === false ? 0.5 : 1 }}>
+                      <td><b>{r.c.nome}</b></td>
+                      <td><span className="pastiglia p-neu">{r.c.tipo}</span></td>
+                      <td className="cifra">{r.c.cutoff}</td>
+                      <td className="quantita">{r.coperti}</td>
+                      <td className="cifra">{r.porzioni}</td>
                       <td>
-                        {pasti > 0
+                        {r.trasmesso
                           ? <span className="pastiglia p-ok">trasmesso</span>
-                          : <span className="pastiglia p-att">in attesa</span>}
+                          : r.stima
+                            ? <span className="pastiglia p-att">stima</span>
+                            : <span className="pastiglia p-neu">in attesa</span>}
+                        {r.trasmesso && r.stima && <span className="dist-piu-stima">più stima</span>}
                       </td>
                       <td>
                         <button className={"btn piccolo" + (attivo ? "" : " linea")}
-                          onClick={() => setFiltro(attivo ? "tutte" : c.id)}>
+                          onClick={() => setFiltro(attivo ? "tutte" : r.c.id)}>
                           {attivo ? "Mostra tutte" : "Filtra questa"}
                         </button>
                       </td>
@@ -197,24 +587,17 @@ function Produzione() {
             </table>
           </div>
           <div className="pannello-piede">
-            La cucina lavora sulla somma. I contributi restano visibili per capire chi ha
-            trasmesso e chi no, e per ripartire dopo consegne e resi.
+            I numeri sono quelli del periodo scelto qui sopra. <b>Trasmesso</b> vuol dire che la
+            struttura ha davvero mandato ordini o presenze per quelle giornate; <b>stima</b> che il
+            portale sta proponendo un ordine di grandezza in attesa della conferma.
           </div>
         </div>
-
-        {filtro !== "tutte" && (
-          <div className="banner-dieta" style={{ background: "#eef3fa", borderColor: "#b8cce0", color: "#2c4a6c" }}>
-            <Icone.attenzione size={15} />
-            Stai vedendo solo i dati di <b>{committenti.find((c) => c.id === filtro)?.nome}</b>
-            <button className="btn linea piccolo" style={{ marginLeft: "auto" }} onClick={() => setFiltro("tutte")}>Mostra tutte</button>
-          </div>
-        )}
 
         <div className="pannello">
           <div className="pannello-testa">
             <h2>Quantità da produrre</h2>
             <span className="conta-piatti">
-              {filtro === "tutte" ? "somma di tutte le strutture" : "solo " + committenti.find((c) => c.id === filtro)?.nome}
+              {vista === "giorno" ? "porzioni della giornata" : "porzioni per giornata"}
             </span>
           </div>
           <div className="scorri">
@@ -222,34 +605,48 @@ function Produzione() {
               <thead>
                 <tr>
                   <th>Piatto</th>
+                  <th>Portata</th>
                   <th>Colore</th>
-                  {filtro === "tutte" && Object.keys(perStruttura).map((k) => (
-                    <th key={k}>{committenti.find((c) => c.id === k)?.nome || k}</th>
-                  ))}
+                  {vista === "giorno"
+                    ? conColonne && colonne.map((c) => <th key={c.id}>{c.nome}</th>)
+                    : GIORNI.map((g) => <th key={g.data}>{g.breve}</th>)}
                   <th>Totale</th>
                 </tr>
               </thead>
               <tbody>
-                {righe.map((id) => (
-                  <tr key={id}>
+                {righe.length === 0 ? (
+                  <tr>
+                    <td className="riga-vuota" colSpan={nColonne}>
+                      Nessuna porzione da produrre con il perimetro scelto.
+                    </td>
+                  </tr>
+                ) : righe.map((v) => (
+                  <tr key={v.chiave}>
                     <td>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <span className="voce-mini" style={{ cursor: "default" }}><Illustrazione id={id} /></span>
-                        <b>{PIATTI[id].n}</b>
+                      <div className="dist-piatto">
+                        {v.idPiatto ? (
+                          <span className="voce-mini" style={{ cursor: "default" }}><Illustrazione id={v.idPiatto} /></span>
+                        ) : (
+                          <span className="dist-senza-scheda" title="Piatto di dieta, non presente nel catalogo">—</span>
+                        )}
+                        <b>{v.nome}</b>
                       </div>
                     </td>
+                    <td><span className="pastiglia p-neu">{NOME_CATEGORIA[v.categoria] || v.categoria}</span></td>
                     <td>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
-                        <DiscoColore colore={PIATTI[id].col} size={11} />
-                        {COLORI[PIATTI[id].col].nome}
-                      </span>
+                      {v.colore ? (
+                        <span className="dist-colore">
+                          <DiscoColore colore={v.colore} size={11} />
+                          {COLORI[v.colore].nome}
+                        </span>
+                      ) : <span className="riservato">fuori catalogo</span>}
                     </td>
-                    {filtro === "tutte" && Object.keys(perStruttura).map((k) => (
-                      <td key={k} className="cifra">{perStruttura[k][id] || 0}</td>
-                    ))}
-                    <td style={{ minWidth: 180 }}>
-                      <span className="quantita">{totali[id]}</span>
-                      <div className="progresso"><i style={{ width: Math.round((totali[id] / massimo) * 100) + "%" }} /></div>
+                    {vista === "giorno"
+                      ? conColonne && colonne.map((c) => <td key={c.id} className="cifra">{v.per[c.id] || 0}</td>)
+                      : v.perGiorno.map((q, i) => <td key={GIORNI[i].data} className="cifra">{q}</td>)}
+                    <td className="dist-totale">
+                      <span className="quantita">{v.totale}</span>
+                      <div className="progresso"><i style={{ width: Math.round((v.totale / massimo) * 100) + "%" }} /></div>
                     </td>
                   </tr>
                 ))}
@@ -257,8 +654,46 @@ function Produzione() {
             </table>
           </div>
           <div className="pannello-piede">
-            Il dato dell'azienda cresce con le prenotazioni del prototipo. Gli altri contributi
-            sono di esempio, calcolati dai numeri dichiarati dalle strutture.
+            La cucina lavora sulla somma del perimetro scelto. Per l'azienda entrano le prenotazioni
+            confermate dai dipendenti su quella giornata più una stima sul menu del giorno; per la
+            comunità le presenze trasmesse per quel giorno e quel pasto, o in mancanza le diete dei
+            pazienti censiti. La colonna Stato della tabella qui sopra dice, struttura per struttura,
+            che cosa è già confermato e che cosa è ancora una stima.
+          </div>
+        </div>
+
+        <div className="pannello">
+          <div className="pannello-testa">
+            <h2>Diete particolari e consistenze</h2>
+            <span className="conta-piatti">{diete.length} {diete.length === 1 ? "persona" : "persone"}</span>
+          </div>
+          <div className="scorri">
+            <table className="dati">
+              <thead>
+                <tr><th>Nominativo</th><th>Struttura o reparto</th><th>Tipo di dieta</th><th>Note di preparazione</th></tr>
+              </thead>
+              <tbody>
+                {diete.length === 0 ? (
+                  <tr>
+                    <td className="riga-vuota" colSpan={4}>
+                      Nessuna dieta particolare fra le persone comprese nel perimetro.
+                    </td>
+                  </tr>
+                ) : diete.map((d) => (
+                  <tr key={d.committente + "|" + d.nome}>
+                    <td><b>{d.nome}</b></td>
+                    <td style={{ color: "var(--muto)" }}>{d.reparto}</td>
+                    <td><span className="pastiglia p-att dist-tag-dieta">{d.tipoDieta}</span></td>
+                    <td>{d.note || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="pannello-piede">
+            Le note arrivano dall'anagrafica dei pazienti della comunità e dalla dieta dichiarata in
+            anagrafica dipendenti. Le prescrizioni riservate restano tali: il portale segnala che
+            ci sono, non che cosa contengono. La stessa tabella finisce in fondo alla stampa.
           </div>
         </div>
       </div>

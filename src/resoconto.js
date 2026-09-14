@@ -199,52 +199,139 @@ export function generaResocontoUnitaPDF({
 
 /* ==================== cucina MAVI, distinta di produzione ==================== */
 
-/* Distinta della cucina. La pagina Produzione del portale MAVI viene rifatta a
-   parte, per giorno e per settimana: questa funzione è la sua impaginazione.
+/* Le due distinte della cucina condividono impaginazione e sezioni: quella del
+   giorno ha una colonna per committente, quella della settimana una colonna per
+   giornata. In tutte e due la data (o la settimana) e il perimetro del filtro
+   stanno nel titolo e nei primi due riquadri: il foglio finisce in cucina
+   staccato dallo schermo che lo ha generato, e deve dire da solo a cosa si
+   riferisce. */
 
-   sezioni:    [{ categoria, righe: [{ piatto, colore, perStruttura: [n, ...], totale }] }]
-   strutture:  [nome, ...] — le colonne per committente, vuoto se c'è un filtro
-   totali:     [{ etichetta, valore }] — i numeri in cima alla pagina */
-export function generaDistintaPDF({ giorno, perimetro, strutture = [], sezioni = [], totali = [], datiAziendali, avvisa }) {
-  const etichettaGiorno = giorno ? giornoDataIt(giorno) : "";
-  const complessivo = sezioni.reduce((s, sez) =>
-    s + (sez.righe || []).reduce((x, r) => x + (Number(r.totale) || 0), 0), 0);
+const SPAZIO_FIRMA = "&nbsp;<br>&nbsp;<br>&nbsp;<br>&nbsp;";
 
+/* diete: [{ nome, reparto, tipoDieta, note }] — le note di preparazione delle
+   persone in elenco, quelle che la cucina deve avere sotto gli occhi */
+function bloccoDiete(diete = []) {
+  return blocco("Diete particolari e consistenze", tabellaHtml({
+    colonne: [
+      { titolo: "Nominativo" },
+      { titolo: "Struttura o reparto" },
+      { titolo: "Tipo di dieta" },
+      { titolo: "Note di preparazione" },
+    ],
+    righe: diete.map((d) => [d.nome, d.reparto, d.tipoDieta, d.note]),
+    vuota: "Nessuna dieta particolare fra le persone comprese nel perimetro.",
+  }));
+}
+
+function bloccoFirma() {
+  return blocco("Note di lavorazione e firma", tabellaHtml({
+    colonne: [{ titolo: "Note della cucina" }, { titolo: "Firma del responsabile di produzione" }],
+    righe: [[{ html: SPAZIO_FIRMA }, { html: SPAZIO_FIRMA }]],
+  }));
+}
+
+/* una sezione per categoria di portata; `chiave` dice da quale array della riga
+   leggere le colonne intermedie (`perStruttura` o `perGiorno`) */
+function sezioniDistinta(sezioni, intestazioni, chiave) {
   const colonne = [
     { titolo: "Piatto" },
     { titolo: "Colore" },
-    ...strutture.map((nome) => ({ titolo: nome, allinea: "centro" })),
+    ...intestazioni.map((titolo) => ({ titolo, allinea: "centro" })),
     { titolo: "Porzioni", allinea: "centro" },
   ];
-
-  const blocchi = sezioni.map((sez) => {
+  return sezioni.map((sez) => {
     const righe = sez.righe || [];
     const totaleSezione = righe.reduce((s, r) => s + (Number(r.totale) || 0), 0);
     return blocco(sez.categoria, tabellaHtml({
       colonne,
-      righe: righe.map((r) => [r.piatto, r.colore, ...(r.perStruttura || []), r.totale]),
+      righe: righe.map((r) => [
+        r.nota ? cellaConNota(r.piatto, r.nota) : r.piatto,
+        r.colore || "—",
+        ...intestazioni.map((_, i) => (r[chiave] || [])[i] || 0),
+        r.totale,
+      ]),
       totale: righe.length
-        ? ["TOTALE " + sez.categoria.toUpperCase(), "", ...strutture.map(() => ""), totaleSezione]
+        ? ["TOTALE " + String(sez.categoria).toUpperCase(), "", ...intestazioni.map(() => ""), totaleSezione]
         : undefined,
       vuota: "Nessuna porzione da produrre in questa categoria.",
     }));
   });
+}
+
+const porzioniDi = (sezioni) => sezioni.reduce((s, sez) =>
+  s + (sez.righe || []).reduce((x, r) => x + (Number(r.totale) || 0), 0), 0);
+
+/* Distinta di una sola giornata.
+   giorno:     data ISO o Date della giornata guardata, finisce nel titolo
+   perimetro:  testo del filtro applicato (struttura, tipo, pasto)
+   strutture:  [nome, ...] — le colonne per committente, [] con un filtro singolo
+   sezioni:    [{ categoria, righe: [{ piatto, colore, nota, perStruttura: [n, ...], totale }] }]
+   totali:     [{ etichetta, valore }] — riquadri dopo giornata e perimetro
+   diete:      [{ nome, reparto, tipoDieta, note }] */
+export function generaDistintaPDF({
+  giorno, perimetro, strutture = [], sezioni = [], totali = [], diete = [], datiAziendali, avvisa,
+}) {
+  const etichettaGiorno = giorno ? giornoDataIt(giorno) : "";
+  const complessivo = porzioniDi(sezioni);
+  const blocchi = sezioniDistinta(sezioni, strutture, "perStruttura");
 
   const html = paginaDocumento({
-    titolo: "Distinta di produzione",
+    titolo: unisci(["Distinta di produzione", etichettaGiorno]),
     badge: "Produzione",
-    sottotitolo: unisci([etichettaGiorno, perimetro, generatoIl()]),
-    meta: totali.length ? totali : [{ etichetta: "Porzioni totali", valore: complessivo }],
-    blocchi: [
-      ...(blocchi.length ? blocchi : [paragrafo("Nessuna struttura ha ancora trasmesso ordini per questa giornata.")]),
-      riepilogoTotali([{ etichetta: "Porzioni totali da produrre", valore: complessivo, forte: true }]),
+    sottotitolo: unisci([perimetro, generatoIl()]),
+    meta: [
+      { etichetta: "Giornata", valore: etichettaGiorno || "—" },
+      { etichetta: "Perimetro", valore: perimetro || "Tutte le strutture" },
+      ...totali,
     ],
-    note: "Documento di lavoro della cucina. Le quantità sommano i contributi di tutte le "
-      + "strutture servite; il contributo dell'azienda cresce con le prenotazioni confermate dal portale.",
+    blocchi: [
+      ...(blocchi.length ? blocchi : [paragrafo("Nessuna porzione da produrre in questa giornata con il perimetro scelto.")]),
+      riepilogoTotali([{ etichetta: "Porzioni totali da produrre", valore: complessivo, forte: true }]),
+      bloccoDiete(diete),
+      bloccoFirma(),
+    ],
+    note: "Documento di lavoro della cucina, valido per la sola giornata indicata in testa. Le "
+      + "quantità sommano i contributi delle strutture comprese nel perimetro: quelle ancora non "
+      + "trasmesse sono stime del portale e vanno confermate dal committente prima della produzione.",
     datiAziendali,
   });
 
-  apriDocumento(html, { nomeFile: "Distinta_di_produzione.html", avvisa });
+  return apriDocumento(html, { nomeFile: "Distinta_di_produzione.html", avvisa });
+}
+
+/* Gemella della precedente sulla settimana: stessa struttura, ma le colonne
+   intermedie sono le giornate invece dei committenti.
+   periodo:  "Settimana dal 14/09 al 18/09/2026", finisce nel titolo
+   giorni:   [etichetta, ...] — le colonne, di norma lunedì-venerdì
+   sezioni:  [{ categoria, righe: [{ piatto, colore, nota, perGiorno: [n, ...], totale }] }] */
+export function generaDistintaSettimanaPDF({
+  periodo, perimetro, giorni = [], sezioni = [], totali = [], diete = [], datiAziendali, avvisa,
+}) {
+  const complessivo = porzioniDi(sezioni);
+  const blocchi = sezioniDistinta(sezioni, giorni, "perGiorno");
+
+  const html = paginaDocumento({
+    titolo: unisci(["Distinta di produzione", periodo]),
+    badge: "Produzione settimana",
+    sottotitolo: unisci([perimetro, generatoIl()]),
+    meta: [
+      { etichetta: "Settimana", valore: periodo || "—" },
+      { etichetta: "Perimetro", valore: perimetro || "Tutte le strutture" },
+      ...totali,
+    ],
+    blocchi: [
+      ...(blocchi.length ? blocchi : [paragrafo("Nessuna porzione da produrre in questa settimana con il perimetro scelto.")]),
+      riepilogoTotali([{ etichetta: "Porzioni totali della settimana", valore: complessivo, forte: true }]),
+      bloccoDiete(diete),
+      bloccoFirma(),
+    ],
+    note: "Prospetto settimanale della cucina: serve a programmare acquisti e lavorazioni, non "
+      + "sostituisce la distinta del giorno, che resta il documento da portare in produzione. Le "
+      + "giornate non ancora trasmesse dai committenti sono stime del portale.",
+    datiAziendali,
+  });
+
+  return apriDocumento(html, { nomeFile: "Distinta_di_produzione_settimana.html", avvisa });
 }
 
 /* ==================== dipendente, riepilogo delle prenotazioni ==================== */
