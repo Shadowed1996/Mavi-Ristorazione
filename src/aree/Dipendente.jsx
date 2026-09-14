@@ -8,6 +8,7 @@ import {
   SchedaPiatto, Telaio, Velo, Documenti,
 } from "../ui.jsx";
 import { usaStato } from "../store.jsx";
+import { generaRiepilogoPrenotazioniPDF } from "../resoconto.js";
 
 function valutaEquilibrio(colori) {
   if (colori.length === 0) {
@@ -82,7 +83,7 @@ export default function Dipendente({ onEsci, utente }) {
     >
       {pagina === "menu" && <MenuGiorno />}
       {pagina === "settimana" && <MenuSettimana />}
-      {pagina === "prenotazioni" && <Prenotazioni />}
+      {pagina === "prenotazioni" && <Prenotazioni utente={utente} />}
       {pagina === "diete" && <Diete />}
       {pagina === "documenti" && <Documenti soloPubblici />}
       <Messaggi lista={st.messaggi} />
@@ -468,15 +469,45 @@ function MenuSettimana() {
 }
 
 /* ==================== le mie prenotazioni ==================== */
-function Prenotazioni() {
+function Prenotazioni({ utente }) {
   const st = usaStato();
+
+  /* stessa riga della tabella qui sotto: giorno, portate scelte e stato */
+  const righeSettimana = () => GIORNI.map((d, i) => {
+    const scelte = Object.values(st.ordini[i] || {});
+    return {
+      giorno: d.n,
+      data: d.d,
+      portate: scelte.map((id) => PIATTI[id]?.n).filter(Boolean),
+      stato: d.chiuso ? "chiuso"
+        : st.confermati[i] ? "prenotato"
+          : scelte.length ? "non confermato" : "vuoto",
+    };
+  });
+
+  function scaricaRiepilogo() {
+    try {
+      generaRiepilogoPrenotazioniPDF({
+        dipendente: utente?.nome || "Antonella Rossi",
+        committente: utente?.committente || "Rossi Manifatture Spa",
+        settimana: "Settimana 38",
+        righe: righeSettimana(),
+        datiAziendali: st.datiAziendali,
+        avvisa: st.avvisa,
+      });
+    } catch (e) {
+      console.error(e);
+      st.avvisa("Errore nella generazione del PDF, riprova");
+    }
+  }
+
   return (
     <>
       <Intestazione
         occhiello="Settimana 38"
         titolo="Le mie prenotazioni"
         sotto="Riepilogo della settimana in corso"
-        azioni={<button className="btn linea piccolo" onClick={() => st.avvisa("Riepilogo scaricato, funzione dimostrativa")}><Icone.scarica size={16} /> Scarica riepilogo</button>}
+        azioni={<button className="btn linea piccolo" onClick={scaricaRiepilogo}><Icone.scarica size={16} /> Scarica riepilogo</button>}
       />
       <div className="tela">
         <div className="pannello">

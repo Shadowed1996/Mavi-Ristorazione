@@ -3,6 +3,7 @@ import { DIETE_TERAPEUTICHE, FATTURE, MODELLI } from "../data.js";
 import { Accesso, Documenti, Icone, Intestazione, Messaggi, Telaio } from "../ui.jsx";
 import { usaStato } from "../store.jsx";
 import { generaProformaPDF } from "../proforma.js";
+import { generaResocontoUnitaPDF } from "../resoconto.js";
 import { OrdiniUnita } from "./Modelli.jsx";
 import Comunita from "./Comunita.jsx";
 
@@ -233,6 +234,8 @@ export default function PortaleStruttura({ tipo, ruoloIniziale, onEsci, utente }
 }
 
 /* ==================== cruscotto della struttura ==================== */
+const VOCI_PASTO = ["normale", "tritato", "frullato", "iposodica", "diabetica", "senza_glutine"];
+
 function CruscottoStruttura({ tipo, cfg }) {
   const st = usaStato();
   const c = st.committenti.find((x) => x.id === cfg.committente);
@@ -249,12 +252,50 @@ function CruscottoStruttura({ tipo, cfg }) {
         const righe = st.unita[tipo] || [];
         const somma = (k) => righe.reduce((s, r) => s + (r[k] || 0), 0);
         return {
-          pasti: ["normale", "tritato", "frullato", "iposodica", "diabetica", "senza_glutine"].reduce((s, k) => s + somma(k), 0),
+          pasti: VOCI_PASTO.reduce((s, k) => s + somma(k), 0),
           unita: righe.length,
           speciali: somma("iposodica") + somma("diabetica") + somma("senza_glutine"),
           consistenze: somma("tritato") + somma("frullato"),
         };
       })();
+
+  const etichettaDiete = scuola ? "Diete certificate" : "Diete su prescrizione";
+
+  /* stesse righe e stessi numeri della tabella qui sotto */
+  function esportaResoconto() {
+    try {
+      const righe = scuola
+        ? st.presenze.map((r) => ({ unita: r.unita, pasti: r.presenti, diete: r.diete, stato: "trasmesso" }))
+        : (st.unita[tipo] || []).map((r) => ({
+            unita: r.unita,
+            pasti: VOCI_PASTO.reduce((s, k) => s + (r[k] || 0), 0),
+            diete: (r.iposodica || 0) + (r.diabetica || 0) + (r.senza_glutine || 0),
+            stato: "trasmesso",
+          }));
+      generaResocontoUnitaPDF({
+        struttura: c.nome,
+        modello: MODELLI[c.modello].nome,
+        periodo: "Settembre 2026",
+        etichettaUnita: c.etichettaUnita,
+        etichettaDiete,
+        numeri: [
+          { etichetta: "Pasti di oggi", valore: totali.pasti },
+          { etichetta: "Diete speciali", valore: totali.speciali },
+          scuola
+            ? { etichetta: "Assenti", valore: totali.assenti }
+            : { etichetta: "Consistenze modificate", valore: totali.consistenze },
+          { etichetta: "Chiusura ordine", valore: scuola ? "ore 9:30" : "ore 16:00" },
+        ],
+        righe,
+        nota: c.nota,
+        datiAziendali: st.datiAziendali,
+        avvisa: st.avvisa,
+      });
+    } catch (e) {
+      console.error(e);
+      st.avvisa("Errore nella generazione del PDF, riprova");
+    }
+  }
 
   return (
     <>
@@ -279,7 +320,7 @@ function CruscottoStruttura({ tipo, cfg }) {
           <div className="pannello-testa">
             <h2>Situazione per {c.etichettaUnita.toLowerCase()}</h2>
             <div className="az">
-              <button className="btn linea piccolo" onClick={() => st.avvisa("Resoconto mensile generato")}>Resoconto mensile</button>
+              <button className="btn linea piccolo" onClick={esportaResoconto}>Resoconto mensile</button>
               <button className="btn piccolo" onClick={() => st.avvisa("Sollecito inviato ai " + c.etichettaUnita.toLowerCase() + " scoperti")}>Sollecita</button>
             </div>
           </div>
@@ -289,7 +330,7 @@ function CruscottoStruttura({ tipo, cfg }) {
                 <tr>
                   <th>{c.etichettaUnita}</th>
                   <th>Pasti dichiarati</th>
-                  <th>{scuola ? "Diete certificate" : "Diete su prescrizione"}</th>
+                  <th>{etichettaDiete}</th>
                   <th>Stato</th>
                 </tr>
               </thead>
@@ -304,7 +345,7 @@ function CruscottoStruttura({ tipo, cfg }) {
                       </tr>
                     ))
                   : (st.unita[tipo] || []).map((r) => {
-                      const tot = ["normale", "tritato", "frullato", "iposodica", "diabetica", "senza_glutine"].reduce((s, k) => s + (r[k] || 0), 0);
+                      const tot = VOCI_PASTO.reduce((s, k) => s + (r[k] || 0), 0);
                       return (
                         <tr key={r.unita}>
                           <td><b>{r.unita}</b></td>

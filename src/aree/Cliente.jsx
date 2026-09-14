@@ -3,6 +3,7 @@ import { CATEGORIE, DIPENDENTI, FATTURE, PIATTI, PREZZO_PASTO, QUOTA_DIPENDENTE,
 import { Accesso, DiscoColore, Documenti, Icone, Intestazione, Messaggi, Telaio, Velo } from "../ui.jsx";
 import { usaStato } from "../store.jsx";
 import { generaProformaPDF } from "../proforma.js";
+import { generaResocontoPDF } from "../resoconto.js";
 
 const VOCI = [
   ["cruscotto", "Cruscotto", Icone.grafico],
@@ -230,6 +231,31 @@ function Dipendenti() {
   );
 }
 
+/* riepilogo e dettaglio del mese, calcolati una volta sola: Excel e PDF devono
+   mostrare gli stessi numeri. L'ultima riga del riepilogo è quella di totale,
+   riconosciuta dal nome "TOTALE" sia da excel.js sia da resoconto.js. */
+function calcolaResoconto(dati) {
+  const riepilogo = dati.dipendenti.map((d) => ({
+    matricola: d.m, nome: d.n, reparto: d.rep, pasti: d.pasti,
+    quotaDip: eur(d.pasti * QUOTA_DIPENDENTE),
+    quotaAz: eur(d.pasti * (PREZZO_PASTO - QUOTA_DIPENDENTE)),
+    totale: eur(d.pasti * PREZZO_PASTO),
+  }));
+  riepilogo.push({
+    matricola: "", nome: "TOTALE", reparto: "", pasti: dati.totPasti,
+    quotaDip: eur(dati.totPasti * QUOTA_DIPENDENTE),
+    quotaAz: eur(dati.totPasti * (PREZZO_PASTO - QUOTA_DIPENDENTE)),
+    totale: eur(dati.totPasti * PREZZO_PASTO),
+  });
+  const dettaglio = [];
+  dati.dipendenti.forEach((d) => {
+    (d.dettaglio || []).forEach((g) => {
+      dettaglio.push({ matricola: d.m, nome: d.n, reparto: d.rep, giorno: g.giorno, primo: g.primo, secondo: g.secondo, contorno: g.contorno });
+    });
+  });
+  return { riepilogo, dettaglio };
+}
+
 function Resoconti() {
   const st = usaStato();
   const [espanso, setEspanso] = React.useState(null);
@@ -238,24 +264,7 @@ function Resoconti() {
   async function esportaExcel() {
     try {
       const { scaricaExcel } = await import("../excel.js");
-      const riepilogo = dati.dipendenti.map((d) => ({
-        matricola: d.m, nome: d.n, reparto: d.rep, pasti: d.pasti,
-        quotaDip: eur(d.pasti * QUOTA_DIPENDENTE),
-        quotaAz: eur(d.pasti * (PREZZO_PASTO - QUOTA_DIPENDENTE)),
-        totale: eur(d.pasti * PREZZO_PASTO),
-      }));
-      riepilogo.push({
-        matricola: "", nome: "TOTALE", reparto: "", pasti: dati.totPasti,
-        quotaDip: eur(dati.totPasti * QUOTA_DIPENDENTE),
-        quotaAz: eur(dati.totPasti * (PREZZO_PASTO - QUOTA_DIPENDENTE)),
-        totale: eur(dati.totPasti * PREZZO_PASTO),
-      });
-      const dettaglio = [];
-      dati.dipendenti.forEach((d) => {
-        (d.dettaglio || []).forEach((g) => {
-          dettaglio.push({ matricola: d.m, nome: d.n, reparto: d.rep, giorno: g.giorno, primo: g.primo, secondo: g.secondo, contorno: g.contorno });
-        });
-      });
+      const { riepilogo, dettaglio } = calcolaResoconto(dati);
       await scaricaExcel("Resoconto_Agosto_2026_Rossi_Manifatture.xlsx", [
         { nome: "Riepilogo", dati: riepilogo, colonne: [
           { header: "Matricola", key: "matricola", width: 12 },
@@ -280,6 +289,23 @@ function Resoconti() {
     } catch (e) {
       console.error(e);
       st.avvisa("Errore nell'export Excel, riprova");
+    }
+  }
+
+  function esportaPDF() {
+    try {
+      const { riepilogo, dettaglio } = calcolaResoconto(dati);
+      generaResocontoPDF({
+        committente: "Rossi Manifatture Spa",
+        periodo: RESOCONTO_MENSILE.mese,
+        riepilogo,
+        dettaglio,
+        datiAziendali: st.datiAziendali,
+        avvisa: st.avvisa,
+      });
+    } catch (e) {
+      console.error(e);
+      st.avvisa("Errore nella generazione del PDF, riprova");
     }
   }
 
@@ -315,7 +341,7 @@ function Resoconti() {
         occhiello="Agosto 2026" titolo="Resoconti" sotto="Consumi per dipendente e dettaglio giornaliero dei piatti"
         azioni={<>
           <button className="btn linea piccolo" onClick={esportaExcel}><Icone.scarica size={16} /> Excel</button>
-          <button className="btn linea piccolo" onClick={() => st.avvisa("Resoconto PDF generato")}>PDF</button>
+          <button className="btn linea piccolo" onClick={esportaPDF}><Icone.stampa size={16} /> PDF</button>
           <button className="btn piccolo" onClick={esportaPaghe}><Icone.scarica size={16} /> Export paghe</button>
         </>}
       />
