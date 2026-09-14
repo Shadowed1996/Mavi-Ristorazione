@@ -1,7 +1,11 @@
 import React from "react";
-import { CATEGORIE, DIPENDENTI, FATTURE, PIATTI, PREZZO_PASTO, QUOTA_DIPENDENTE, RESOCONTO_MENSILE, menuDelGiorno } from "../data.js";
-import { Accesso, DiscoColore, Documenti, Icone, Intestazione, Messaggi, Telaio, Velo } from "../ui.jsx";
+import {
+  CATEGORIE, DIPENDENTI, PIATTI, PREZZO_PASTO, QUOTA_DIPENDENTE, RESOCONTO_MENSILE,
+  menuDelGiorno, ordinaProforme, testoCondizioni, totaliProforma,
+} from "../data.js";
+import { Accesso, DiscoColore, Documenti, Icone, Intestazione, Messaggi, PastigliaProforma, Telaio, Velo } from "../ui.jsx";
 import { usaStato } from "../store.jsx";
+import { dataIt } from "../documento.js";
 import { generaProformaPDF } from "../proforma.js";
 
 const VOCI = [
@@ -385,46 +389,59 @@ function Resoconti() {
 
 function Fatture() {
   const st = usaStato();
+  const committente = st.committenti.find((c) => c.id === "azienda");
+  /* solo le proforma intestate a questa azienda: gli importi degli altri
+     committenti non devono mai comparire qui */
+  const elenco = ordinaProforme(st.proforme.filter((p) => p.committenteId === "azienda"));
+  const dovuto = elenco
+    .filter((p) => p.stato === "emessa")
+    .reduce((s, p) => s + totaliProforma(p).totale, 0);
+
   return (
     <>
-      <Intestazione occhiello="Amministrazione" titolo="Fatture" sotto="Documenti ricevuti e stato dei pagamenti" />
+      <Intestazione occhiello="Amministrazione" titolo="Fatture" sotto="Proforma ricevute da MAVI e scadenze di pagamento" />
       <div className="tela">
         <div className="pannello">
+          <div className="pannello-testa">
+            <h2>Proforma ricevute</h2>
+            <span className="conta-piatti">{elenco.length} documenti, {eur(dovuto)} ancora da saldare</span>
+          </div>
           <div className="scorri">
             <table className="dati">
-              <thead><tr><th>Documento</th><th>Periodo</th><th>Pasti</th><th>Importo</th><th>Stato</th><th>Esito SDI</th><th /></tr></thead>
+              <thead><tr><th>Documento</th><th>Periodo</th><th>Imponibile</th><th>IVA</th><th>Totale</th><th>Scadenza</th><th>Condizioni</th><th>Stato</th><th /></tr></thead>
               <tbody>
-                {FATTURE.map((f) => (
-                  <tr key={f.num}>
-                    <td className="cifra">{f.num}</td>
-                    <td>{f.periodo}</td>
-                    <td className="quantita">{f.pasti}</td>
-                    <td className="cifra">€ {f.imp}</td>
-                    <td>
-                      {f.stato === "pagata" ? <span className="pastiglia p-ok">pagata</span>
-                        : f.stato === "da pagare" ? <span className="pastiglia p-att">da pagare</span>
-                          : <span className="pastiglia p-neu">in maturazione</span>}
-                    </td>
-                    <td>{f.sdi === "consegnata" ? <span className="pastiglia p-ok">consegnata</span> : <span className="pastiglia p-neu">non emessa</span>}</td>
-                    <td>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {elenco.length === 0 && (
+                  <tr><td colSpan={9} style={{ textAlign: "center", color: "var(--muto)", padding: 22 }}>
+                    Nessuna proforma ricevuta.
+                  </td></tr>
+                )}
+                {elenco.map((p) => {
+                  const t = totaliProforma(p);
+                  return (
+                    <tr key={p.id} className={p.stato === "annullata" ? "riga-annullata" : undefined}>
+                      <td className="cifra"><b>{p.numero}</b></td>
+                      <td>{p.periodo}</td>
+                      <td className="cifra">{eur(t.imponibile)}</td>
+                      <td className="cifra">{eur(t.iva)}</td>
+                      <td className="cifra"><b>{eur(t.totale)}</b></td>
+                      <td className="cifra">{dataIt(p.scadenza)}</td>
+                      <td style={{ fontSize: 12, color: "var(--muto)" }}>{testoCondizioni(p)}</td>
+                      <td><PastigliaProforma stato={p.stato} /></td>
+                      <td>
                         <button className="btn linea piccolo" onClick={() => {
-                          generaProformaPDF(
-                            [{ nome: "Rossi Manifatture Spa", tipo: "Azienda", pasti: f.pasti, mese: f.periodo }],
-                            7.50,
-                            { datiAziendali: st.datiAziendali, avvisa: st.avvisa }
-                          );
+                          generaProformaPDF(p, { datiAziendali: st.datiAziendali, committente, avvisa: st.avvisa });
                         }}>PDF</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
           <div className="pannello-piede">
-            Capitolo ancora aperto. Modalità di pagamento, quota aziendale e ciclo di
-            fatturazione vanno definiti con MAVI.
+            Le proforma le emette MAVI, con le condizioni concordate per Rossi Manifatture. Non
+            transitano dal Sistema di Interscambio: la fattura elettronica arriva dal gestionale
+            contabile. Il pagamento non passa dal portale.
           </div>
         </div>
       </div>

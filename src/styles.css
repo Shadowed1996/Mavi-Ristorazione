@@ -5427,3 +5427,109 @@ tr.pz-neutro td:first-child { border-left: 3px solid var(--linea); }
 [data-tema="scuro"] .rot-step { background: #262422; border-color: #3a3632; }
 [data-tema="scuro"] .rot-step.attiva { background: #1a2820; border-color: var(--acc); }
 [data-tema="scuro"] .rot-n { background: #1e1c1a; }
+
+/* ============================ proforma create a mano ============================ */
+.impo-riga.tre { grid-template-columns: repeat(3, 1fr); }
+
+/* una proforma annullata resta in elenco, barrata: stato e azioni restano leggibili */
+.riga-annullata td { color: var(--muto); }
+.riga-annullata td:nth-child(-n+7) { text-decoration: line-through; }
+.riga-annullata .pastiglia { text-decoration: none; }
+
+.pro-righe {
+  border: 1px solid var(--linea);
+  border-radius: var(--r-m);
+  background: var(--carta);
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+.pro-righe-testa {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muto);
+}
+.pro-riga {
+  display: grid;
+  grid-template-columns: minmax(0, 2.4fr) 90px 110px 140px;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 10px;
+}
+.pro-riga:last-child { margin-bottom: 0; }
+.pro-riga label { display: block; }
+.pro-riga label > span {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muto);
+  margin-bottom: 4px;
+}
+.pro-riga input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--linea-forte);
+  border-radius: var(--r-s);
+  font-family: var(--sans);
+  font-size: 13.5px;
+  background: var(--foglio);
+  color: var(--inchiostro);
+}
+.pro-riga-importo {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-bottom: 7px;
+}
+.pro-riga-importo span { font-size: 14px; font-weight: 600; }
+.pro-riga-importo button {
+  display: flex;
+  padding: 5px;
+  border: none;
+  border-radius: var(--r-s);
+  background: none;
+  color: var(--muto);
+  cursor: pointer;
+}
+.pro-riga-importo button:disabled { opacity: 0.3; cursor: default; }
+.pro-riga-importo button:hover:not(:disabled) { color: #d9534f; }
+
+.pro-anteprima {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  border: 1px solid var(--linea);
+  border-radius: var(--r-m);
+  background: var(--carta);
+}
+.pro-anteprima > div { display: flex; flex-direction: column; gap: 3px; }
+.pro-anteprima span {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muto);
+}
+.pro-anteprima b { font-size: 16px; }
+.pro-anteprima .forte b { color: var(--acc); }
+
+@media (max-width: 760px) {
+  .pro-riga { grid-template-columns: 1fr 1fr; }
+  .pro-anteprima { grid-template-columns: 1fr 1fr; }
+  .impo-riga.tre { grid-template-columns: 1fr; }
+}
+
+[data-tema="scuro"] .pro-righe,
+[data-tema="scuro"] .pro-anteprima { background: var(--carta); border-color: var(--linea); }
+[data-tema="scuro"] .pro-riga input { background: var(--foglio); border-color: var(--linea-forte); color: var(--inchiostro); }

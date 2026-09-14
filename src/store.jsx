@@ -1,5 +1,8 @@
 import React from "react";
-import { PIATTI, GIORNI, MENU_INIZIALE, COMMITTENTI, ORDINI_UNITA, PAZIENTI_COMUNITA, ETICHETTE_AZIENDA_DEMO } from "./data.js";
+import {
+  PIATTI, GIORNI, MENU_INIZIALE, COMMITTENTI, ORDINI_UNITA, PAZIENTI_COMUNITA,
+  ETICHETTE_AZIENDA_DEMO, PROFORME_INIZIALI, regimeIva, scadenzaPagamento,
+} from "./data.js";
 
 const Ctx = React.createContext(null);
 export const usaStato = () => React.useContext(Ctx);
@@ -54,6 +57,48 @@ const DOCUMENTI_INIZIALI = [
   },
 ];
 
+/* le proforma si timbrano al giorno, non al millisecondo: la data resta
+   confrontabile, stampabile e leggibile così com'è */
+function isoGiorno(d) {
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+const PREFISSO_PROFORMA = "PRO-2026/";
+
+function prossimoNumero(elenco) {
+  const ultimo = elenco.reduce((max, p) => {
+    const m = /^PRO-2026\/(\d+)$/.exec(p.numero || "");
+    return m ? Math.max(max, Number(m[1])) : max;
+  }, 0);
+  return PREFISSO_PROFORMA + String(ultimo + 1).padStart(3, "0");
+}
+
+/* espande il seed di data.js nella forma completa della proforma, prendendo
+   listino e condizioni dal committente: l'importo che il cliente vede in
+   elenco è lo stesso che esce nel PDF */
+function proformeIniziali() {
+  return PROFORME_INIZIALI.map((p, i) => {
+    const c = COMMITTENTI.find((x) => x.id === p.committenteId) || {};
+    const regime = regimeIva(c.regimeIva);
+    return {
+      id: "pro" + (i + 1),
+      numero: p.numero,
+      committenteId: p.committenteId,
+      periodo: p.periodo,
+      dataEmissione: p.dataEmissione,
+      righe: [{ descrizione: "Pasti " + p.periodo, quantita: p.pasti, prezzo: c.prezzoUnitario || 0 }],
+      termini: c.termini || "30gg",
+      metodoPagamento: c.metodoPagamento || "bonifico",
+      regimeIva: regime.id,
+      aliquota: regime.conIva ? (c.ivaPercentuale || 0) : 0,
+      dicituraIva: regime.conIva ? "" : (c.dicituraIva || regime.dicitura),
+      note: "",
+      stato: p.stato,
+      scadenza: isoGiorno(scadenzaPagamento(p.dataEmissione, c.termini)),
+    };
+  });
+}
+
 export function Provider({ children }) {
   const [ordini, setOrdini] = React.useState({}); // giorno -> { categoria: idPiatto }
   const [confermati, setConfermati] = React.useState({});
@@ -64,6 +109,9 @@ export function Provider({ children }) {
   const [documenti, setDocumenti] = React.useState(DOCUMENTI_INIZIALI);
   const [committente, setCommittente] = React.useState(COMMITTENTI[0].id);
   const [committenti, setCommittenti] = React.useState(COMMITTENTI);
+  /* proforma emesse, una per committente e per periodo: MAVI le compone a mano
+     in Fatturazione, i portali cliente vedono solo le proprie */
+  const [proforme, setProforme] = React.useState(proformeIniziali);
   const [profili, setProfili] = React.useState({}); // username -> { nome, email, telefono, password, foto }
   const [unita, setUnita] = React.useState(() => ({
     comunita: (ORDINI_UNITA.comunita || []).map((r) => ({ ...r })),
@@ -88,9 +136,14 @@ export function Provider({ children }) {
   const [tema, setTemaRaw] = React.useState(() => {
     try { return localStorage.getItem("mavi-tema") || "auto"; } catch { return "auto"; }
   });
+  /* dati del mittente più le condizioni di fatturazione predefinite: sono la
+     proposta di partenza per ogni nuovo committente e per ogni nuova proforma,
+     si modificano in Gestione portale › Fatturazione */
   const [datiAziendali, setDatiAziendali] = React.useState({
     ragioneSociale: "", indirizzo: "", piva: "", cf: "", telefono: "", email: "", pec: "",
-    iban: "", condizioniPagamento: "30 giorni data fattura", noteProforma: "",
+    iban: "", noteProforma: "",
+    terminiDefault: "30gg", metodoDefault: "bonifico",
+    regimeIvaDefault: "ordinaria", dicituraIvaDefault: "",
   });
   const [utenti, setUtenti] = React.useState([
     { id: "u1", nome: "Antonella Rossi", ruolo: "Dipendente", struttura: "Rossi Manifatture Spa", attivo: true },
@@ -175,10 +228,18 @@ export function Provider({ children }) {
      committente nuovo compare ovunque senza bisogno di elenchi paralleli. */
   const aggiungiCommittente = React.useCallback((dati) => {
     const id = (dati.tipo === "Comunità" ? "com" : "az") + Date.now();
-    setCommittenti((p) => [...p, { attivo: true, unita: [], frutta: false, monoporzione: false, ...dati, id }]);
+    const base = {
+      attivo: true, unita: [], frutta: false, monoporzione: false,
+      cf: "", pec: "", codiceSdi: "",
+      termini: datiAziendali.terminiDefault,
+      metodoPagamento: datiAziendali.metodoDefault,
+      regimeIva: datiAziendali.regimeIvaDefault,
+      dicituraIva: datiAziendali.dicituraIvaDefault,
+    };
+    setCommittenti((p) => [...p, { ...base, ...dati, id }]);
     logga("Cucina MAVI", "Admin", "Nuovo committente creato", dati.nome + " (" + dati.tipo + ")", "modifica");
     return id;
-  }, [logga]);
+  }, [logga, datiAziendali]);
   const aggiornaCommittente = React.useCallback((id, patch) => {
     setCommittenti((p) => p.map((c) => (c.id === id ? { ...c, ...patch } : c)));
   }, []);
@@ -433,6 +494,47 @@ export function Provider({ children }) {
     avvisa("Ordine respinto, notificato al mittente");
   }, [avvisa]);
 
+  /* proforma: MAVI le compone a mano in Fatturazione. Le condizioni si
+     copiano dentro il documento al momento dell'emissione e da lì restano
+     ferme: cambiare le condizioni del committente non riscrive le proforma
+     già emesse. Ritorna il documento creato, così il chiamante può aprire il
+     PDF nello stesso gesto di click senza aspettare il ridisegno. */
+  const emettiProforma = React.useCallback((dati) => {
+    const regime = regimeIva(dati.regimeIva);
+    const dataEmissione = dati.dataEmissione || isoGiorno(new Date());
+    const proforma = {
+      id: "pro" + Date.now(),
+      numero: prossimoNumero(proforme),
+      committenteId: dati.committenteId,
+      periodo: dati.periodo || "",
+      dataEmissione,
+      righe: (dati.righe || []).map((r) => ({
+        descrizione: String(r.descrizione || "").trim(),
+        quantita: Number(r.quantita) || 0,
+        prezzo: Number(r.prezzo) || 0,
+      })),
+      termini: dati.termini || "30gg",
+      metodoPagamento: dati.metodoPagamento || "bonifico",
+      regimeIva: regime.id,
+      aliquota: regime.conIva ? Number(dati.aliquota) || 0 : 0,
+      dicituraIva: regime.conIva ? "" : (dati.dicituraIva || regime.dicitura),
+      note: dati.note || "",
+      stato: "emessa",
+      scadenza: isoGiorno(scadenzaPagamento(dataEmissione, dati.termini)),
+    };
+    setProforme((p) => [proforma, ...p]);
+    logga("Cucina MAVI", "Operatore", "Proforma emessa",
+      proforma.numero + ", " + (dati.nomeCommittente || proforma.committenteId) + ", " + (proforma.periodo || "periodo non indicato"), "generico");
+    return proforma;
+  }, [proforme, logga]);
+
+  const annullaProforma = React.useCallback((id) => {
+    const p = proforme.find((x) => x.id === id);
+    setProforme((prec) => prec.map((x) => (x.id === id ? { ...x, stato: "annullata" } : x)));
+    logga("Cucina MAVI", "Operatore", "Proforma annullata", p ? p.numero : id, "generico");
+    avvisa("Proforma annullata, resta in elenco per tracciabilità");
+  }, [proforme, logga, avvisa]);
+
   /* documenti condivisi, caricati da MAVI */
   const aggiungiDocumento = React.useCallback((doc) => {
     setDocumenti((d) => [{ ...doc, id: "doc" + Date.now() }, ...d]);
@@ -445,6 +547,7 @@ export function Provider({ children }) {
     ordini, confermati, messaggi, menu, foto, caricaFoto, togliFoto,
     versione, riordinaMenu, salvaPiatto, eliminaPiatto,
     documenti, aggiungiDocumento, rimuoviDocumento,
+    proforme, emettiProforma, annullaProforma,
     committente, setCommittente, committenti, aggiungiCommittente, aggiornaCommittente, unita, cambiaUnita, aggiungiOspitePresente, presenze, cambiaPresenze, assenti, commutaAssente, ospitiExtra, aggiungiOspite, presenzeTrasmesse, trasmettiPresenze,
     oraConferma, nominativiAzienda,
     presenzeComunita, setPresenzeComunita, logOperazioni, logga,

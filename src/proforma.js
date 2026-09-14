@@ -2,36 +2,33 @@
    Impaginazione e regole di escape stanno in documento.js. */
 
 import {
-  apriDocumento, blocco, campo, cellaConNota, dataIt, eur, paginaDocumento,
+  metodoPagamento, regimeIva, scadenzaPagamento, terminiPagamento, totaliProforma,
+} from "./data.js";
+import {
+  apriDocumento, blocco, campo, dataIt, eur, paginaDocumento,
   paragrafo, riepilogoTotali, tabellaHtml, testoHtml,
 } from "./documento.js";
 
-/* strutture: [{ nome, tipo, mese, pasti, prezzo, ivaPercentuale }]. `prezzo`
-   e `ivaPercentuale` sono per riga, così ogni committente può avere un
-   listino diverso; prezzoUnitarioDefault resta come ripiego per chi chiama
-   con un solo prezzo per tutte le righe (compatibilità con le fatture di
-   RSA, comunità e scuola generate dal loro portale).
-   opzioni: { datiAziendali, avvisa } — i dati del mittente compilati in
-   Cucina MAVI › Gestione portale e la funzione di avviso del portale. */
-export function generaProformaPDF(strutture, prezzoUnitarioDefault, opzioni = {}) {
-  const { datiAziendali, avvisa } = opzioni;
+/* proforma: il documento di `st.proforme`, con righe e condizioni già
+   congelate al momento dell'emissione (vedi `emettiProforma` in store.jsx).
+   opzioni: { datiAziendali, committente, avvisa } — mittente dalla Gestione
+   portale, anagrafica del destinatario dal committente, avviso del portale. */
+export function generaProformaPDF(proforma, opzioni = {}) {
+  const { datiAziendali, committente, avvisa } = opzioni;
   const d = datiAziendali || {};
+  const c = committente || {};
+  const p = proforma || {};
 
-  const righeCalc = strutture.map((s) => {
-    const prezzo = s.prezzo ?? prezzoUnitarioDefault ?? 0;
-    const iva = s.ivaPercentuale ?? 10;
-    const imponibileRiga = s.pasti * prezzo;
-    return { ...s, prezzo, ivaPercentuale: iva, imponibileRiga, ivaRiga: imponibileRiga * (iva / 100) };
-  });
-  const totPasti = righeCalc.reduce((s, r) => s + r.pasti, 0);
-  const imponibile = righeCalc.reduce((s, r) => s + r.imponibileRiga, 0);
-  const iva = righeCalc.reduce((s, r) => s + r.ivaRiga, 0);
-  const totale = imponibile + iva;
-  const ivaMedia = imponibile > 0 ? Math.round((iva / imponibile) * 1000) / 10 : (righeCalc[0]?.ivaPercentuale ?? 10);
+  const totali = totaliProforma(p);
+  const termini = terminiPagamento(p.termini);
+  const metodo = metodoPagamento(p.metodoPagamento);
+  const regime = regimeIva(p.regimeIva);
+  const annullata = p.stato === "annullata";
 
-  const numDoc = "PRO-2026/" + String(Math.floor(Math.random() * 900) + 100);
-  const oggi = dataIt(new Date());
-  const periodo = [...new Set(righeCalc.map((s) => s.mese).filter(Boolean))].join(", ") || "—";
+  const numDoc = p.numero || "Proforma";
+  const periodo = p.periodo || "—";
+  const emissione = dataIt(p.dataEmissione);
+  const scadenza = dataIt(p.scadenza || scadenzaPagamento(p.dataEmissione, p.termini));
 
   const tabella = tabellaHtml({
     colonne: [
@@ -40,61 +37,76 @@ export function generaProformaPDF(strutture, prezzoUnitarioDefault, opzioni = {}
       { titolo: "Prezzo unit.", allinea: "dx" },
       { titolo: "Importo", allinea: "dx" },
     ],
-    righe: righeCalc.map((s) => [
-      cellaConNota(s.nome, [s.tipo, s.mese].filter(Boolean).join(" — ")),
-      s.pasti,
-      "€ " + eur(s.prezzo),
-      "€ " + eur(s.imponibileRiga),
+    righe: (p.righe || []).map((r) => [
+      r.descrizione || "—",
+      Number(r.quantita) || 0,
+      "€ " + eur(r.prezzo),
+      "€ " + eur((Number(r.quantita) || 0) * (Number(r.prezzo) || 0)),
     ]),
-    totale: ["Totale pasti fatturati", totPasti, "", "€ " + eur(imponibile)],
-    vuota: "Nessuna riga da fatturare per il periodo.",
+    totale: ["Totale imponibile", totali.quantita, "", "€ " + eur(totali.imponibile)],
+    vuota: "Nessuna riga nella proforma.",
   });
 
+  const fiscali = [c.piva && "P.IVA " + c.piva, c.cf && "C.F. " + c.cf].filter(Boolean).join(" · ");
+  const elettronica = [c.pec && "PEC " + c.pec, c.codiceSdi && "Codice SDI " + c.codiceSdi].filter(Boolean).join(" · ");
+  const contatti = [c.referente, c.email].filter(Boolean).join(" · ");
   const destinatario = blocco("Destinatario", `<div class="doc-mittente">`
-    + `<strong>${righeCalc.map((s) => testoHtml(s.nome)).join(" / ") || `<span class="ph">[Committente]</span>`}</strong>`
-    + `<span class="ph">[Indirizzo committente]</span><br>`
-    + `<span class="ph">[P.IVA committente]</span><br>`
-    + `<span class="ph">[Referente / Email]</span>`
+    + `<strong>${campo(c.nome, "Ragione sociale committente")}</strong>`
+    + `${campo(c.indirizzo, "Indirizzo committente")}<br>`
+    + `${fiscali ? testoHtml(fiscali) : `<span class="ph">[P.IVA / Codice fiscale]</span>`}<br>`
+    + `${elettronica ? testoHtml(elettronica) : `<span class="ph">[PEC / Codice SDI]</span>`}<br>`
+    + `${contatti ? testoHtml(contatti) : `<span class="ph">[Referente / Email]</span>`}`
     + `</div>`);
 
-  const condizioni = blocco("Condizioni", paragrafo({
-    html: campo(d.condizioniPagamento, "Modalità di pagamento: es. bonifico bancario 30 gg d.f.")
-      + `<br>IBAN ` + campo(d.iban, "IT00 X000 0000 0000 0000 0000 000"),
-  }) + paragrafo(
-    "Documento proforma non fiscalmente rilevante ai sensi del DPR 633/72. "
-    + "La fattura elettronica verrà emessa dal gestionale contabile e trasmessa al Sistema di Interscambio.",
-    { piccolo: true }
-  ));
+  const condizioni = blocco("Condizioni di pagamento",
+    paragrafo({
+      html: `<b>Termini</b> ${testoHtml(termini.nome)}, scadenza ${testoHtml(scadenza)}<br>`
+        + `<b>Metodo</b> ${testoHtml(metodo.nome)}`
+        + (metodo.conIban ? `<br><b>IBAN</b> ` + campo(d.iban, "IT00 X000 0000 0000 0000 0000 000") : ""),
+    })
+    + (totali.conIva ? "" : paragrafo({
+      html: `<b>Regime IVA</b> ` + campo(p.dicituraIva || regime.dicitura, "Dicitura di esenzione IVA"),
+    }))
+    + paragrafo(
+      "Documento proforma non fiscalmente rilevante ai sensi del DPR 633/72. "
+      + "La fattura elettronica verrà emessa dal gestionale contabile e trasmessa al Sistema di Interscambio.",
+      { piccolo: true }
+    ));
 
   const note = [
+    annullata ? "Documento annullato: resta agli atti per tracciabilità e non è più esigibile." : null,
+    p.note,
     d.noteProforma,
     "I dati in corsivo terracotta sono segnaposto, da compilare in Cucina MAVI › Gestione portale prima della messa in produzione.",
   ].filter(Boolean);
 
   const html = paginaDocumento({
     titolo: "Proforma " + numDoc,
-    badge: "Proforma",
+    badge: annullata ? "Proforma annullata" : "Proforma",
     sottotitolo: "Riepilogo dei pasti erogati nel periodo " + periodo,
     meta: [
       { etichetta: "Documento n.", valore: numDoc },
-      { etichetta: "Data emissione", valore: oggi },
+      { etichetta: "Data emissione", valore: emissione },
       { etichetta: "Periodo", valore: periodo },
-      { etichetta: "Pagamento", valore: { html: campo(d.condizioniPagamento, "30 gg d.f.") } },
+      { etichetta: "Scadenza", valore: scadenza },
     ],
     blocchi: [
       destinatario,
       tabella,
       riepilogoTotali([
-        { etichetta: "Imponibile", valore: "€ " + eur(imponibile) },
-        { etichetta: "IVA " + String(ivaMedia).replace(".", ",") + "%", valore: "€ " + eur(iva) },
-        { etichetta: "Totale documento", valore: "€ " + eur(totale), forte: true },
+        { etichetta: "Imponibile", valore: "€ " + eur(totali.imponibile) },
+        {
+          etichetta: totali.conIva ? "IVA " + String(totali.aliquota).replace(".", ",") + "%" : "IVA",
+          valore: "€ " + eur(totali.iva),
+        },
+        { etichetta: "Totale documento", valore: "€ " + eur(totali.totale), forte: true },
       ]),
       condizioni,
     ],
     note,
-    piede: "Documento generato dal portale MAVI Ristorazione il " + oggi,
+    piede: "Documento generato dal portale MAVI Ristorazione il " + dataIt(new Date()),
     datiAziendali,
   });
 
-  apriDocumento(html, { nomeFile: "Proforma_MAVI.html", avvisa });
+  apriDocumento(html, { nomeFile: "Proforma_" + numDoc.replace(/[^A-Za-z0-9]+/g, "_") + ".html", avvisa });
 }

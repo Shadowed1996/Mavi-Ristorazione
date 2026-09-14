@@ -1,6 +1,7 @@
 import React from "react";
 import {
-  COMMITTENTI, CONSISTENZE, DIETE_TERAPEUTICHE, FASCE_SCOLASTICHE, MODELLI,
+  COMMITTENTI, CONSISTENZE, DIETE_TERAPEUTICHE, FASCE_SCOLASTICHE, METODI_PAGAMENTO, MODELLI,
+  REGIMI_IVA, TERMINI_PAGAMENTO, metodoPagamento, regimeIva, terminiPagamento,
 } from "../data.js";
 import { Icone, Intestazione, Velo } from "../ui.jsx";
 import { usaStato } from "../store.jsx";
@@ -359,6 +360,9 @@ export function ModelliServizio() {
                       <tr><td style={{ color: "var(--muto)", width: 110 }}>Ragione sociale</td><td><b>{c.nome}</b></td></tr>
                       <tr><td style={{ color: "var(--muto)" }}>Indirizzo</td><td>{c.indirizzo}</td></tr>
                       <tr><td style={{ color: "var(--muto)" }}>P.IVA</td><td className="cifra">{c.piva}</td></tr>
+                      <tr><td style={{ color: "var(--muto)" }}>Codice fiscale</td><td className="cifra">{c.cf || "—"}</td></tr>
+                      <tr><td style={{ color: "var(--muto)" }}>PEC</td><td>{c.pec || "—"}</td></tr>
+                      <tr><td style={{ color: "var(--muto)" }}>Codice SDI</td><td className="cifra">{c.codiceSdi || "—"}</td></tr>
                       <tr><td style={{ color: "var(--muto)" }}>Referente</td><td>{c.referente}<div style={{ fontSize: 11, color: "var(--muto)" }}>{c.ruoloReferente}</div></td></tr>
                       <tr><td style={{ color: "var(--muto)" }}>Email</td><td>{c.email}</td></tr>
                       <tr><td style={{ color: "var(--muto)" }}>Telefono</td><td className="cifra">{c.telefono}</td></tr>
@@ -375,13 +379,21 @@ export function ModelliServizio() {
                       <tr><td style={{ color: "var(--muto)" }}>Unità</td><td>{c.unita.length} {c.etichettaUnita.toLowerCase()}</td></tr>
                       <tr><td style={{ color: "var(--muto)" }}>Pasti stimati</td><td className="quantita">{c.pasti}/giorno</td></tr>
                       <tr><td style={{ color: "var(--muto)" }}>Cutoff</td><td>{c.cutoff}</td></tr>
-                      <tr><td style={{ color: "var(--muto)" }}>Listino</td><td>€ {c.prezzoUnitario.toFixed(2)}/pasto, IVA {c.ivaPercentuale}%</td></tr>
+                      <tr><td style={{ color: "var(--muto)" }}>Listino</td><td>€ {c.prezzoUnitario.toFixed(2)}/pasto</td></tr>
+                      <tr><td style={{ color: "var(--muto)" }}>Termini</td><td>{terminiPagamento(c.termini).nome}</td></tr>
+                      <tr><td style={{ color: "var(--muto)" }}>Metodo</td><td>{metodoPagamento(c.metodoPagamento).nome}</td></tr>
+                      <tr>
+                        <td style={{ color: "var(--muto)" }}>Regime IVA</td>
+                        <td>{regimeIva(c.regimeIva).conIva
+                          ? "IVA ordinaria " + (c.ivaPercentuale || 0) + "%"
+                          : <>Senza IVA<div style={{ fontSize: 11, color: "var(--muto)" }}>{c.dicituraIva || regimeIva(c.regimeIva).dicitura}</div></>}</td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
               </div>
               <div className="pannello-piede" style={{ display: "flex", gap: 10, justifyContent: "flex-end", alignItems: "center" }}>
-                <span style={{ flex: 1 }}>Prezzo e cutoff si modificano da Impostazioni per committente.</span>
+                <span style={{ flex: 1 }}>Prezzo, cutoff e condizioni di fatturazione si modificano da Impostazioni per committente.</span>
                 <button className="btn linea piccolo" onClick={() => { st.setCommittente(c.id); st.avvisa(c.nome + " impostato come committente attivo"); }}>Imposta attivo</button>
                 <button className="btn piccolo" style={attivo ? { color: "#d9534f", background: "transparent", border: "1px solid #d9534f" } : { background: "#5cb85c" }}
                   onClick={() => { st.aggiornaCommittente(c.id, { attivo: !attivo }); st.avvisa(c.nome + (attivo ? " sospeso" : " riattivato")); }}>
@@ -410,13 +422,35 @@ export function ModelliServizio() {
 
 /* ==================== modale nuovo committente ==================== */
 function ModaleCommittente({ onChiudi, onSalva }) {
-  const [d, setD] = React.useState({
-    nome: "", tipo: "Azienda", modello: "individuale", etichettaUnita: "Reparto",
-    indirizzo: "", piva: "", referente: "", ruoloReferente: "", email: "", telefono: "",
-    pasti: 10, cutoff: "14:00 del giorno precedente", prezzoUnitario: 7.5, ivaPercentuale: 10,
+  const st = usaStato();
+  /* le condizioni di partenza sono quelle predefinite in Gestione portale ›
+     Fatturazione, poi si correggono qui per il singolo committente */
+  const [d, setD] = React.useState(() => {
+    const pre = st.datiAziendali;
+    const regime = regimeIva(pre.regimeIvaDefault);
+    return {
+      nome: "", tipo: "Azienda", modello: "individuale", etichettaUnita: "Reparto",
+      indirizzo: "", piva: "", cf: "", pec: "", codiceSdi: "",
+      referente: "", ruoloReferente: "", email: "", telefono: "",
+      pasti: 10, cutoff: "14:00 del giorno precedente", prezzoUnitario: 7.5,
+      ivaPercentuale: regime.conIva ? 10 : 0,
+      termini: pre.terminiDefault, metodoPagamento: pre.metodoDefault, regimeIva: regime.id,
+      dicituraIva: regime.conIva ? "" : (pre.dicituraIvaDefault || regime.dicitura),
+    };
   });
   const campo = (k, v) => setD((x) => ({ ...x, [k]: v }));
+  const conIva = regimeIva(d.regimeIva).conIva;
   const valido = d.nome.trim().length > 2 && d.referente.trim().length > 1;
+
+  function cambiaRegime(id) {
+    const r = regimeIva(id);
+    setD((x) => ({
+      ...x,
+      regimeIva: id,
+      ivaPercentuale: r.conIva ? (Number(x.ivaPercentuale) > 0 ? x.ivaPercentuale : 10) : 0,
+      dicituraIva: r.conIva ? "" : (String(x.dicituraIva || "").trim() || r.dicitura),
+    }));
+  }
 
   function invia(e) {
     e.preventDefault();
@@ -426,7 +460,8 @@ function ModaleCommittente({ onChiudi, onSalva }) {
       nome: d.nome.trim(),
       pasti: Number(d.pasti) || 0,
       prezzoUnitario: Number(d.prezzoUnitario) || 0,
-      ivaPercentuale: Number(d.ivaPercentuale) || 0,
+      ivaPercentuale: conIva ? (Number(d.ivaPercentuale) || 0) : 0,
+      dicituraIva: conIva ? "" : d.dicituraIva,
       listino: "€ " + (Number(d.prezzoUnitario) || 0).toFixed(2).replace(".", ",") + " a pasto",
       regolaPasto: d.modello === "individuale" ? "Composizione libera, il commensale sceglie" : "Menu fisso, personalizzazioni per unità",
       unita: [], attivo: true,
@@ -469,6 +504,20 @@ function ModaleCommittente({ onChiudi, onSalva }) {
             <input type="text" value={d.piva} onChange={(e) => campo("piva", e.target.value)} />
           </label>
         </div>
+        <div className="modulo-riga tre">
+          <label>
+            <span>Codice fiscale</span>
+            <input type="text" value={d.cf} onChange={(e) => campo("cf", e.target.value)} placeholder="Se diverso dalla P.IVA" />
+          </label>
+          <label>
+            <span>PEC</span>
+            <input type="text" value={d.pec} onChange={(e) => campo("pec", e.target.value)} />
+          </label>
+          <label>
+            <span>Codice destinatario SDI</span>
+            <input type="text" value={d.codiceSdi} onChange={(e) => campo("codiceSdi", e.target.value)} placeholder="Sette caratteri" />
+          </label>
+        </div>
         <div className="modulo-riga due">
           <label>
             <span>Referente</span>
@@ -499,10 +548,38 @@ function ModaleCommittente({ onChiudi, onSalva }) {
             <input type="number" min="0" step="0.10" value={d.prezzoUnitario} onChange={(e) => campo("prezzoUnitario", e.target.value)} />
           </label>
           <label>
-            <span>IVA %</span>
-            <input type="number" min="0" max="100" value={d.ivaPercentuale} onChange={(e) => campo("ivaPercentuale", e.target.value)} />
+            <span>Aliquota IVA %</span>
+            <input type="number" min="0" max="100" value={conIva ? d.ivaPercentuale : 0} disabled={!conIva}
+              onChange={(e) => campo("ivaPercentuale", e.target.value)} />
           </label>
         </div>
+        <div className="modulo-riga tre">
+          <label>
+            <span>Termini di pagamento</span>
+            <select value={d.termini} onChange={(e) => campo("termini", e.target.value)}>
+              {TERMINI_PAGAMENTO.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Metodo di pagamento</span>
+            <select value={d.metodoPagamento} onChange={(e) => campo("metodoPagamento", e.target.value)}>
+              {METODI_PAGAMENTO.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Regime IVA</span>
+            <select value={d.regimeIva} onChange={(e) => cambiaRegime(e.target.value)}>
+              {REGIMI_IVA.map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
+            </select>
+          </label>
+        </div>
+        {!conIva && (
+          <label className="modulo-blocco">
+            <span>Dicitura di esenzione IVA</span>
+            <input type="text" value={d.dicituraIva} onChange={(e) => campo("dicituraIva", e.target.value)}
+              placeholder="Operazione esente IVA ai sensi dell'art. 10 DPR 633/72" />
+          </label>
+        )}
         <label className="modulo-blocco">
           <span>Orario limite ordini</span>
           <input type="text" value={d.cutoff} onChange={(e) => campo("cutoff", e.target.value)} />

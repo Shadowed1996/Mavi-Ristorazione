@@ -541,6 +541,13 @@ export function SchedaPiatto({ id, scelto, soloLettura, allergeniUtente = [], on
   );
 }
 
+/* stato di una proforma, uguale nel portale MAVI e nei portali cliente */
+const PASTIGLIA_PROFORMA = { emessa: "p-att", pagata: "p-ok", annullata: "p-neu" };
+
+export function PastigliaProforma({ stato }) {
+  return <span className={"pastiglia " + (PASTIGLIA_PROFORMA[stato] || "p-neu")}>{stato}</span>;
+}
+
 export function Velo({ children, onChiudi, largo }) {
   React.useEffect(() => {
     const h = (e) => e.key === "Escape" && onChiudi();
