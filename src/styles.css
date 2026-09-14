@@ -5428,7 +5428,6 @@ tr.pz-neutro td:first-child { border-left: 3px solid var(--linea); }
 [data-tema="scuro"] .rot-step.attiva { background: #1a2820; border-color: var(--acc); }
 [data-tema="scuro"] .rot-n { background: #1e1c1a; }
 
-<<<<<<< HEAD
 /* ============================================================
    Riepilogo del giorno, cruscotto del referente
    ============================================================ */
@@ -5454,7 +5453,7 @@ tr.pz-neutro td:first-child { border-left: 3px solid var(--linea); }
 .dati tbody tr:hover td.riga-vuota {
   background: transparent;
 }
-=======
+
 /* ============================ proforma create a mano ============================ */
 .impo-riga.tre { grid-template-columns: repeat(3, 1fr); }
 
@@ -5560,4 +5559,3 @@ tr.pz-neutro td:first-child { border-left: 3px solid var(--linea); }
 [data-tema="scuro"] .pro-righe,
 [data-tema="scuro"] .pro-anteprima { background: var(--carta); border-color: var(--linea); }
 [data-tema="scuro"] .pro-riga input { background: var(--foglio); border-color: var(--linea-forte); color: var(--inchiostro); }
->>>>>>> worktree-agent-aa6a78da9e12f0648
