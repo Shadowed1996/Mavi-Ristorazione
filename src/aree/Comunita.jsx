@@ -2,8 +2,11 @@ import React from "react";
 import { PAZIENTI_COMUNITA, GIORNI_SETT, PASTI_TIPO, splitPiatto, pastiDi, portateServite } from "../data.js";
 import { Icone, Intestazione, Velo } from "../ui.jsx";
 import { usaStato } from "../store.jsx";
+import { generaResocontoComunitaPDF } from "../resoconto.js";
 
 const GIORNO_DEMO = "mercoledì";
+/* stessa giornata di GIORNO_DEMO in forma di data, per i titoli dei documenti */
+const DATA_DEMO = "2026-09-16";
 
 /* ==================== pagina Pazienti ==================== */
 function Pazienti({ soloLettura, reparto }) {
@@ -794,6 +797,38 @@ function ResocontiComunita({ reparto }) {
     }
   }
 
+  /* stesse righe della vista a schermo: una tabella per pasto, con le note di
+     preparazione sotto la portata a cui si riferiscono */
+  function esportaPDF() {
+    try {
+      const pasti = statiPasto.map(([pasto]) => ({
+        pasto,
+        righe: pazientiDelPasto(pasto).map((p) => {
+          const dieta = p.dieta[GIORNO_DEMO]?.[pasto];
+          return {
+            paziente: p.nome,
+            reparto: p.stanza,
+            tipoDieta: p.tipo_dieta || "Standard",
+            primo: splitPiatto(dieta?.primo),
+            secondo: splitPiatto(dieta?.secondo),
+            contorno: splitPiatto(dieta?.contorno),
+          };
+        }),
+      }));
+      generaResocontoComunitaPDF({
+        struttura: "Comunità Il Ponte",
+        reparto,
+        giorno: DATA_DEMO,
+        pasti,
+        datiAziendali: st.datiAziendali,
+        avvisa: st.avvisa,
+      });
+    } catch (e) {
+      console.error(e);
+      st.avvisa("Errore nella generazione del PDF, riprova");
+    }
+  }
+
   return (
     <>
       <Intestazione
@@ -802,7 +837,7 @@ function ResocontiComunita({ reparto }) {
         sotto="Cosa è stato trasmesso alla cucina MAVI, con dettaglio per giorno e per paziente"
         azioni={<>
           <button className="btn linea piccolo" onClick={esportaExcel}><Icone.scarica size={16} /> Excel</button>
-          <button className="btn linea piccolo" onClick={() => st.avvisa("Resoconto esportato in PDF")}>
+          <button className="btn linea piccolo" onClick={esportaPDF}>
             <Icone.stampa size={16} /> PDF
           </button>
         </>}

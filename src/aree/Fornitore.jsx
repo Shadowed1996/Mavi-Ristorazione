@@ -2149,6 +2149,29 @@ function LogOperazioni() {
     return map[t] || "p-neu";
   };
 
+  /* esporta quello che è a schermo, filtro compreso */
+  async function esportaLog() {
+    try {
+      const { scaricaExcel } = await import("../excel.js");
+      await scaricaExcel("Log_operazioni.xlsx", [
+        { nome: "Log operazioni", dati: lista.map((l) => ({
+          ora: l.ora, utente: l.utente, ruolo: l.ruolo, azione: l.azione, dettaglio: l.dettaglio, tipo: l.tipo,
+        })), colonne: [
+          { header: "Ora", key: "ora", width: 10 },
+          { header: "Utente", key: "utente", width: 22 },
+          { header: "Ruolo", key: "ruolo", width: 20 },
+          { header: "Azione", key: "azione", width: 34 },
+          { header: "Dettaglio", key: "dettaglio", width: 48 },
+          { header: "Tipo", key: "tipo", width: 16 },
+        ] },
+      ], { datiAziendali: st.datiAziendali });
+      st.avvisa("Log esportato in Excel, " + lista.length + " operazioni");
+    } catch (e) {
+      console.error(e);
+      st.avvisa("Errore nell'export Excel, riprova");
+    }
+  }
+
   return (
     <>
       <Intestazione
@@ -2156,7 +2179,7 @@ function LogOperazioni() {
         titolo="Log operazioni"
         sotto="Cronologia di tutte le azioni eseguite nel portale, filtrabile per tipo"
         azioni={
-          <button className="btn linea piccolo" onClick={() => st.avvisa("Log esportato, funzione dimostrativa")}>
+          <button className="btn linea piccolo" onClick={esportaLog}>
             <Icone.scarica size={16} /> Esporta
           </button>
         }
