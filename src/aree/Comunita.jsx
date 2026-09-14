@@ -786,7 +786,7 @@ function ResocontiComunita({ reparto }) {
           { header: "Secondo", key: "secondo", width: 26 },
           { header: "Contorno", key: "contorno", width: 26 },
         ]},
-      ]);
+      ], { datiAziendali: st.datiAziendali });
       st.avvisa("Resoconto Excel scaricato con pranzo e cena, dettaglio giornaliero e settimanale");
     } catch (e) {
       console.error(e);

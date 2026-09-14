@@ -2,6 +2,7 @@ import React from "react";
 import { CATEGORIE, DIPENDENTI, FATTURE, PIATTI, PREZZO_PASTO, QUOTA_DIPENDENTE, RESOCONTO_MENSILE, menuDelGiorno } from "../data.js";
 import { Accesso, DiscoColore, Documenti, Icone, Intestazione, Messaggi, Telaio, Velo } from "../ui.jsx";
 import { usaStato } from "../store.jsx";
+import { generaProformaPDF } from "../proforma.js";
 
 const VOCI = [
   ["cruscotto", "Cruscotto", Icone.grafico],
@@ -274,7 +275,7 @@ function Resoconti() {
           { header: "Secondo", key: "secondo", width: 26 },
           { header: "Contorno", key: "contorno", width: 26 },
         ]},
-      ]);
+      ], { datiAziendali: st.datiAziendali });
       st.avvisa("Resoconto Excel scaricato con riepilogo e dettaglio giornaliero");
     } catch (e) {
       console.error(e);
@@ -300,7 +301,7 @@ function Resoconti() {
           { header: "Pasti", key: "pasti", width: 8 },
           { header: "Trattenuta lorda", key: "trattenuta", width: 18 },
         ]},
-      ]);
+      ], { datiAziendali: st.datiAziendali });
       st.avvisa("File trattenute Excel scaricato per l'ufficio paghe");
     } catch (e) {
       console.error(e);
@@ -407,9 +408,12 @@ function Fatture() {
                     <td>{f.sdi === "consegnata" ? <span className="pastiglia p-ok">consegnata</span> : <span className="pastiglia p-neu">non emessa</span>}</td>
                     <td>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <button className="btn linea piccolo" onClick={async () => {
-                          const { generaProformaPDF } = await import("../proforma.js");
-                          generaProformaPDF([{ nome: "Rossi Manifatture Spa", tipo: "Azienda", pasti: f.pasti, mese: f.periodo }], 7.50);
+                        <button className="btn linea piccolo" onClick={() => {
+                          generaProformaPDF(
+                            [{ nome: "Rossi Manifatture Spa", tipo: "Azienda", pasti: f.pasti, mese: f.periodo }],
+                            7.50,
+                            { datiAziendali: st.datiAziendali, avvisa: st.avvisa }
+                          );
                         }}>PDF</button>
                       </div>
                     </td>
