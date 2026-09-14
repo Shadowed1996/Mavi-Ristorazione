@@ -2,7 +2,10 @@ import React from "react";
 import {
   DIETE_TERAPEUTICHE, MODELLI, ordinaProforme, testoCondizioni, totaliProforma,
 } from "../data.js";
-import { Accesso, Documenti, Icone, Intestazione, Messaggi, PastigliaProforma, Telaio } from "../ui.jsx";
+import {
+  Documenti, Icone, Intestazione, Messaggi, NessunPermesso,
+  PastigliaProforma, Telaio, usaVociPermesse,
+} from "../ui.jsx";
 import { usaStato } from "../store.jsx";
 import { dataIt } from "../documento.js";
 import { generaProformaPDF } from "../proforma.js";
@@ -144,93 +147,93 @@ export function SceltaRuolo({ cfg, onScegli, onIndietro }) {
 }
 
 /* ==================== portale della struttura ==================== */
-export default function PortaleStruttura({ tipo, ruoloIniziale, onEsci, utente }) {
-  const cfg = STRUTTURE[tipo];
+const VOCI_COMUNITA = [
+  ["cruscotto", "Cruscotto", Icone.grafico],
+  ["pazienti", "Pazienti", Icone.gente],
+  ["presenze", "Presenze del giorno", Icone.calendario],
+  ["resoconti", "Resoconti", Icone.lista],
+  ["fatture", "Fatture", Icone.fattura],
+  ["documenti", "Documenti", Icone.lista],
+];
+
+/* RSA e scuola restano fuori dal flusso attivo: nessun utente ha quelle
+   strutture. "Ordine del giorno" e "Menu della settimana" non hanno un
+   permesso dedicato, quindi restano sempre visibili per quei due modelli. */
+const VOCI_ALTRE = [
+  ["cruscotto", "Cruscotto", Icone.grafico],
+  ["ordine", "Ordine del giorno", Icone.gente],
+  ["settimana", "Menu della settimana", Icone.calendario],
+  ["fatture", "Fatture", Icone.fattura],
+  ["documenti", "Documenti", Icone.lista],
+];
+
+const PERMESSO_PAGINA = {
+  cruscotto: "cruscotto.vedi",
+  pazienti: "pazienti.vedi",
+  presenze: "presenze.vedi",
+  resoconti: "resoconti.vedi",
+  fatture: "fatture.vedi",
+  documenti: "documenti.vedi",
+};
+
+export default function PortaleStruttura({ tipo, onEsci, utente }) {
+  const cfg = STRUTTURE[tipo] || STRUTTURE.comunita;
   const st = usaStato();
-  const iniziale = ruoloIniziale ? cfg.ruoli.find((r) => r.id === ruoloIniziale) : null;
-  const [ruolo, setRuolo] = React.useState(iniziale);
-  const [dentro, setDentro] = React.useState(!!iniziale);
-  const [pagina, setPagina] = React.useState(iniziale ? iniziale.home : "");
+  const [voci, pagina, setPagina] = usaVociPermesse(
+    tipo === "comunita" ? VOCI_COMUNITA : VOCI_ALTRE, PERMESSO_PAGINA
+  );
+
+  /* un utente di un committente creato in demo non ha una configurazione in
+     STRUTTURE: si usa il telaio del tipo, con il suo committente vero */
+  const record = st.committenti.find((c) => c.id === (utente && utente.struttura));
+  const cfgAttiva = React.useMemo(
+    () => (record ? { ...cfg, committente: record.id, nome: record.nome } : cfg),
+    [cfg, record]
+  );
 
   React.useEffect(() => {
-    st.setCommittente(cfg.committente);
+    st.setCommittente(cfgAttiva.committente);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tipo]);
+  }, [cfgAttiva.committente]);
 
-  if (!ruolo)
-    return <SceltaRuolo cfg={cfg} onIndietro={() => (onEsci ? onEsci() : null)} onScegli={(r) => { setRuolo(r); setPagina(r.home); }} />;
-
-  if (!dentro)
-    return (
-      <Accesso
-        area={cfg.tema}
-        titolo={ruolo.nome}
-        claim={cfg.claim}
-        punti={cfg.punti}
-        utente={ruolo.utente}
-        password="dimostrazione"
-        onEntra={() => setDentro(true)}
-        onIndietro={() => (ruoloIniziale ? onEsci && onEsci() : setRuolo(null))}
-      />
-    );
-
-  const operatore = ruolo.id === "operatore";
-  /* il reparto/casa dell'educatore arriva dall'anagrafica di accesso (UTENTI,
-     campo reparto): scoping delle pagine paziente per chi non è responsabile.
-     Assente per il responsabile e per il flusso di prova senza login reale. */
-  const reparto = tipo === "comunita" && operatore ? (utente?.reparto || null) : null;
-  const voci = tipo === "comunita"
-    ? (operatore
-      ? [
-          ["pazienti", "Pazienti", Icone.gente],
-          ["presenze", "Presenze del giorno", Icone.calendario],
-          ["resoconti", "Resoconti", Icone.lista],
-          ["documenti", "Documenti", Icone.lista],
-        ]
-      : [
-          ["cruscotto", "Cruscotto", Icone.grafico],
-          ["pazienti", "Pazienti", Icone.gente],
-          ["presenze", "Presenze del giorno", Icone.calendario],
-          ["resoconti", "Resoconti", Icone.lista],
-          ["fatture", "Fatture", Icone.fattura],
-          ["documenti", "Documenti", Icone.lista],
-        ])
-    : (operatore
-      ? [
-          ["ordine", "Ordine del giorno", Icone.gente],
-          ["settimana", "Menu della settimana", Icone.calendario],
-          ["documenti", "Documenti", Icone.lista],
-        ]
-      : [
-          ["cruscotto", "Cruscotto", Icone.grafico],
-          ["ordine", "Ordine del giorno", Icone.gente],
-          ["fatture", "Fatture", Icone.fattura],
-          ["documenti", "Documenti", Icone.lista],
-        ]);
-
-  const nomeVisto = utente?.nome || ruolo.nome;
-  const iniziali = utente?.iniziali || nomeVisto.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase();
+  /* null = tutti i reparti; stringa = solo quel reparto; stringa vuota =
+     l'utente è limitato al proprio reparto ma non gliene è stato assegnato
+     nessuno, quindi non vede niente e lo dice a schermo */
+  const reparto = st.puo("pazienti.tuttiReparti") ? null : ((utente && utente.reparto) || "");
+  const puoAnagrafica = st.puo("pazienti.anagrafica");
+  const puoDieta = st.puo("pazienti.dieta");
+  const nomeVisto = (utente && utente.nome) || cfgAttiva.nome;
+  const iniziali = (utente && utente.iniziali)
+    || nomeVisto.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase();
+  const nomeRuolo = (st.ruoloSessione && st.ruoloSessione.nome) || cfgAttiva.titolo;
+  /* rimonta le pagine che tengono l'elenco in stato locale quando cambiano
+     reparto o permessi: senza, la lista resterebbe quella del primo montaggio */
+  const chiaveScope = (reparto === null ? "tutti" : reparto || "senza-reparto")
+    + (puoAnagrafica ? "-crud" : "") + (puoDieta ? "-dieta" : "");
 
   return (
     <Telaio
-      area={cfg.tema}
-      marchio={cfg.titolo}
-      ruolo={ruolo.nome}
-      utente={{ iniziali, nome: nomeVisto, sotto: cfg.nome }}
-      chiaveUtente={utente?.u}
+      area={cfgAttiva.tema}
+      marchio={cfgAttiva.titolo}
+      ruolo={nomeRuolo}
+      utente={{ iniziali, nome: nomeVisto, sotto: cfgAttiva.nome }}
+      chiaveUtente={utente && utente.u}
       voci={voci}
       pagina={pagina}
       setPagina={setPagina}
-      onEsci={() => (onEsci ? onEsci() : setRuolo(null))}
+      onEsci={() => (onEsci ? onEsci() : null)}
     >
+      {voci.length === 0 && <NessunPermesso onEsci={onEsci} />}
       {pagina === "ordine" && tipo !== "comunita" && <OrdiniUnita tipo={tipo} utente={utente} />}
-      {tipo === "comunita" && pagina === "pazienti" && <Comunita.Pazienti soloLettura={operatore} reparto={reparto} />}
-      {tipo === "comunita" && pagina === "presenze" && <Comunita.Presenze reparto={reparto} />}
-      {tipo === "comunita" && pagina === "resoconti" && <Comunita.Resoconti reparto={reparto} />}
-      {pagina === "cruscotto" && <CruscottoStruttura tipo={tipo} cfg={cfg} />}
-      {pagina === "settimana" && <MenuStruttura cfg={cfg} />}
-      {pagina === "fatture" && <FattureStruttura cfg={cfg} />}
-      {pagina === "documenti" && <Documenti soloPubblici={operatore} />}
+      {tipo === "comunita" && pagina === "pazienti" && (
+        <Comunita.Pazienti key={"paz-" + chiaveScope} soloLettura={!puoAnagrafica} puoDieta={puoDieta} reparto={reparto} />
+      )}
+      {tipo === "comunita" && pagina === "presenze" && <Comunita.Presenze key={"pre-" + chiaveScope} reparto={reparto} />}
+      {tipo === "comunita" && pagina === "resoconti" && <Comunita.Resoconti key={"res-" + chiaveScope} reparto={reparto} />}
+      {pagina === "cruscotto" && <CruscottoStruttura tipo={tipo} cfg={cfgAttiva} />}
+      {pagina === "settimana" && <MenuStruttura cfg={cfgAttiva} />}
+      {pagina === "fatture" && <FattureStruttura cfg={cfgAttiva} />}
+      {pagina === "documenti" && <Documenti soloPubblici={!st.puo("documenti.riservati")} />}
       <Messaggi lista={st.messaggi} />
     </Telaio>
   );
@@ -464,9 +467,11 @@ function FattureStruttura({ cfg }) {
                       <td style={{ fontSize: 12, color: "var(--muto)" }}>{testoCondizioni(p)}</td>
                       <td><PastigliaProforma stato={p.stato} /></td>
                       <td>
-                        <button className="btn linea piccolo" onClick={() => {
-                          generaProformaPDF(p, { datiAziendali: st.datiAziendali, committente, avvisa: st.avvisa });
-                        }}>PDF</button>
+                        {st.puo("fatture.pdf") && (
+                          <button className="btn linea piccolo" onClick={() => {
+                            generaProformaPDF(p, { datiAziendali: st.datiAziendali, committente, avvisa: st.avvisa });
+                          }}>PDF</button>
+                        )}
                       </td>
                     </tr>
                   );

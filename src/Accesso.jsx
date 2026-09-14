@@ -1,29 +1,51 @@
 import React from "react";
-import { ETICHETTE_RUOLO, ETICHETTE_STRUTTURA, UTENTI, trovaUtente } from "./data.js";
+import { ETICHETTE_RUOLO, ETICHETTE_STRUTTURA } from "./data.js";
+import { usaStato } from "./store.jsx";
 import { Icone, Marchio } from "./ui.jsx";
 
 /* Accesso unico. Non si sceglie il portale, lo decide il profilo. */
-export default function AccessoUnico({ onEntra }) {
+export default function AccessoUnico({ avviso, onAvvisoLetto }) {
+  const st = usaStato();
   const [u, setU] = React.useState("");
   const [p, setP] = React.useState("dimostrazione");
   const [errore, setErrore] = React.useState("");
   const [profili, setProfili] = React.useState(false);
+  /* motivo dell'uscita forzata dal portale, mostrato dove l'utente guarda */
+  const messaggio = errore || avviso || "";
+  const pulisci = () => {
+    setErrore("");
+    if (avviso && onAvvisoLetto) onAvvisoLetto();
+  };
+
+  const attivi = st.utenti.filter((x) => x.attivo !== false);
+  const nomeRuolo = (id) => {
+    const r = st.ruoli.find((x) => x.id === id);
+    return (r && r.nome) || ETICHETTE_RUOLO[id] || id;
+  };
 
   function entra(e) {
     if (e) e.preventDefault();
-    const utente = trovaUtente(u);
+    const pulito = String(u).trim().toLowerCase();
+    const utente = st.trovaUtente(pulito);
     if (!utente) {
-      setErrore("Nome utente non riconosciuto. Verifica di averlo scritto per intero.");
+      const disattivato = st.utenti.some((x) => x.u === pulito && x.attivo === false);
+      setErrore(disattivato
+        ? "Utenza disattivata. Chiedi al referente del portale di riattivarla."
+        : "Nome utente non riconosciuto. Verifica di averlo scritto per intero.");
       return;
     }
-    setErrore("");
-    onEntra(utente);
+    if (!st.ruoli.some((r) => r.id === utente.ruolo)) {
+      setErrore("A questa utenza non è assegnato un ruolo valido. Chiedi al referente del portale.");
+      return;
+    }
+    pulisci();
+    st.entra(utente);
   }
 
   function scegli(utente) {
     setU(utente.u);
-    setErrore("");
-    onEntra(utente);
+    pulisci();
+    st.entra(utente);
   }
 
   return (
@@ -128,14 +150,14 @@ export default function AccessoUnico({ onEntra }) {
               <div className="campo">
                 <label htmlFor="au-u">Nome utente</label>
                 <input id="au-u" type="text" autoComplete="username" placeholder="nome.cognome"
-                  value={u} onChange={(e) => { setU(e.target.value); setErrore(""); }} />
+                  value={u} onChange={(e) => { setU(e.target.value); pulisci(); }} />
               </div>
               <div className="campo">
                 <label htmlFor="au-p">Password</label>
                 <input id="au-p" type="password" autoComplete="current-password"
                   value={p} onChange={(e) => setP(e.target.value)} />
               </div>
-              {errore && <div className="au-errore"><Icone.attenzione size={16} /> {errore}</div>}
+              {messaggio && <div className="au-errore"><Icone.attenzione size={16} /> {messaggio}</div>}
               <button className="btn pieno" type="submit">Accedi</button>
             </form>
 
@@ -146,7 +168,7 @@ export default function AccessoUnico({ onEntra }) {
 
             {profili && (
               <div className="au-profili">
-                {UTENTI.map((x) => (
+                {attivi.map((x) => (
                   <button key={x.u} className="au-profilo" data-area={x.struttura} onClick={() => scegli(x)}>
                     <span className="au-iniziali">{x.iniziali}</span>
                     <span className="au-testo">
@@ -154,8 +176,8 @@ export default function AccessoUnico({ onEntra }) {
                       <span>{x.committente} · {x.mansione}</span>
                     </span>
                     <span className="au-tag">
-                      <em>{ETICHETTE_STRUTTURA[x.struttura]}</em>
-                      {ETICHETTE_RUOLO[x.ruolo]}
+                      <em>{ETICHETTE_STRUTTURA[x.struttura] || x.committente}</em>
+                      {nomeRuolo(x.ruolo)}
                     </span>
                   </button>
                 ))}

@@ -1,14 +1,14 @@
 import React from "react";
 import {
-  ALLERGENI, CATEGORIE, splitPiatto, COLORI, DIPENDENTI, GIORNI, GIORNI_SETT, GIRI, INGREDIENTI_DIETE,
-  MARCATORI, METODI_PAGAMENTO, PASTI_TIPO, PAZIENTI_COMUNITA, PIATTI, REGIMI_IVA, TERMINI_PAGAMENTO,
-  catalogoPerCategoria, etichettaGiorno, menuDelGiorno, metodoPagamento, ordinaProforme, pastiDi,
-  portateServite, regimeIva, scadenzaPagamento, sostituisce, terminiPagamento, testoCondizioni,
-  totaliProforma,
+  ALLERGENI, CATEGORIE, splitPiatto, COLORI, DIPENDENTI, ETICHETTE_PORTALE, GIORNI, GIORNI_SETT, GIRI,
+  INGREDIENTI_DIETE, MARCATORI, METODI_PAGAMENTO, PASTI_TIPO, PAZIENTI_COMUNITA, PERMESSI, PIATTI,
+  REGIMI_IVA, TERMINI_PAGAMENTO, catalogoPerCategoria, etichettaGiorno, menuDelGiorno, metodoPagamento,
+  ordinaProforme, pastiDi, permessiDelPortale, portateServite, regimeIva, scadenzaPagamento, sostituisce,
+  terminiPagamento, testoCondizioni, totaliProforma,
 } from "../data.js";
 import {
-  Accesso, DiscoColore, Documenti, Icone, Illustrazione, Intestazione, Messaggi,
-  PastigliaProforma, Telaio, Velo, schedaPdf,
+  Accesso, DiscoColore, Documenti, Icone, Illustrazione, Intestazione, Messaggi, NessunPermesso,
+  PastigliaProforma, Telaio, Velo, schedaPdf, usaVociPermesse,
 } from "../ui.jsx";
 import { usaStato } from "../store.jsx";
 import { dataIt, giornoDataIt } from "../documento.js";
@@ -32,10 +32,25 @@ const VOCI = [
   ["documenti", "Documenti", Icone.lista],
 ];
 
-export default function Fornitore({ diretto, onEsci }) {
+const PERMESSO_PAGINA = {
+  produzione: "produzione.vedi",
+  flussi: "flussi.vedi",
+  consegne: "consegne.vedi",
+  etichette: "etichette.vedi",
+  modelli: "modelli.vedi",
+  impostazioni: "impostazioni.vedi",
+  settimana: "menu.vedi",
+  catalogo: "catalogo.vedi",
+  fatturazione: "fatturazione.vedi",
+  log: "log.vedi",
+  gestione: "gestione.vedi",
+  documenti: "documenti.vedi",
+};
+
+export default function Fornitore({ diretto, onEsci, utente }) {
   const [dentro, setDentro] = React.useState(!!diretto);
-  const [pagina, setPagina] = React.useState("produzione");
   const st = usaStato();
+  const [voci, pagina, setPagina] = usaVociPermesse(VOCI, PERMESSO_PAGINA);
 
   if (!dentro)
     return (
@@ -59,14 +74,19 @@ export default function Fornitore({ diretto, onEsci }) {
     <Telaio
       area="fornitore"
       marchio="Portale fornitore"
-      ruolo="MAVI Ristorazione"
-      utente={{ iniziali: "MV", nome: "Cucina centrale", sotto: "MAVI Ristorazione" }}
-      chiaveUtente="cucina.mavi"
-      voci={VOCI}
+      ruolo={(st.ruoloSessione && st.ruoloSessione.nome) || "MAVI Ristorazione"}
+      utente={{
+        iniziali: (utente && utente.iniziali) || "MV",
+        nome: (utente && utente.nome) || "Cucina centrale",
+        sotto: (utente && utente.committente) || "MAVI Ristorazione",
+      }}
+      chiaveUtente={(utente && utente.u) || "cucina.mavi"}
+      voci={voci}
       pagina={pagina}
       setPagina={setPagina}
       onEsci={() => (onEsci ? onEsci() : null)}
     >
+      {voci.length === 0 && <NessunPermesso onEsci={onEsci} />}
       {pagina === "produzione" && <Produzione />}
       {pagina === "flussi" && <FlussiOrdine />}
       {pagina === "consegne" && <GiriConsegna />}
@@ -78,7 +98,9 @@ export default function Fornitore({ diretto, onEsci }) {
       {pagina === "fatturazione" && <Fatturazione />}
       {pagina === "log" && <LogOperazioni />}
       {pagina === "gestione" && <GestionePortale />}
-      {pagina === "documenti" && <Documenti gestibile />}
+      {pagina === "documenti" && (
+        <Documenti soloPubblici={!st.puo("documenti.riservati")} gestibile={st.puo("documenti.gestisci")} />
+      )}
       <Messaggi lista={st.messaggi} />
     </Telaio>
   );
@@ -716,6 +738,8 @@ function Settimana() {
   ];
   const [settimanaIdx, setSettimanaIdx] = React.useState(SETTIMANE.length - 1); // settimana coperta da GIORNI/menu reale
 
+  const puoModificare = st.puo("menu.modifica");
+  const puoFissi = st.puo("menu.fissi");
   const fissi = st.menu.fissi[categoria] || [];
   const delGiorno = (st.menu.variabili[giorno] || {})[categoria] || [];
   const cat = CATEGORIE.find((c) => c.id === categoria);
@@ -739,13 +763,17 @@ function Settimana() {
         titolo="Composizione del menu"
         sotto="Scegli il giorno, poi la portata. I piatti si aggiungono dal catalogo a destra."
         azioni={<>
-          <button className="btn linea piccolo" onClick={st.ripristinaMenu}>Ripristina</button>
-          <button className="btn linea piccolo" onClick={() => setStampa(true)}>
-            <Icone.calendario size={16} /> Griglia settimana
-          </button>
-          <button className="btn piccolo" onClick={() => st.avvisa("Menu pubblicato, i dipendenti lo vedono da subito")}>
-            Pubblica
-          </button>
+          {puoModificare && <button className="btn linea piccolo" onClick={st.ripristinaMenu}>Ripristina</button>}
+          {st.puo("menu.griglia") && (
+            <button className="btn linea piccolo" onClick={() => setStampa(true)}>
+              <Icone.calendario size={16} /> Griglia settimana
+            </button>
+          )}
+          {puoModificare && (
+            <button className="btn piccolo" onClick={() => st.avvisa("Menu pubblicato, i dipendenti lo vedono da subito")}>
+              Pubblica
+            </button>
+          )}
         </>}
       />
       <div className="tela">
@@ -776,9 +804,11 @@ function Settimana() {
                       {lista.length + fis.length} piatti
                       {fis.length ? ", di cui " + fis.length + " fissi" : ""}
                     </span>
-                    <button className={"btn piccolo" + (attiva ? "" : " linea")} onClick={() => setCategoria(c.id)}>
-                      {attiva ? "In modifica" : "Modifica"}
-                    </button>
+                    {puoModificare && (
+                      <button className={"btn piccolo" + (attiva ? "" : " linea")} onClick={() => setCategoria(c.id)}>
+                        {attiva ? "In modifica" : "Modifica"}
+                      </button>
+                    )}
                   </div>
                   {lista.length + fis.length === 0 ? (
                     <div className="blocco-lista vuota">Nessun piatto previsto per questa portata.</div>
@@ -788,6 +818,8 @@ function Settimana() {
                       categoria={c.id}
                       variabili={lista}
                       fissi={fis}
+                      modificabile={puoModificare}
+                      puoFissi={puoFissi}
                     />
                   )}
                 </section>
@@ -795,7 +827,7 @@ function Settimana() {
             })}
           </div>
 
-          <aside className="catalogo-lato">
+          {puoModificare && <aside className="catalogo-lato">
             <div className="catalogo-testa">
               <div className="occhiello">{GIORNI[giorno].n} {GIORNI[giorno].d}</div>
               <h3>{cat.nome}</h3>
@@ -832,13 +864,15 @@ function Settimana() {
                       >
                         {eFisso ? "In tutti i giorni" : nelGiorno ? "Già in questo giorno" : "Aggiungi al giorno"}
                       </button>
-                      <button
-                        className="cat-azione forte"
-                        onClick={() => rendiFisso(id)}
-                        disabled={eFisso}
-                      >
-                        {eFisso ? "Già fisso" : "Rendi fisso"}
-                      </button>
+                      {puoFissi && (
+                        <button
+                          className="cat-azione forte"
+                          onClick={() => rendiFisso(id)}
+                          disabled={eFisso}
+                        >
+                          {eFisso ? "Già fisso" : "Rendi fisso"}
+                        </button>
+                      )}
                     </span>
                   </div>
                 );
@@ -847,14 +881,14 @@ function Settimana() {
             <div className="scelta-piede catalogo-nota">
               Un piatto fisso compare in tutti i giorni della settimana, su ogni portale.
             </div>
-          </aside>
+          </aside>}
         </div>
       </div>
     </>
   );
 }
 
-function ListaOrdinabile({ giorno, categoria, variabili, fissi }) {
+function ListaOrdinabile({ giorno, categoria, variabili, fissi, modificabile = true, puoFissi = true }) {
   const st = usaStato();
   const [trascinato, setTrascinato] = React.useState(null);
   /* stessa deduplica di menuDelGiorno: un piatto presente in entrambi gli
@@ -869,19 +903,20 @@ function ListaOrdinabile({ giorno, categoria, variabili, fissi }) {
           indice={i}
           trascinato={trascinato}
           setTrascinato={setTrascinato}
-          onSposta={(da, a) => {
+          onSposta={modificabile ? (da, a) => {
             if (a < 0 || a >= variabili.length) return;
             st.riordinaMenu(giorno, categoria, da, a);
-          }}
-          onTogli={() => st.cambiaMenu(giorno, categoria, id)}
-          onRendiFisso={() => {
+          } : undefined}
+          onTogli={modificabile ? () => st.cambiaMenu(giorno, categoria, id) : undefined}
+          onRendiFisso={modificabile && puoFissi ? () => {
             st.cambiaMenu(giorno, categoria, id);
             st.cambiaMenu("fissi", categoria, id);
-          }}
+          } : undefined}
         />
       ))}
       {soloFissi.map((id) => (
-        <RigaPiatto key={id} id={id} fisso indice={-1} onTogli={() => st.cambiaMenu("fissi", categoria, id)} />
+        <RigaPiatto key={id} id={id} fisso indice={-1}
+          onTogli={modificabile && puoFissi ? () => st.cambiaMenu("fissi", categoria, id) : undefined} />
       ))}
     </div>
   );
@@ -945,7 +980,9 @@ function RigaPiatto({ id, fisso, indice, onTogli, onRendiFisso, onSposta, trasci
           Rendi fisso
         </button>
       )}
-      <button className="tolgo" onClick={onTogli} aria-label="togli dal menu"><Icone.x size={15} /></button>
+      {typeof onTogli === "function" && (
+        <button className="tolgo" onClick={onTogli} aria-label="togli dal menu"><Icone.x size={15} /></button>
+      )}
     </div>
   );
 }
@@ -1075,7 +1112,7 @@ function Catalogo() {
         occhiello="Anagrafica"
         titolo="Catalogo piatti"
         sotto={ids.length + " piatti, " + conFoto + " con fotografia caricata in questa sessione"}
-        azioni={<>
+        azioni={st.puo("catalogo.modifica") && <>
           <button className="btn linea piccolo" onClick={() => inputBlocco.current.click()}>
             <Icone.scarica size={16} /> Carica foto in blocco
           </button>
@@ -1139,14 +1176,16 @@ function Catalogo() {
                     </td>
                     <td>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <button className="btn linea piccolo"
-                          onClick={() => { setInCorso(id); setTimeout(() => inputSingolo.current.click(), 0); }}>
-                          Foto
-                        </button>
-                        {st.foto[id] && (
-                          <button className="btn linea piccolo" onClick={() => st.togliFoto(id)}>Togli</button>
-                        )}
-                        <button className="btn linea piccolo" onClick={() => setModulo({ id })}>Modifica</button>
+                        {st.puo("catalogo.modifica") && <>
+                          <button className="btn linea piccolo"
+                            onClick={() => { setInCorso(id); setTimeout(() => inputSingolo.current.click(), 0); }}>
+                            Foto
+                          </button>
+                          {st.foto[id] && (
+                            <button className="btn linea piccolo" onClick={() => st.togliFoto(id)}>Togli</button>
+                          )}
+                          <button className="btn linea piccolo" onClick={() => setModulo({ id })}>Modifica</button>
+                        </>}
                         <button className="btn linea piccolo" onClick={() => schedaPdf(id, { datiAziendali: st.datiAziendali, avvisa: st.avvisa })}>Scheda</button>
                       </div>
                     </td>
@@ -1322,9 +1361,11 @@ function Fatturazione() {
           <div className="pannello-testa">
             <h2>Proforma di {r.c.nome}</h2>
             <span className="conta-piatti">{r.elenco.length} documenti</span>
-            <button className="btn piccolo" style={{ marginLeft: "auto" }} onClick={() => setNuova(true)}>
-              <Icone.piu size={14} /> Nuova proforma
-            </button>
+            {st.puo("fatturazione.proforma") && (
+              <button className="btn piccolo" style={{ marginLeft: "auto" }} onClick={() => setNuova(true)}>
+                <Icone.piu size={14} /> Nuova proforma
+              </button>
+            )}
           </div>
           <div className="scorri">
             <table className="dati">
@@ -1351,7 +1392,7 @@ function Fatturazione() {
                       <td>
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                           <button className="btn linea piccolo" onClick={() => apriPdf(p)}>PDF</button>
-                          {!annullata && (
+                          {!annullata && st.puo("fatturazione.annulla") && (
                             <button className="btn linea piccolo" onClick={() => st.annullaProforma(p.id)}>Annulla</button>
                           )}
                         </div>
@@ -1367,7 +1408,9 @@ function Fatturazione() {
               Le condizioni proposte arrivano da <b>Impostazioni per committente</b> e restano modificabili
               per la singola proforma. Una proforma annullata resta in elenco, anche per il cliente.
             </span>
-            <button className="btn linea piccolo" onClick={() => scaricaExcelStruttura(r)}><Icone.scarica size={16} /> Scarica Excel</button>
+            {st.puo("fatturazione.excel") && (
+              <button className="btn linea piccolo" onClick={() => scaricaExcelStruttura(r)}><Icone.scarica size={16} /> Scarica Excel</button>
+            )}
           </div>
         </div>
 
@@ -1410,7 +1453,9 @@ function Fatturazione() {
           </div>
           <div className="pannello-piede" style={{ display: "flex", gap: 10, justifyContent: "flex-end", alignItems: "center" }}>
             <span style={{ flex: 1 }}>Riepilogo di quello che è stato emesso, annullate escluse dai totali.</span>
-            <button className="btn linea piccolo" onClick={scaricaExcelTutte}><Icone.scarica size={16} /> Excel di tutte</button>
+            {st.puo("fatturazione.excel") && (
+              <button className="btn linea piccolo" onClick={scaricaExcelTutte}><Icone.scarica size={16} /> Excel di tutte</button>
+            )}
           </div>
         </div>
       </div>
@@ -1855,11 +1900,13 @@ function OrdiniAzienda({ pasti, giorniConfermati, nominativi, onManifesto }) {
           </table>
         </div>
       )}
-      <div style={{ marginTop: 12 }}>
-        <button className="btn linea piccolo" onClick={() => onManifesto(giorno)}>
-          <Icone.stampa size={16} /> Manifesto PDF di {etichettaGiorno(giorno)} per il cassone termico
-        </button>
-      </div>
+      {onManifesto && (
+        <div style={{ marginTop: 12 }}>
+          <button className="btn linea piccolo" onClick={() => onManifesto(giorno)}>
+            <Icone.stampa size={16} /> Manifesto PDF di {etichettaGiorno(giorno)} per il cassone termico
+          </button>
+        </div>
+      )}
     </>
   );
 }
@@ -1996,9 +2043,11 @@ function FlussiOrdine() {
           <button className="btn linea piccolo" onClick={() => st.avvisa("Sollecito inviato alle strutture in attesa")}>
             Sollecita chi manca
           </button>
-          <button className="btn piccolo" onClick={scaricaGlobale}>
-            <Icone.scarica size={16} /> Resoconto globale
-          </button>
+          {st.puo("flussi.excel") && (
+            <button className="btn piccolo" onClick={scaricaGlobale}>
+              <Icone.scarica size={16} /> Resoconto globale
+            </button>
+          )}
         </>}
       />
       <div className="tela">
@@ -2044,14 +2093,17 @@ function FlussiOrdine() {
                       <tr>
                         <td colSpan={6} style={{ background: "var(--carta)", padding: "16px 18px" }}>
                           {d.c.id === "azienda"
-                            ? <OrdiniAzienda pasti={pastiAzienda} giorniConfermati={giorniConfermatiAzienda} nominativi={st.nominativiAzienda} onManifesto={(i) => generaManifesto(d.c.nome, i)} />
+                            ? <OrdiniAzienda pasti={pastiAzienda} giorniConfermati={giorniConfermatiAzienda} nominativi={st.nominativiAzienda}
+                                onManifesto={st.puo("flussi.manifesto") ? (i) => generaManifesto(d.c.nome, i) : null} />
                             : d.c.id === "comunita"
                               ? <OrdiniComunita righe={st.presenzeTrasmesse} />
                               : <div className="avviso info"><Icone.attenzione size={16} /><span>Nessuna fonte di ordini collegata ancora per questo committente.</span></div>}
                           <div style={{ marginTop: 14 }}>
-                            <button className="btn linea piccolo" onClick={() => scaricaStruttura(d)}>
-                              <Icone.scarica size={16} /> Scarica resoconto di {d.c.nome}
-                            </button>
+                            {st.puo("flussi.excel") && (
+                              <button className="btn linea piccolo" onClick={() => scaricaStruttura(d)}>
+                                <Icone.scarica size={16} /> Scarica resoconto di {d.c.nome}
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -2318,6 +2370,7 @@ function EtichettePasto() {
      aperta: se il conteggio attuale è più alto, sono arrivate etichette
      nuove da quando nessuno guardava, e lo segnaliamo con il pallino. */
   const [visti, setVisti] = React.useState({});
+  const puoEliminare = st.puo("etichette.elimina");
 
   /* etichette azienda: solo da prenotazioni confermate nella sessione demo */
   const etichetteAzienda = React.useMemo(() => {
@@ -2492,17 +2545,19 @@ function EtichettePasto() {
                                   <input type="text" value={cerca} onChange={(e) => setCerca(e.target.value)}
                                     placeholder={r.c.id === "azienda" ? "Cerca per piatto…" : "Cerca per nominativo…"}
                                     style={{ flex: 1, minWidth: 200, padding: "8px 12px", border: "1px solid var(--linea-forte)", borderRadius: "var(--r-s)", fontFamily: "var(--sans)", fontSize: 13 }} />
-                                  <button className="btn piccolo" onClick={() => setStampaStruttura(r.c.id)}>
-                                    <Icone.stampa size={16} /> Stampa etichette di {r.c.nome}
-                                  </button>
+                                  {st.puo("etichette.stampa") && (
+                                    <button className="btn piccolo" onClick={() => setStampaStruttura(r.c.id)}>
+                                      <Icone.stampa size={16} /> Stampa etichette di {r.c.nome}
+                                    </button>
+                                  )}
                                 </div>
                                 {r.c.id === "azienda" && (
                                   <SezioneAzienda gruppi={raggruppaAzienda(cercaAzienda(azFiltrate))}
-                                    onElimina={(chiave, nome, portata) => setConferma({ chiave, nome, portata })} />
+                                    onElimina={puoEliminare ? (chiave, nome, portata) => setConferma({ chiave, nome, portata }) : null} />
                                 )}
                                 {r.c.id === "comunita" && (
                                   <SezioneComunita gruppi={raggruppaComunita(cercaComunita(comFiltrate))}
-                                    onElimina={(chiave, nome, portata) => setConferma({ chiave, nome, portata })} />
+                                    onElimina={puoEliminare ? (chiave, nome, portata) => setConferma({ chiave, nome, portata }) : null} />
                                 )}
                                 {r.c.id !== "azienda" && r.c.id !== "comunita" && (
                                   <p style={{ fontSize: 13, color: "var(--muto)" }}>Nessuna fonte di etichette collegata ancora per questo committente.</p>
@@ -2552,17 +2607,62 @@ function EtichettePasto() {
 }
 
 /* ==================== modale creazione/modifica utente ==================== */
-function ModaleUtente({ utente, ruoli, strutture, repartiComunita, onSalva, onChiudi }) {
-  const [form, setForm] = React.useState(utente || { nome: "", username: "", ruolo: ruoli[0], struttura: strutture[0], email: "", telefono: "" });
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const PERMESSI_PER_RUOLO = {
-    "Dipendente": ["Visualizza menu", "Prenota pasti", "Vedi prenotazioni"],
-    "Referente aziendale": ["Visualizza menu", "Prenota per dipendenti", "Vedi resoconti", "Scarica Excel/PDF", "Gestisci dipendenti"],
-    "Educatore": ["Visualizza pazienti", "Segna presenze", "Trasmetti presenze"],
-    "Responsabile": ["Visualizza pazienti", "Segna presenze", "Trasmetti presenze", "Modifica diete", "Carica diete", "Gestisci anagrafica"],
-    "Operatore cucina": ["Visualizza produzione", "Gestisci etichette", "Gestisci menu", "Gestisci committenti", "Fatturazione"],
-    "Amministratore": ["Accesso completo", "Gestione utenti", "Gestione portale", "Backup", "Log operazioni"],
-  };
+/* il portale di una struttura: MAVI a parte, lo dice il tipo del committente.
+   Da qui si decide quali ruoli si possono assegnare a quell'utente. */
+function portaleDiStruttura(id, committenti) {
+  if (id === "mavi") return "mavi";
+  const c = committenti.find((x) => x.id === id);
+  if (!c) return "comunita";
+  return c.tipo === "Azienda" ? "azienda" : "comunita";
+}
+
+const stileEtichetta = {
+  display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em",
+  textTransform: "uppercase", color: "var(--muto)", marginBottom: 4,
+};
+const stileCampo = { width: "100%", fontSize: 13, padding: "8px 10px" };
+
+function ModaleUtente({ utente, ruoli, strutture, committenti, repartiComunita, onSalva, onChiudi }) {
+  const primaStruttura = strutture[0] ? strutture[0].id : "mavi";
+  const [form, setForm] = React.useState(() => utente || {
+    nome: "", u: "", ruolo: "", struttura: primaStruttura,
+    committente: strutture[0] ? strutture[0].nome : "",
+    mansione: "", email: "", telefono: "", attivo: true,
+  });
+  const [errore, setErrore] = React.useState("");
+  const set = (k, v) => { setForm((f) => ({ ...f, [k]: v })); setErrore(""); };
+
+  const portale = portaleDiStruttura(form.struttura, committenti);
+  const ruoliAmmessi = ruoli.filter((r) => r.portale === portale);
+  const ruolo = ruoliAmmessi.find((r) => r.id === form.ruolo) || ruoliAmmessi[0] || null;
+  /* in comunità chi non vede tutti i reparti ne ha per forza uno assegnato,
+     altrimenti entrerebbe in un portale senza nessun paziente */
+  const repartoObbligatorio = portale === "comunita" && !!ruolo && !ruolo.permessi.includes("pazienti.tuttiReparti");
+  const permessiRuolo = ruolo ? PERMESSI.filter((p) => p.portale === portale && ruolo.permessi.includes(p.k)) : [];
+
+  function cambiaStruttura(id) {
+    const c = committenti.find((x) => x.id === id);
+    const nuovoPortale = portaleDiStruttura(id, committenti);
+    const primo = ruoli.find((r) => r.portale === nuovoPortale);
+    setForm((f) => ({
+      ...f,
+      struttura: id,
+      committente: c ? c.nome : "MAVI Ristorazione",
+      ruolo: ruoli.some((r) => r.id === f.ruolo && r.portale === nuovoPortale) ? f.ruolo : (primo ? primo.id : ""),
+    }));
+    setErrore("");
+  }
+
+  function salva() {
+    if (!form.nome.trim()) { setErrore("Il nome completo è obbligatorio."); return; }
+    if (!String(form.u || "").trim()) { setErrore("Il nome utente è obbligatorio: senza, la persona non entra."); return; }
+    if (!ruolo) { setErrore("Non c'è nessun ruolo disponibile per questa struttura."); return; }
+    if (repartoObbligatorio && !String(form.reparto || "").trim()) {
+      setErrore("Questo ruolo vede solo il proprio reparto: assegnagliene uno.");
+      return;
+    }
+    onSalva({ ...form, ruolo: ruolo.id, reparto: repartoObbligatorio ? form.reparto : "" });
+  }
 
   return (
     <Velo onChiudi={onChiudi}>
@@ -2572,79 +2672,305 @@ function ModaleUtente({ utente, ruoli, strutture, repartiComunita, onSalva, onCh
       </div>
       <div style={{ padding: "16px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px" }}>
         <div style={{ marginBottom: 14 }}>
-          <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muto)", marginBottom: 4 }}>Nome completo</label>
-          <input type="text" value={form.nome} onChange={(e) => set("nome", e.target.value)} style={{ width: "100%", fontSize: 13, padding: "8px 10px" }} />
+          <label style={stileEtichetta}>Nome completo</label>
+          <input type="text" value={form.nome} onChange={(e) => set("nome", e.target.value)} style={stileCampo} />
         </div>
         <div style={{ marginBottom: 14 }}>
-          <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muto)", marginBottom: 4 }}>Username</label>
-          <input type="text" value={form.username || ""} onChange={(e) => set("username", e.target.value)} style={{ width: "100%", fontSize: 13, padding: "8px 10px" }} placeholder="nome.cognome" />
+          <label style={stileEtichetta}>Nome utente</label>
+          <input type="text" value={form.u || ""} onChange={(e) => set("u", e.target.value.toLowerCase())}
+            style={stileCampo} placeholder="nome.cognome" />
         </div>
         <div style={{ marginBottom: 14 }}>
-          <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muto)", marginBottom: 4 }}>Ruolo</label>
-          <select value={form.ruolo} onChange={(e) => set("ruolo", e.target.value)} style={{ width: "100%", fontSize: 13, padding: "8px 10px" }}>
-            {ruoli.map((r) => <option key={r} value={r}>{r}</option>)}
+          <label style={stileEtichetta}>Struttura</label>
+          <select value={form.struttura} onChange={(e) => cambiaStruttura(e.target.value)} style={stileCampo}>
+            {strutture.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
           </select>
         </div>
         <div style={{ marginBottom: 14 }}>
-          <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muto)", marginBottom: 4 }}>Struttura</label>
-          <select value={form.struttura} onChange={(e) => set("struttura", e.target.value)} style={{ width: "100%", fontSize: 13, padding: "8px 10px" }}>
-            {strutture.map((s) => <option key={s} value={s}>{s}</option>)}
+          <label style={stileEtichetta}>Ruolo</label>
+          <select value={ruolo ? ruolo.id : ""} onChange={(e) => set("ruolo", e.target.value)} style={stileCampo}
+            disabled={ruoliAmmessi.length === 0}>
+            {ruoliAmmessi.length === 0 && <option value="">Nessun ruolo per questo portale</option>}
+            {ruoliAmmessi.map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
           </select>
+          <p style={{ fontSize: 11, color: "var(--muto)", marginTop: 4 }}>
+            I ruoli disponibili sono quelli del portale {ETICHETTE_PORTALE[portale]}.
+          </p>
         </div>
-        {form.ruolo === "Educatore" && (
+        {repartoObbligatorio && (
           <div style={{ marginBottom: 14 }}>
-            <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muto)", marginBottom: 4 }}>Reparto assegnato</label>
+            <label style={stileEtichetta}>Reparto assegnato</label>
             {repartiComunita.length === 0 ? (
               <p style={{ fontSize: 12, color: "var(--muto)" }}>Nessun reparto censito. Aggiungine uno da Impostazioni per committente.</p>
             ) : (
-              <select value={form.reparto || repartiComunita[0]} onChange={(e) => set("reparto", e.target.value)} style={{ width: "100%", fontSize: 13, padding: "8px 10px" }}>
+              <select value={form.reparto || ""} onChange={(e) => set("reparto", e.target.value)} style={stileCampo}>
+                <option value="">Scegli un reparto</option>
+                {form.reparto && !repartiComunita.includes(form.reparto) && (
+                  <option value={form.reparto}>{form.reparto}, non più censito</option>
+                )}
                 {repartiComunita.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
             )}
-            <p style={{ fontSize: 11, color: "var(--muto)", marginTop: 4 }}>Determina quali pazienti l'educatore vede e può modificare nel portale comunità.</p>
+            <p style={{ fontSize: 11, color: "var(--muto)", marginTop: 4 }}>Determina quali pazienti vede e può modificare nel portale comunità.</p>
           </div>
         )}
         <div style={{ marginBottom: 14 }}>
-          <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muto)", marginBottom: 4 }}>Email</label>
-          <input type="email" value={form.email || ""} onChange={(e) => set("email", e.target.value)} style={{ width: "100%", fontSize: 13, padding: "8px 10px" }} />
+          <label style={stileEtichetta}>Mansione</label>
+          <input type="text" value={form.mansione || ""} onChange={(e) => set("mansione", e.target.value)} style={stileCampo} />
         </div>
         <div style={{ marginBottom: 14 }}>
-          <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muto)", marginBottom: 4 }}>Telefono</label>
-          <input type="tel" value={form.telefono || ""} onChange={(e) => set("telefono", e.target.value)} style={{ width: "100%", fontSize: 13, padding: "8px 10px" }} />
+          <label style={stileEtichetta}>Email</label>
+          <input type="email" value={form.email || ""} onChange={(e) => set("email", e.target.value)} style={stileCampo} />
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <label style={stileEtichetta}>Telefono</label>
+          <input type="tel" value={form.telefono || ""} onChange={(e) => set("telefono", e.target.value)} style={stileCampo} />
         </div>
       </div>
       <div style={{ padding: "0 24px 16px" }}>
-        <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muto)", marginBottom: 8 }}>Permessi per ruolo "{form.ruolo}"</label>
+        <label style={stileEtichetta}>Permessi del ruolo {ruolo ? ruolo.nome : "—"}</label>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {(PERMESSI_PER_RUOLO[form.ruolo] || []).map((p) => (
-            <span key={p} className="pastiglia p-ok" style={{ fontSize: 11 }}>{p}</span>
+          {permessiRuolo.length === 0 && <span style={{ fontSize: 12, color: "var(--muto)" }}>Nessun permesso assegnato.</span>}
+          {permessiRuolo.map((p) => (
+            <span key={p.k} className="pastiglia p-ok" style={{ fontSize: 11 }}>{p.n}</span>
           ))}
         </div>
-        <p style={{ fontSize: 11, color: "var(--muto)", marginTop: 8 }}>I permessi sono assegnati automaticamente in base al ruolo. In produzione saranno configurabili per singolo utente.</p>
+        <p style={{ fontSize: 11, color: "var(--muto)", marginTop: 8 }}>
+          I permessi arrivano dal ruolo. Per cambiarli si va in <b>Ruoli e permessi</b>, dove la
+          modifica vale per tutti gli utenti che hanno quel ruolo.
+        </p>
       </div>
+      {errore && (
+        <div className="avviso info" style={{ margin: "0 24px 12px", background: "#fdf0e6", border: "1px solid #e8c9a8" }}>
+          <Icone.attenzione size={16} /><span>{errore}</span>
+        </div>
+      )}
       <div className="scelta-piede" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
         <button className="btn linea" onClick={onChiudi}>Annulla</button>
-        <button className="btn" disabled={!form.nome.trim()} onClick={() => onSalva(form)}>
-          {utente ? "Salva modifiche" : "Crea utente"}
-        </button>
+        <button className="btn" onClick={salva}>{utente ? "Salva modifiche" : "Crea utente"}</button>
       </div>
     </Velo>
   );
 }
 
+/* ==================== matrice ruoli e permessi ==================== */
+function RuoliPermessi() {
+  const st = usaStato();
+  const [portale, setPortale] = React.useState("mavi");
+  const [nuovo, setNuovo] = React.useState(null); // null | { nome, portale, copiaDa, vista }
+  const [daEliminare, setDaEliminare] = React.useState(null);
+
+  /* i permessi del portale, già raggruppati per pagina nell'ordine di PERMESSI */
+  const gruppi = [];
+  permessiDelPortale(portale).forEach((p) => {
+    const ultimo = gruppi[gruppi.length - 1];
+    if (ultimo && ultimo.nome === p.gruppo) ultimo.voci.push(p);
+    else gruppi.push({ nome: p.gruppo, voci: [p] });
+  });
+  const ruoliPortale = st.ruoli.filter((r) => r.portale === portale);
+  const contaUtenti = (id) => st.utenti.filter((u) => u.ruolo === id).length;
+
+  function creaRuolo() {
+    const copiato = st.ruoli.find((r) => r.id === nuovo.copiaDa);
+    const chiaviValide = permessiDelPortale(nuovo.portale).map((x) => x.k);
+    const fatto = st.salvaRuolo({
+      nome: nuovo.nome,
+      portale: nuovo.portale,
+      vista: nuovo.portale === "azienda"
+        ? (nuovo.vista || (copiato && copiato.vista) || "dipendente")
+        : undefined,
+      permessi: copiato ? copiato.permessi.filter((k) => chiaviValide.includes(k)) : [],
+    });
+    if (fatto) {
+      st.avvisa("Ruolo " + nuovo.nome.trim() + " creato");
+      setPortale(nuovo.portale);
+      setNuovo(null);
+    }
+  }
+
+  return (
+    <div className="pannello">
+      <div className="pannello-testa">
+        <h2>Ruoli e permessi</h2>
+        <span className="conta-piatti">{ruoliPortale.length} ruoli in {ETICHETTE_PORTALE[portale]}</span>
+        <button className="btn piccolo" style={{ marginLeft: "auto" }}
+          onClick={() => setNuovo({ nome: "", portale, copiaDa: "", vista: "dipendente" })}>
+          <Icone.piu size={14} /> Nuovo ruolo
+        </button>
+      </div>
+      <div style={{ padding: "18px 24px 0" }}>
+        <div className="commuta" style={{ marginBottom: 18 }}>
+          {Object.keys(ETICHETTE_PORTALE).map((k) => (
+            <button key={k} className={portale === k ? "on" : ""} onClick={() => setPortale(k)}>{ETICHETTE_PORTALE[k]}</button>
+          ))}
+        </div>
+      </div>
+      <div className="scorri">
+        <table className="dati matrice-permessi">
+          <thead>
+            <tr>
+              <th style={{ minWidth: 250 }}>Permesso</th>
+              {ruoliPortale.map((r) => (
+                <th key={r.id} className="mp-ruolo">
+                  <span className="mp-nome">{r.nome}</span>
+                  <span className="mp-nota">
+                    {r.bloccato ? "ruolo di sistema" : contaUtenti(r.id) + (contaUtenti(r.id) === 1 ? " utente" : " utenti")}
+                  </span>
+                  {!r.bloccato && <button className="mp-elimina" onClick={() => setDaEliminare(r)}>Elimina</button>}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {ruoliPortale.length === 0 && (
+              <tr><td colSpan={2} style={{ textAlign: "center", color: "var(--muto)", padding: 22 }}>
+                Nessun ruolo su questo portale. Creane uno con "Nuovo ruolo".
+              </td></tr>
+            )}
+            {ruoliPortale.length > 0 && gruppi.map((g) => (
+              <React.Fragment key={g.nome}>
+                <tr className="mp-gruppo">
+                  <td colSpan={ruoliPortale.length + 1}>{g.nome}</td>
+                </tr>
+                {g.voci.map((p) => (
+                  <tr key={p.k}>
+                    <td>
+                      <b>{p.n}</b>
+                      <div className="mp-chiave">{p.k}</div>
+                    </td>
+                    {ruoliPortale.map((r) => (
+                      <td key={r.id} style={{ textAlign: "center" }}>
+                        <input type="checkbox" className="mp-casella"
+                          checked={r.permessi.includes(p.k)}
+                          disabled={!!r.bloccato}
+                          onChange={() => st.commutaPermesso(r.id, p.k)}
+                          aria-label={p.n + ", " + r.nome} />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="pannello-piede">
+        Le modifiche valgono subito, anche per chi è già dentro il portale: la voce di menu sparisce
+        e la pagina corrente torna alla prima disponibile, senza rifare l'accesso. Il ruolo di
+        sistema non si modifica, altrimenti MAVI potrebbe chiudersi fuori dal proprio portale.
+      </div>
+
+      {nuovo && (
+        <Velo onChiudi={() => setNuovo(null)}>
+          <div className="scelta-testa">
+            <div className="occhiello">Ruoli e permessi</div>
+            <h2>Nuovo ruolo</h2>
+            <p>Un ruolo vive dentro un solo portale. I permessi si spuntano dopo, nella matrice.</p>
+          </div>
+          <div style={{ padding: "16px 24px" }}>
+            <div style={{ marginBottom: 14 }}>
+              <label style={stileEtichetta}>Nome del ruolo</label>
+              <input type="text" value={nuovo.nome} autoFocus style={stileCampo}
+                onChange={(e) => setNuovo((n) => ({ ...n, nome: e.target.value }))} placeholder="per esempio Cuoco" />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={stileEtichetta}>Portale</label>
+              <select value={nuovo.portale} style={stileCampo}
+                onChange={(e) => setNuovo((n) => ({ ...n, portale: e.target.value, copiaDa: "" }))}>
+                {Object.keys(ETICHETTE_PORTALE).map((k) => <option key={k} value={k}>{ETICHETTE_PORTALE[k]}</option>)}
+              </select>
+            </div>
+            {nuovo.portale === "azienda" && (
+              <div style={{ marginBottom: 14 }}>
+                <label style={stileEtichetta}>Telaio</label>
+                <select value={nuovo.vista} style={stileCampo}
+                  onChange={(e) => setNuovo((n) => ({ ...n, vista: e.target.value }))}>
+                  <option value="dipendente">Vista dipendente</option>
+                  <option value="referente">Vista referente</option>
+                </select>
+                <p style={{ fontSize: 11, color: "var(--muto)", marginTop: 4 }}>
+                  Il portale azienda ha due telai: quello del commensale e quello di chi gestisce il servizio.
+                </p>
+              </div>
+            )}
+            <div style={{ marginBottom: 14 }}>
+              <label style={stileEtichetta}>Copia i permessi da</label>
+              <select value={nuovo.copiaDa} style={stileCampo}
+                onChange={(e) => setNuovo((n) => ({ ...n, copiaDa: e.target.value }))}>
+                <option value="">Nessuno, parti da zero</option>
+                {st.ruoli.filter((r) => r.portale === nuovo.portale).map((r) => (
+                  <option key={r.id} value={r.id}>{r.nome}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="scelta-piede" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+            <button className="btn linea" onClick={() => setNuovo(null)}>Annulla</button>
+            <button className="btn" disabled={!nuovo.nome.trim()} onClick={creaRuolo}>Crea ruolo</button>
+          </div>
+        </Velo>
+      )}
+
+      {daEliminare && (
+        <Velo onChiudi={() => setDaEliminare(null)}>
+          <div className="scelta-testa">
+            <div className="occhiello">Conferma eliminazione</div>
+            <h2>Eliminare il ruolo {daEliminare.nome}?</h2>
+            <p>
+              {contaUtenti(daEliminare.id) > 0
+                ? "Ci sono ancora utenti con questo ruolo: vanno spostati su un altro ruolo prima di eliminarlo."
+                : "Il ruolo sparisce dalla matrice e non sarà più assegnabile."}
+            </p>
+          </div>
+          <div className="scelta-piede modulo-piede">
+            <button className="btn linea" onClick={() => setDaEliminare(null)}>Annulla</button>
+            <button className="btn" style={{ background: "#d9534f", color: "#fff" }}
+              onClick={() => { if (st.eliminaRuolo(daEliminare.id)) st.avvisa("Ruolo eliminato"); setDaEliminare(null); }}>
+              Elimina
+            </button>
+          </div>
+        </Velo>
+      )}
+    </div>
+  );
+}
+
 /* ==================== gestione portale ==================== */
+const TAB_GESTIONE = [
+  ["azienda", "Dati aziendali", "gestione.azienda"],
+  ["fatturazione", "Fatturazione", "gestione.fatturazione"],
+  ["tema", "Aspetto", "gestione.tema"],
+  ["utenti", "Utenti", "gestione.utenti"],
+  ["ruoli", "Ruoli e permessi", "gestione.ruoli"],
+  ["notifiche", "Notifiche", "gestione.notifiche"],
+  ["backup", "Backup", "gestione.backup"],
+];
+
 function GestionePortale() {
   const st = usaStato();
-  const [tab, setTab] = React.useState("azienda");
+  const tabPermessi = React.useMemo(
+    () => TAB_GESTIONE.filter(([, , permesso]) => st.puo(permesso)), [st.puo]
+  );
+  const [tab, setTab] = React.useState(() => (tabPermessi[0] ? tabPermessi[0][0] : ""));
+  /* togliere un permesso mentre la scheda è aperta la fa sparire subito */
+  React.useEffect(() => {
+    if (tabPermessi.length && !tabPermessi.some(([k]) => k === tab)) setTab(tabPermessi[0][0]);
+  }, [tabPermessi, tab]);
   const [dati, setDati] = React.useState({ ...st.datiAziendali });
   const [editUtente, setEditUtente] = React.useState(null); // null | "nuovo" | utente obj
-  const RUOLI = ["Dipendente", "Referente aziendale", "Educatore", "Responsabile", "Operatore cucina", "Amministratore"];
-  const STRUTTURE = ["Rossi Manifatture Spa", "Comunità Il Ponte", "MAVI Ristorazione"];
+  /* le strutture assegnabili a un utente sono i committenti censiti più MAVI:
+     un committente creato in demo compare subito anche qui */
+  const STRUTTURE = [...st.committenti.map((c) => ({ id: c.id, nome: c.nome })),
+    { id: "mavi", nome: "MAVI Ristorazione" }];
+  const nomeRuolo = (id) => {
+    const r = st.ruoli.find((x) => x.id === id);
+    return r ? r.nome : "ruolo non assegnato";
+  };
 
   function salvaDati() {
     st.setDatiAziendali(dati);
     st.avvisa("Dati aziendali salvati");
-    st.logga("Cucina MAVI", "Admin", "Dati aziendali aggiornati", "Ragione sociale, indirizzo, P.IVA", "modifica");
+    st.loggaSessione("Dati aziendali aggiornati", "Ragione sociale, indirizzo, P.IVA", "modifica");
   }
 
   function campo(label, chiave, tipo) {
@@ -2693,7 +3019,7 @@ function GestionePortale() {
       <Intestazione occhiello="Amministrazione" titolo="Gestione portale" sotto="Dati aziendali, utenti, tema e notifiche del portale MAVI" />
       <div className="tela">
         <div className="commuta" style={{ marginBottom: 20 }}>
-          {[["azienda", "Dati aziendali"], ["fatturazione", "Fatturazione"], ["tema", "Aspetto"], ["utenti", "Utenti"], ["notifiche", "Notifiche"], ["backup", "Backup"]].map(([k, l]) => (
+          {tabPermessi.map(([k, l]) => (
             <button key={k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l}</button>
           ))}
         </div>
@@ -2777,32 +3103,30 @@ function GestionePortale() {
           <div className="pannello">
             <div className="pannello-testa">
               <h2>Utenti del portale</h2>
-              <span className="conta-piatti">{st.utenti.filter((u) => u.attivo).length} attivi su {st.utenti.length}</span>
+              <span className="conta-piatti">{st.utenti.filter((u) => u.attivo !== false).length} attivi su {st.utenti.length}</span>
               <button className="btn piccolo" style={{ marginLeft: "auto" }} onClick={() => setEditUtente("nuovo")}>
                 <Icone.piu size={14} /> Nuovo utente
               </button>
             </div>
             <div className="scorri">
               <table className="dati">
-                <thead><tr><th>Nome</th><th>Username</th><th>Ruolo</th><th>Struttura</th><th>Stato</th><th /></tr></thead>
+                <thead><tr><th>Nome</th><th>Nome utente</th><th>Ruolo</th><th>Struttura</th><th>Reparto</th><th>Stato</th><th /></tr></thead>
                 <tbody>
                   {st.utenti.map((u) => (
-                    <tr key={u.id} style={{ opacity: u.attivo ? 1 : 0.5 }}>
+                    <tr key={u.id} style={{ opacity: u.attivo !== false ? 1 : 0.5 }}>
                       <td><b>{u.nome}</b></td>
-                      <td className="cifra">{u.username || "—"}</td>
-                      <td>{u.ruolo}</td>
-                      <td style={{ color: "var(--muto)" }}>{u.struttura}</td>
-                      <td>{u.attivo ? <span className="pastiglia p-ok">attivo</span> : <span className="pastiglia p-neu">disattivato</span>}</td>
+                      <td className="cifra">{u.u || "—"}</td>
+                      <td>{nomeRuolo(u.ruolo)}</td>
+                      <td style={{ color: "var(--muto)" }}>{u.committente || u.struttura}</td>
+                      <td style={{ color: "var(--muto)" }}>{u.reparto || "—"}</td>
+                      <td>{u.attivo !== false ? <span className="pastiglia p-ok">attivo</span> : <span className="pastiglia p-neu">disattivato</span>}</td>
                       <td>
                         <div style={{ display: "flex", gap: 6 }}>
                           <button className="btn linea piccolo" onClick={() => setEditUtente({ ...u })}>Modifica</button>
-                          <button className={"btn piccolo" + (u.attivo ? " linea" : "")}
-                            style={u.attivo ? { color: "#d9534f" } : { background: "#5cb85c", color: "#fff" }}
-                            onClick={() => {
-                              st.setUtenti((p) => p.map((x) => x.id === u.id ? { ...x, attivo: !x.attivo } : x));
-                              st.avvisa(u.nome + (u.attivo ? " disattivato" : " riattivato"));
-                            }}>
-                            {u.attivo ? "Disattiva" : "Riattiva"}
+                          <button className={"btn piccolo" + (u.attivo !== false ? " linea" : "")}
+                            style={u.attivo !== false ? { color: "#d9534f" } : { background: "#5cb85c", color: "#fff" }}
+                            onClick={() => st.commutaAttivoUtente(u.id)}>
+                            {u.attivo !== false ? "Disattiva" : "Riattiva"}
                           </button>
                         </div>
                       </td>
@@ -2812,32 +3136,26 @@ function GestionePortale() {
               </table>
             </div>
             <div className="pannello-piede">
-              In produzione gli utenti avranno autenticazione con password individuale, reset via email e log degli accessi.
+              Il nome utente di questa tabella è quello con cui si entra: creare un utente qui
+              significa poter fare l'accesso con lui subito dopo. La password resta dimostrazione
+              per tutti; in produzione ogni utente avrà la propria, con reset via email e log degli accessi.
             </div>
 
             {editUtente && (
               <ModaleUtente
                 utente={editUtente === "nuovo" ? null : editUtente}
-                ruoli={RUOLI}
+                ruoli={st.ruoli}
                 strutture={STRUTTURE}
+                committenti={st.committenti}
                 repartiComunita={st.committenti.find((c) => c.id === "comunita")?.unita || []}
-                onSalva={(u) => {
-                  if (u.id) {
-                    st.setUtenti((p) => p.map((x) => x.id === u.id ? u : x));
-                    st.avvisa("Utente " + u.nome + " aggiornato");
-                  } else {
-                    const nuovo = { ...u, id: "u" + Date.now(), attivo: true };
-                    st.setUtenti((p) => [...p, nuovo]);
-                    st.avvisa("Utente " + u.nome + " creato");
-                  }
-                  st.logga("Cucina MAVI", "Admin", u.id ? "Utente modificato" : "Utente creato", u.nome + " — " + u.ruolo, "modifica");
-                  setEditUtente(null);
-                }}
+                onSalva={(u) => { if (st.salvaUtente(u)) setEditUtente(null); }}
                 onChiudi={() => setEditUtente(null)}
               />
             )}
           </div>
         )}
+
+        {tab === "ruoli" && <RuoliPermessi />}
 
         {tab === "notifiche" && (
           <div className="pannello">
@@ -2928,11 +3246,11 @@ function LogOperazioni() {
         occhiello="Audit trail"
         titolo="Log operazioni"
         sotto="Cronologia di tutte le azioni eseguite nel portale, filtrabile per tipo"
-        azioni={
+        azioni={st.puo("log.excel") && (
           <button className="btn linea piccolo" onClick={esportaLog}>
             <Icone.scarica size={16} /> Esporta
           </button>
-        }
+        )}
       />
       <div className="tela">
         <div className="commuta" style={{ marginBottom: 20 }}>
@@ -2986,6 +3304,7 @@ function ImpostazioniServizio() {
   const [attivo, setAttivo] = React.useState(strutture[0]?.id);
   const [nuovoReparto, setNuovoReparto] = React.useState("");
   const c = strutture.find((s) => s.id === attivo) || strutture[0];
+  const modificabile = st.puo("impostazioni.modifica");
   const cambia = (campo, val) => st.aggiornaCommittente(attivo, { [campo]: val });
   const conIva = regimeIva(c.regimeIva).conIva;
 
@@ -3023,7 +3342,9 @@ function ImpostazioniServizio() {
         occhiello="Configurazione servizio"
         titolo="Impostazioni per committente"
         sotto="Ogni struttura ha le sue regole. Qui si definiscono orari limite, listino, composizione del pasto e condizioni di fatturazione"
-        azioni={<button className="btn piccolo" onClick={() => st.avvisa("Impostazioni salvate per " + c.nome)}>Salva</button>}
+        azioni={modificabile && (
+          <button className="btn piccolo" onClick={() => st.avvisa("Impostazioni salvate per " + c.nome)}>Salva</button>
+        )}
       />
       <div className="tela">
         <div className="giorni-tab">
@@ -3034,6 +3355,9 @@ function ImpostazioniServizio() {
           ))}
         </div>
 
+        {/* un solo fieldset disattiva tutti i controlli della pagina in sola
+            lettura: i tab dei committenti restano fuori e navigabili */}
+        <fieldset disabled={!modificabile} style={{ border: "none", padding: 0, margin: 0, minWidth: 0 }}>
         <div className="impostazioni">
           <div className="impo-riga">
             <label>
@@ -3170,6 +3494,7 @@ function ImpostazioniServizio() {
             il campo Reparto per l'Educatore in Gestione portale → Utenti.
           </div>
         </div>
+        </fieldset>
       </div>
     </>
   );

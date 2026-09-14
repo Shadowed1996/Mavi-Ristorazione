@@ -8,11 +8,37 @@ const GIORNO_DEMO = "mercoledì";
 /* stessa giornata di GIORNO_DEMO in forma di data, per i titoli dei documenti */
 const DATA_DEMO = "2026-09-16";
 
+/* Avviso sul perimetro di visibilità. `reparto` null significa tutti i
+   reparti, una stringa vuota significa che l'utente è limitato al proprio
+   reparto ma non gliene è stato assegnato nessuno: senza questo avviso
+   vedrebbe solo una pagina vuota, senza capire perché. */
+function BannerReparto({ reparto, margine }) {
+  if (reparto === null || reparto === undefined) return null;
+  const stile = margine ? { marginBottom: 16 } : null;
+  if (!reparto)
+    return (
+      <div className="banner-dieta" style={{ background: "#fdf0e6", borderColor: "#e8c9a8", color: "#7a4a17", ...stile }}>
+        <Icone.attenzione size={15} />
+        Al tuo profilo non è assegnato nessun reparto, quindi non vedi nessun paziente. Chiedi al
+        referente del portale di assegnartene uno da <b>Gestione portale, Utenti</b>.
+      </div>
+    );
+  return (
+    <div className="banner-dieta" style={{ background: "#eef3fa", borderColor: "#b8cce0", color: "#2c4a6c", ...stile }}>
+      <Icone.attenzione size={15} />
+      Stai vedendo solo i pazienti di <b>{reparto}</b>. Il responsabile vede tutte le strutture.
+    </div>
+  );
+}
+
 /* ==================== pagina Pazienti ==================== */
-function Pazienti({ soloLettura, reparto }) {
+function Pazienti({ soloLettura, puoDieta, reparto }) {
   const st = usaStato();
+  /* reparto null = tutti i reparti; stringa = solo quel reparto; stringa
+     vuota = utente limitato al proprio reparto, ma senza reparto assegnato */
+  const limitato = reparto !== null && reparto !== undefined;
   const [lista, setLista] = React.useState(() =>
-    reparto ? PAZIENTI_COMUNITA.filter((p) => p.stanza === reparto) : PAZIENTI_COMUNITA
+    limitato ? PAZIENTI_COMUNITA.filter((p) => p.stanza === reparto) : PAZIENTI_COMUNITA
   );
   const [scheda, setScheda] = React.useState(null);
   const [modulo, setModulo] = React.useState(null); // null | "nuovo" | paziente per modifica
@@ -28,13 +54,13 @@ function Pazienti({ soloLettura, reparto }) {
       Object.assign(PAZIENTI_COMUNITA.find((p) => p.id === dati.id) || {}, dati);
       setLista((l) => l.map((p) => (p.id === dati.id ? { ...p, ...dati } : p)));
       st.avvisa(dati.nome + " aggiornato");
-      st.logga(dati.nome, "Responsabile", "Anagrafica paziente modificata", dati.nome + ", " + dati.stanza, "modifica");
+      st.loggaSessione("Anagrafica paziente modificata", dati.nome + ", " + dati.stanza, "modifica");
     } else {
       const nuovo = { ...dati, id: "p" + Date.now(), dal: "settembre 2026" };
       PAZIENTI_COMUNITA.push(nuovo);
       setLista((l) => [...l, nuovo]);
       st.avvisa(nuovo.nome + " aggiunto all'anagrafica");
-      st.logga(nuovo.nome, "Responsabile", "Nuovo paziente accettato", nuovo.nome + ", " + nuovo.stanza, "modifica");
+      st.loggaSessione("Nuovo paziente accettato", nuovo.nome + ", " + nuovo.stanza, "modifica");
     }
     setModulo(null);
   }
@@ -68,12 +94,7 @@ function Pazienti({ soloLettura, reparto }) {
           </span>
         </div>
 
-        {reparto && (
-          <div className="banner-dieta" style={{ background: "#eef3fa", borderColor: "#b8cce0", color: "#2c4a6c" }}>
-            <Icone.attenzione size={15} />
-            Stai vedendo solo i pazienti di <b>{reparto}</b>. Il responsabile vede tutte le strutture.
-          </div>
-        )}
+        <BannerReparto reparto={reparto} />
 
         <div className="ospiti">
           {lista.map((p) => (
@@ -104,7 +125,7 @@ function Pazienti({ soloLettura, reparto }) {
           onModifica={soloLettura ? null : () => { setModulo(scheda); setScheda(null); }}
           onElimina={soloLettura ? null : () => elimina(scheda.id)}
           soloLettura={soloLettura}
-          puoDieta={!soloLettura || !!reparto}
+          puoDieta={!!puoDieta}
         />
       )}
 
@@ -299,7 +320,7 @@ function SchedaPaziente({ paziente, onChiudi, onModifica, onElimina, soloLettura
             <button className="btn" onClick={() => {
               Object.assign(paziente.dieta, importPreview.dieta);
               st.avvisa("Dieta aggiornata per " + paziente.nome + " — tutti i giorni importati dal file");
-              st.logga(paziente.nome, "Import dieta", "Dieta caricata da file Excel", "5 giorni, pranzo e cena", "modifica");
+              st.loggaSessione("Dieta caricata da file Excel", paziente.nome + ", 5 giorni, pranzo e cena", "modifica");
               setImportPreview(null);
             }}>
               Approva e applica
@@ -411,9 +432,11 @@ function PresenzeComunita({ reparto }) {
   const presenti = st.presenzeComunita;
   /* pranzo e cena si segnano separatamente: nel pasto scelto compaiono solo i
      pazienti che lo prevedono, e i contatori valgono solo per quel pasto */
-  const tuttiPaz = reparto ? PAZIENTI_COMUNITA.filter((p) => p.stanza === reparto) : PAZIENTI_COMUNITA;
+  const tuttiPaz = reparto != null ? PAZIENTI_COMUNITA.filter((p) => p.stanza === reparto) : PAZIENTI_COMUNITA;
   const paz = tuttiPaz.filter((p) => pastiDi(p).includes(pasto));
 
+  const puoSegnare = st.puo("presenze.segna");
+  const puoTrasmettere = st.puo("presenze.trasmetti");
   const statoDi = (id) => presenti[id]?.[pasto] ?? null;
   const segna = (id, valore) =>
     st.setPresenzeComunita({ ...presenti, [id]: { ...(presenti[id] || {}), [pasto]: valore } });
@@ -431,7 +454,7 @@ function PresenzeComunita({ reparto }) {
         occhiello={"Mercoledì 16 settembre 2026, " + pasto + (reparto ? " · " + reparto : "")}
         titolo="Presenze del giorno"
         sotto="Segna ogni paziente come presente o assente. La cucina prepara solo i pasti dei presenti"
-        azioni={
+        azioni={puoTrasmettere && (
           <button className="btn piccolo" disabled={totNonSegnati > 0 || paz.length === 0} onClick={() => {
             const trasmessi = paz
               .filter((p) => statoDi(p.id) === true)
@@ -450,7 +473,7 @@ function PresenzeComunita({ reparto }) {
           }}>
             {paz.length === 0 ? "Nessun paziente per questo pasto" : totNonSegnati > 0 ? "Segna tutti prima di trasmettere" : "Trasmetti " + pasto + " a MAVI"}
           </button>
-        }
+        )}
       />
       <div className="tela">
         <div className="commuta" style={{ marginBottom: 20 }}>
@@ -471,12 +494,7 @@ function PresenzeComunita({ reparto }) {
           </div>
         )}
 
-        {reparto && (
-          <div className="banner-dieta" style={{ background: "#eef3fa", borderColor: "#b8cce0", color: "#2c4a6c" }}>
-            <Icone.attenzione size={15} />
-            Stai vedendo solo i pazienti di <b>{reparto}</b>. Il responsabile vede tutte le strutture.
-          </div>
-        )}
+        <BannerReparto reparto={reparto} />
 
         <div className="pannello">
           <div className="pannello-testa">
@@ -511,10 +529,12 @@ function PresenzeComunita({ reparto }) {
                         <div className="toggle-presenza">
                           <button
                             className={stato === true ? "on-verde" : ""}
+                            disabled={!puoSegnare}
                             onClick={() => segna(p.id, true)}
                           >✓ Presente</button>
                           <button
                             className={stato === false ? "on-rosso" : ""}
+                            disabled={!puoSegnare}
                             onClick={() => segna(p.id, false)}
                           >✕ Assente</button>
                         </div>
@@ -720,7 +740,7 @@ function ResocontiComunita({ reparto }) {
   const st = usaStato();
   const GIORNI_SETT_DEMO = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì"];
   const [vista, setVista] = React.useState("giorno"); // "giorno" o "mese"
-  const paz = reparto ? PAZIENTI_COMUNITA.filter((p) => p.stanza === reparto) : PAZIENTI_COMUNITA;
+  const paz = reparto != null ? PAZIENTI_COMUNITA.filter((p) => p.stanza === reparto) : PAZIENTI_COMUNITA;
 
   /* lo stato "trasmesso" vale per pasto: il pranzo può essere già partito
      mentre la cena è ancora da segnare */
@@ -835,7 +855,7 @@ function ResocontiComunita({ reparto }) {
         occhiello={"Mercoledì 16 settembre 2026" + (reparto ? " · " + reparto : "")}
         titolo="Resoconti"
         sotto="Cosa è stato trasmesso alla cucina MAVI, con dettaglio per giorno e per paziente"
-        azioni={<>
+        azioni={st.puo("resoconti.export") && <>
           <button className="btn linea piccolo" onClick={esportaExcel}><Icone.scarica size={16} /> Excel</button>
           <button className="btn linea piccolo" onClick={esportaPDF}>
             <Icone.stampa size={16} /> PDF
@@ -843,12 +863,7 @@ function ResocontiComunita({ reparto }) {
         </>}
       />
       <div className="tela">
-        {reparto && (
-          <div className="banner-dieta" style={{ background: "#eef3fa", borderColor: "#b8cce0", color: "#2c4a6c", marginBottom: 16 }}>
-            <Icone.attenzione size={15} />
-            Stai vedendo solo i pazienti di <b>{reparto}</b>. Il responsabile vede tutte le strutture.
-          </div>
-        )}
+        <BannerReparto reparto={reparto} margine />
         <div className="commuta" style={{ marginBottom: 20 }}>
           <button className={vista === "giorno" ? "on" : ""} onClick={() => setVista("giorno")}>Giorno</button>
           <button className={vista === "mese" ? "on" : ""} onClick={() => setVista("mese")}>Settimana</button>

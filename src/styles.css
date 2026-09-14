@@ -5706,3 +5706,75 @@ tr.pz-neutro td:first-child { border-left: 3px solid var(--linea); }
 [data-tema="scuro"] .dist-banner.attivo { border-color: var(--acc-bordo); background: var(--acc-tenue); color: var(--inchiostro); }
 [data-tema="scuro"] .dist-banner.attivo b { color: var(--inchiostro); }
 [data-tema="scuro"] .dist-senza-scheda { border-color: var(--linea-forte); }
+
+/* ==================== matrice ruoli e permessi ==================== */
+.matrice-permessi {
+  --mp-gruppo: #f2ece1;
+  --mp-ruolo: var(--carta);
+  min-width: 620px;
+}
+.matrice-permessi th.mp-ruolo {
+  text-align: center;
+  min-width: 132px;
+  vertical-align: top;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  background: var(--mp-ruolo);
+}
+.matrice-permessi .mp-nome {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--inchiostro);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.matrice-permessi .mp-nota {
+  display: block;
+  margin-top: 2px;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--muto);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.matrice-permessi .mp-elimina {
+  margin-top: 6px;
+  padding: 2px 8px;
+  border: 1px solid var(--linea-forte);
+  border-radius: var(--r-s);
+  background: transparent;
+  color: #c0504a;
+  font-family: var(--sans);
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.matrice-permessi .mp-elimina:hover { border-color: #c0504a; }
+.matrice-permessi tr.mp-gruppo td {
+  background: var(--mp-gruppo);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muto);
+  padding: 7px 14px;
+}
+.matrice-permessi .mp-chiave {
+  margin-top: 2px;
+  font-size: 10.5px;
+  color: var(--muto);
+}
+.matrice-permessi .mp-casella {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--acc);
+  cursor: pointer;
+}
+.matrice-permessi .mp-casella:disabled { cursor: not-allowed; opacity: 0.45; }
+
+[data-tema="scuro"] .matrice-permessi {
+  --mp-gruppo: #272421;
+  --mp-ruolo: var(--carta);
+}
+[data-tema="scuro"] .matrice-permessi .mp-elimina { color: #e08b84; }

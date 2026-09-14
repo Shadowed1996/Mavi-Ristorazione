@@ -734,12 +734,144 @@ export const PRESENZE_SCUOLA = [
    con la chiave esterna verso il committente.
    ============================================================ */
 export const UTENTI = [
-  { u: "antonella.rossi", nome: "Antonella Rossi", iniziali: "AR", struttura: "azienda", ruolo: "dipendente", committente: "Rossi Manifatture Spa", mansione: "Amministrazione" },
-  { u: "roberto.manzi", nome: "Roberto Manzi", iniziali: "RM", struttura: "azienda", ruolo: "referente", committente: "Rossi Manifatture Spa", mansione: "Ufficio del personale" },
-      { u: "samuele.ferri", nome: "Samuele Ferri", iniziali: "SF", struttura: "comunita", ruolo: "operatore", committente: "Comunità Il Ponte", mansione: "Educatore", reparto: "Spazio Giovani SGA" },
-  { u: "ilaria.gatti", nome: "Ilaria Gatti", iniziali: "IG", struttura: "comunita", ruolo: "responsabile", committente: "Comunità Il Ponte", mansione: "Responsabile" },
-      { u: "cucina.mavi", nome: "Cucina centrale", iniziali: "MV", struttura: "mavi", ruolo: "fornitore", committente: "MAVI Ristorazione", mansione: "Produzione e amministrazione" },
+  { id: "u1", u: "antonella.rossi", nome: "Antonella Rossi", iniziali: "AR", struttura: "azienda", ruolo: "dipendente", committente: "Rossi Manifatture Spa", mansione: "Amministrazione", email: "antonella.rossi@rossimanifatture.it", telefono: "", attivo: true },
+  { id: "u2", u: "roberto.manzi", nome: "Roberto Manzi", iniziali: "RM", struttura: "azienda", ruolo: "referente", committente: "Rossi Manifatture Spa", mansione: "Ufficio del personale", email: "roberto.manzi@rossimanifatture.it", telefono: "", attivo: true },
+  { id: "u3", u: "samuele.ferri", nome: "Samuele Ferri", iniziali: "SF", struttura: "comunita", ruolo: "operatore", committente: "Comunità Il Ponte", mansione: "Educatore", reparto: "Spazio Giovani SGA", email: "samuele.ferri@ilponte.it", telefono: "", attivo: true },
+  { id: "u4", u: "ilaria.gatti", nome: "Ilaria Gatti", iniziali: "IG", struttura: "comunita", ruolo: "responsabile", committente: "Comunità Il Ponte", mansione: "Responsabile", email: "ilaria.gatti@ilponte.it", telefono: "", attivo: true },
+  { id: "u5", u: "cucina.mavi", nome: "Cucina centrale", iniziali: "MV", struttura: "mavi", ruolo: "fornitore", committente: "MAVI Ristorazione", mansione: "Produzione e amministrazione", email: "cucina@maviristorazione.it", telefono: "", attivo: true },
 ];
+
+/* ============================================================
+   Permessi e ruoli.
+
+   Ogni voce di PERMESSI è una capacità elementare del prodotto:
+     k       chiave usata dal codice con st.puo("chiave")
+     portale mavi | azienda | comunita, decide in quale matrice compare
+     gruppo  la pagina a cui appartiene, per raggruppare la matrice
+     n       nome leggibile mostrato nella matrice
+
+   Le chiavi sono uniche *dentro un portale*, non fra portali: un utente ha
+   un solo ruolo e un ruolo appartiene a un solo portale, quindi documenti.vedi
+   nel portale comunità e documenti.vedi nel portale MAVI non si incrociano mai.
+
+   Convenzione: <pagina>.vedi apre la voce di menu, <pagina>.<azione> abilita
+   una singola azione dentro la pagina.
+   ============================================================ */
+export const PERMESSI = [
+  /* ---------- portale MAVI ---------- */
+  { k: "produzione.vedi", portale: "mavi", gruppo: "Produzione", n: "Vedi la distinta di produzione" },
+  { k: "produzione.stampa", portale: "mavi", gruppo: "Produzione", n: "Stampa la distinta" },
+  { k: "flussi.vedi", portale: "mavi", gruppo: "Ordini in arrivo", n: "Vedi gli ordini in arrivo" },
+  { k: "flussi.manifesto", portale: "mavi", gruppo: "Ordini in arrivo", n: "Genera il manifesto di consegna" },
+  { k: "flussi.excel", portale: "mavi", gruppo: "Ordini in arrivo", n: "Scarica i resoconti Excel" },
+  { k: "consegne.vedi", portale: "mavi", gruppo: "Giri di consegna", n: "Vedi i giri di consegna" },
+  { k: "etichette.vedi", portale: "mavi", gruppo: "Etichette pasto", n: "Vedi le etichette pasto" },
+  { k: "etichette.stampa", portale: "mavi", gruppo: "Etichette pasto", n: "Apri la vista di stampa" },
+  { k: "etichette.elimina", portale: "mavi", gruppo: "Etichette pasto", n: "Elimina una etichetta" },
+  { k: "modelli.vedi", portale: "mavi", gruppo: "Committenti", n: "Vedi i committenti" },
+  { k: "modelli.nuovo", portale: "mavi", gruppo: "Committenti", n: "Crea un committente" },
+  { k: "modelli.attivo", portale: "mavi", gruppo: "Committenti", n: "Imposta attivo, sospendi e riattiva" },
+  { k: "impostazioni.vedi", portale: "mavi", gruppo: "Impostazioni", n: "Vedi le impostazioni per committente" },
+  { k: "impostazioni.modifica", portale: "mavi", gruppo: "Impostazioni", n: "Modifica listino, condizioni e reparti" },
+  { k: "menu.vedi", portale: "mavi", gruppo: "Menu settimana", n: "Vedi il menu della settimana" },
+  { k: "menu.modifica", portale: "mavi", gruppo: "Menu settimana", n: "Compone il menu del giorno" },
+  { k: "menu.fissi", portale: "mavi", gruppo: "Menu settimana", n: "Gestisce i piatti fissi" },
+  { k: "menu.griglia", portale: "mavi", gruppo: "Menu settimana", n: "Apre e stampa la griglia settimana" },
+  { k: "catalogo.vedi", portale: "mavi", gruppo: "Catalogo piatti", n: "Vedi il catalogo piatti" },
+  { k: "catalogo.modifica", portale: "mavi", gruppo: "Catalogo piatti", n: "Crea, modifica piatti e fotografie" },
+  { k: "fatturazione.vedi", portale: "mavi", gruppo: "Fatturazione", n: "Vedi la fatturazione" },
+  { k: "fatturazione.proforma", portale: "mavi", gruppo: "Fatturazione", n: "Emette una nuova proforma" },
+  { k: "fatturazione.annulla", portale: "mavi", gruppo: "Fatturazione", n: "Annulla una proforma emessa" },
+  { k: "fatturazione.excel", portale: "mavi", gruppo: "Fatturazione", n: "Scarica gli Excel di fatturazione" },
+  { k: "log.vedi", portale: "mavi", gruppo: "Log operazioni", n: "Vedi il log operazioni" },
+  { k: "log.excel", portale: "mavi", gruppo: "Log operazioni", n: "Esporta il log in Excel" },
+  { k: "gestione.vedi", portale: "mavi", gruppo: "Gestione portale", n: "Apre la gestione portale" },
+  { k: "gestione.azienda", portale: "mavi", gruppo: "Gestione portale", n: "Modifica i dati aziendali" },
+  { k: "gestione.fatturazione", portale: "mavi", gruppo: "Gestione portale", n: "Modifica le condizioni predefinite" },
+  { k: "gestione.tema", portale: "mavi", gruppo: "Gestione portale", n: "Cambia l'aspetto del portale" },
+  { k: "gestione.utenti", portale: "mavi", gruppo: "Gestione portale", n: "Gestisce gli utenti" },
+  { k: "gestione.ruoli", portale: "mavi", gruppo: "Gestione portale", n: "Gestisce ruoli e permessi" },
+  { k: "gestione.notifiche", portale: "mavi", gruppo: "Gestione portale", n: "Gestisce le notifiche automatiche" },
+  { k: "gestione.backup", portale: "mavi", gruppo: "Gestione portale", n: "Backup e ripristino" },
+  { k: "documenti.vedi", portale: "mavi", gruppo: "Documenti", n: "Vedi i documenti del servizio" },
+  { k: "documenti.riservati", portale: "mavi", gruppo: "Documenti", n: "Vedi anche i documenti riservati" },
+  { k: "documenti.gestisci", portale: "mavi", gruppo: "Documenti", n: "Carica e rimuove documenti" },
+
+  /* ---------- portale azienda, vista dipendente ---------- */
+  { k: "menu.vedi", portale: "azienda", gruppo: "Menu del giorno", n: "Vedi il menu del giorno" },
+  { k: "menu.prenota", portale: "azienda", gruppo: "Menu del giorno", n: "Prenota e disdice il proprio pasto" },
+  { k: "settimana.vedi", portale: "azienda", gruppo: "Menu settimana", n: "Vedi il menu della settimana" },
+  { k: "prenotazioni.vedi", portale: "azienda", gruppo: "Le mie prenotazioni", n: "Vedi le proprie prenotazioni" },
+  { k: "prenotazioni.riepilogo", portale: "azienda", gruppo: "Le mie prenotazioni", n: "Scarica il riepilogo in PDF" },
+  { k: "diete.vedi", portale: "azienda", gruppo: "Diete speciali", n: "Imposta allergeni e preferenze" },
+
+  /* ---------- portale azienda, vista referente ---------- */
+  { k: "cruscotto.vedi", portale: "azienda", gruppo: "Cruscotto", n: "Vedi il cruscotto aziendale" },
+  { k: "prenota.perConto", portale: "azienda", gruppo: "Cruscotto", n: "Prenota per conto di un dipendente" },
+  { k: "riepilogo.stampa", portale: "azienda", gruppo: "Cruscotto", n: "Stampa il riepilogo del giorno" },
+  { k: "dipendenti.vedi", portale: "azienda", gruppo: "Dipendenti", n: "Vedi l'anagrafica dei dipendenti" },
+  { k: "dipendenti.modifica", portale: "azienda", gruppo: "Dipendenti", n: "Aggiunge, importa e reimposta password" },
+  { k: "resoconti.vedi", portale: "azienda", gruppo: "Resoconti", n: "Vedi i resoconti mensili" },
+  { k: "resoconti.export", portale: "azienda", gruppo: "Resoconti", n: "Scarica Excel, PDF ed export paghe" },
+  { k: "fatture.vedi", portale: "azienda", gruppo: "Fatture", n: "Vedi le proforma ricevute" },
+  { k: "fatture.pdf", portale: "azienda", gruppo: "Fatture", n: "Scarica la proforma in PDF" },
+  { k: "documenti.vedi", portale: "azienda", gruppo: "Documenti", n: "Vedi i documenti" },
+  { k: "documenti.riservati", portale: "azienda", gruppo: "Documenti", n: "Vedi anche i documenti riservati" },
+
+  /* ---------- portale comunità ---------- */
+  { k: "cruscotto.vedi", portale: "comunita", gruppo: "Cruscotto", n: "Vedi il cruscotto della struttura" },
+  { k: "pazienti.vedi", portale: "comunita", gruppo: "Pazienti", n: "Vedi l'elenco dei pazienti" },
+  { k: "pazienti.tuttiReparti", portale: "comunita", gruppo: "Pazienti", n: "Vedi tutti i reparti, non solo il proprio" },
+  { k: "pazienti.anagrafica", portale: "comunita", gruppo: "Pazienti", n: "Crea, modifica ed elimina i pazienti" },
+  { k: "pazienti.dieta", portale: "comunita", gruppo: "Pazienti", n: "Modifica, carica e scarica la dieta" },
+  { k: "presenze.vedi", portale: "comunita", gruppo: "Presenze del giorno", n: "Vedi le presenze del giorno" },
+  { k: "presenze.segna", portale: "comunita", gruppo: "Presenze del giorno", n: "Segna presenti e assenti" },
+  { k: "presenze.trasmetti", portale: "comunita", gruppo: "Presenze del giorno", n: "Trasmette le presenze a MAVI" },
+  { k: "resoconti.vedi", portale: "comunita", gruppo: "Resoconti", n: "Vedi i resoconti" },
+  { k: "resoconti.export", portale: "comunita", gruppo: "Resoconti", n: "Scarica il resoconto in Excel" },
+  { k: "fatture.vedi", portale: "comunita", gruppo: "Fatture", n: "Vedi le proforma ricevute" },
+  { k: "fatture.pdf", portale: "comunita", gruppo: "Fatture", n: "Scarica la proforma in PDF" },
+  { k: "documenti.vedi", portale: "comunita", gruppo: "Documenti", n: "Vedi i documenti" },
+  { k: "documenti.riservati", portale: "comunita", gruppo: "Documenti", n: "Vedi anche i documenti riservati" },
+];
+
+/* chiavi di un portale, nell'ordine in cui compaiono nella matrice */
+export function permessiDelPortale(portale) {
+  return PERMESSI.filter((p) => p.portale === portale);
+}
+
+const tutti = (portale) => permessiDelPortale(portale).map((p) => p.k);
+
+/* ============================================================
+   Ruoli iniziali. `bloccato` marca il ruolo di sistema, che non si
+   modifica né si elimina: senza, il portale MAVI potrebbe chiudersi
+   fuori da sé stesso. `vista` esiste solo nel portale azienda, dove
+   convivono due telai diversi (dipendente e referente).
+   ============================================================ */
+export const RUOLI_INIZIALI = [
+  {
+    id: "dipendente", nome: "Dipendente", portale: "azienda", vista: "dipendente",
+    permessi: ["menu.vedi", "menu.prenota", "settimana.vedi", "prenotazioni.vedi", "prenotazioni.riepilogo", "diete.vedi", "documenti.vedi"],
+  },
+  {
+    id: "referente", nome: "Referente aziendale", portale: "azienda", vista: "referente",
+    permessi: ["cruscotto.vedi", "prenota.perConto", "riepilogo.stampa", "dipendenti.vedi", "dipendenti.modifica",
+      "resoconti.vedi", "resoconti.export", "fatture.vedi", "fatture.pdf", "documenti.vedi", "documenti.riservati"],
+  },
+  {
+    id: "operatore", nome: "Educatore", portale: "comunita",
+    permessi: ["pazienti.vedi", "pazienti.dieta", "presenze.vedi", "presenze.segna", "presenze.trasmetti",
+      "resoconti.vedi", "resoconti.export", "documenti.vedi"],
+  },
+  { id: "responsabile", nome: "Responsabile", portale: "comunita", permessi: tutti("comunita") },
+  { id: "fornitore", nome: "Cucina MAVI", portale: "mavi", bloccato: true, permessi: tutti("mavi") },
+];
+
+export const ETICHETTE_PORTALE = {
+  mavi: "Portale MAVI",
+  azienda: "Portale azienda",
+  comunita: "Portale struttura",
+};
 
 /* matricola e reparto veri di chi ordina in azienda, cercati per nome:
    prima l'anagrafica dipendenti, poi la mansione del profilo di accesso
@@ -767,11 +899,6 @@ export const ETICHETTE_RUOLO = {
   responsabile: "Responsabile",
   fornitore: "Cucina MAVI",
 };
-
-export function trovaUtente(nomeUtente) {
-  const pulito = String(nomeUtente || "").trim().toLowerCase();
-  return UTENTI.find((x) => x.u === pulito) || null;
-}
 
 /* ============================================================
    Ospiti delle RSA. NOMI DI FANTASIA, dati dimostrativi.

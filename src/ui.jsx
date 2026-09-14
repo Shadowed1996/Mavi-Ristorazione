@@ -605,6 +605,49 @@ export function schedaPdf(id, { datiAziendali, avvisa } = {}) {
   apriDocumento(html, { nomeFile: "Scheda_" + id + ".html", avvisa });
 }
 
+/* ============================================================
+   Voci di menu filtrate dai permessi del ruolo in sessione.
+   `permessoDi` è la mappa chiave voce → chiave permesso; una voce senza
+   permesso dichiarato resta sempre visibile (è il caso di RSA e scuola, fuori
+   dal perimetro attivo). La pagina di partenza è la prima permessa e, se la
+   pagina corrente perde il permesso mentre l'utente è dentro, si torna alla
+   prima disponibile senza rifare il login.
+   ============================================================ */
+export function usaVociPermesse(voci, permessoDi) {
+  const st = usaStato();
+  const permesse = React.useMemo(
+    () => voci.filter(([k]) => {
+      const chiave = permessoDi[k];
+      return !chiave || st.puo(chiave);
+    }),
+    [voci, permessoDi, st.puo]
+  );
+  const [pagina, setPagina] = React.useState(() => (permesse[0] ? permesse[0][0] : ""));
+  React.useEffect(() => {
+    if (!permesse.length) return;
+    if (!permesse.some(([k]) => k === pagina)) setPagina(permesse[0][0]);
+  }, [permesse, pagina]);
+  return [permesse, pagina, setPagina];
+}
+
+/* schermata di cortesia per un ruolo a cui non resta nessuna pagina */
+export function NessunPermesso({ onEsci }) {
+  return (
+    <div className="tela">
+      <div className="avviso info" style={{ alignItems: "flex-start" }}>
+        <Icone.attenzione size={18} />
+        <span>
+          Il tuo ruolo non ha nessuna pagina abilitata in questo portale. Chiedi al referente del
+          portale di rivedere i permessi in <b>Gestione portale › Ruoli e permessi</b>.
+        </span>
+      </div>
+      {onEsci && (
+        <button className="btn linea" style={{ marginTop: 16 }} onClick={onEsci}>Esci dal portale</button>
+      )}
+    </div>
+  );
+}
+
 /* ============================ telaio dell'area ============================ */
 export function Telaio({ area, marchio, ruolo, utente, chiaveUtente, voci, pagina, setPagina, onEsci, children }) {
   const st = usaStato();
