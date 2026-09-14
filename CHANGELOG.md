@@ -13,6 +13,49 @@ e il progetto adotta il [Versionamento Semantico](https://semver.org/lang/it/).
 
 ## [Non rilasciato]
 
+### Aggiunto — 14 settembre 2026, TO DO MAVI (nove punti del cliente)
+- **`src/documento.js`**: impaginazione A4 condivisa per tutti i documenti
+  stampabili (proforma, manifesto, resoconti, scheda piatto), un solo CSS,
+  intestazione ripetuta su più pagine, mittente dai dati aziendali, avviso
+  nel portale e download di ripiego se il browser blocca la scheda.
+- **`src/resoconto.js`**: i bottoni PDF che mostravano solo un avviso ora
+  producono documenti veri: Resoconti del referente (stessi numeri
+  dell'Excel), Resoconti della comunità (una tabella per pasto), Resoconto
+  della struttura, riepilogo prenotazioni del dipendente; anche il log
+  operazioni esporta un Excel vero.
+- **Pazienti con pranzo e cena indipendenti**: campo `pasti` in anagrafica
+  (caselle Pranzo/Cena), presenze segnate e trasmesse per pasto senza
+  cancellarsi a vicenda, etichette e ordini in arrivo distinti per pasto.
+- **Fatturazione per committente e proforma create a mano**: termini di
+  pagamento, metodo, regime IVA con dicitura di esenzione, CF/PEC/SDI sul
+  committente; condizioni predefinite in Gestione portale; "Nuova proforma"
+  con righe e condizioni modificabili, numerazione `PRO-2026/NNN`, scadenza
+  calcolata, elenco ed annullamento; i portali cliente vedono solo le proprie.
+- **Riepilogo del giorno del referente**: pannello "Ordini del giorno" con
+  selettore dei cinque giorni, anteprima nominativa della sola azienda e
+  "Stampa riepilogo" intestato `MARTEDÌ - 15/09/2026`; "Chi non ha
+  prenotato" calcolato; manifesto MAVI filtrato per giornata.
+- **Menu della settimana**: ogni piatto di ogni portata si rende fisso dal
+  catalogo o dalla riga del giorno; tolto "Aggiungi il primo come piatto
+  fisso".
+
+### Corretto — 14 settembre 2026
+- Stile dei campi email e telefono in "Modifica profilo", identico agli altri.
+- "Prenota per lui" del referente: non sporca più il carrello del dipendente
+  demo, niente righe vuote o doppioni, reparto e matricola veri.
+- Trasmettere la cena della comunità cancellava il pranzo già trasmesso.
+- Apertura dei documenti dopo un `import()` dinamico, che faceva bloccare la
+  scheda ai browser: ora i moduli documento si importano staticamente.
+- `FATTURE` statico condiviso fra azienda e comunità: Il Ponte vedeva gli
+  importi di Rossi.
+
+### Modificato — 14 settembre 2026
+- `proforma.js`, `manifesto.js` e `schedaPdf` riscritti su `documento.js`;
+  intestazione degli Excel dai dati aziendali quando compilati.
+- `GIORNI` con data ISO, `nominativiAzienda` con `indiceGiorno` e reparto
+  vero, `conferma(giorno, chi, piatti?)`.
+- `file.md/09-portale-mavi.md` diviso in due (`09b-portale-mavi-gestione.md`).
+
 ### Aggiunto — 12 settembre 2026, quarta sessione
 - **Etichette pasto** riscritta per reggere molte strutture (Filippo: "se io
   avessi 20 aziende e 30 comunità dovrei scrollare 3000 etichette"): pannelli

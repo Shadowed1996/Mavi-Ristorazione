@@ -78,10 +78,14 @@ Props: `id`, `scelto`, `soloLettura`, `allergeniUtente`, `onChiudi`, `onScegli`.
 Se `allergeniUtente` contiene un allergene del piatto, la scheda mostra un
 avviso di conflitto.
 
-`schedaPdf(id)` apre una nuova finestra con la scheda impaginata e lancia
-`print()` dopo 400 ms. Il documento è una stringa HTML: ogni campo del piatto
-passa da `testoHtml`, perché il catalogo si modifica dal portale (vedi «HTML
-composto come stringa» in `11-convenzioni.md`).
+`schedaPdf(id, { datiAziendali, avvisa })` apre la scheda prodotto in una
+nuova scheda del browser con l'impaginazione condivisa di `documento.js`
+(badge "Scheda prodotto", sezioni ingredienti, allergeni, valori nutrizionali,
+riscaldamento, consiglio); si stampa dalla barra in cima, non parte più un
+`print()` automatico e non c'è più `alert()` se i popup sono bloccati: arriva
+l'avviso del portale e il file scaricato. Ogni campo del piatto passa da
+`testoHtml`, perché il catalogo si modifica dal portale (vedi «HTML composto
+come stringa» in `11-convenzioni.md`).
 
 ### `Illustrazione`
 

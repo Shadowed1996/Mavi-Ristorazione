@@ -89,12 +89,14 @@ Il menu è composto da due parti:
 giorno, poi i fissi non già presenti. È la funzione da usare sempre per
 ottenere l'elenco di una portata: non leggere le liste a mano.
 
-`GIORNI` è la settimana della demo, cinque voci con `n` (nome), `d` (data),
-`breve` e `chiuso`. `chiuso: true` simula il cutoff già passato: la selezione
-su quel giorno viene rifiutata (vedi `store.jsx`). La settimana attuale è
-interamente futura rispetto a "oggi", quindi nessun giorno è `chiuso`; il
-flag va rimesso a `true` sui primi giorni quando si aggiorna `GIORNI` a una
-settimana già iniziata.
+`GIORNI` è la settimana della demo (14–18 settembre 2026), cinque voci con `n`
+(nome), `d` (data leggibile), `breve`, `data` (ISO, `2026-09-15`, per i
+documenti stampabili) e `chiuso`. `chiuso: true` simula il cutoff già passato:
+la selezione su quel giorno viene rifiutata (vedi `store.jsx`). La settimana
+attuale è interamente futura rispetto a "oggi", quindi nessun giorno è
+`chiuso`; il flag va rimesso a `true` sui primi giorni quando si aggiorna
+`GIORNI` a una settimana già iniziata. `etichettaGiorno(indice)` dà l'etichetta
+leggibile ("Martedì 15 settembre"), la stessa ovunque: non comporla a mano.
 
 ## Anagrafiche e committenti
 
@@ -104,7 +106,8 @@ settimana già iniziata.
 | `ETICHETTE_STRUTTURA`, `ETICHETTE_RUOLO` | nomi leggibili per il login |
 | `trovaUtente(nome)` | risolve il nome utente, case insensitive |
 | `DIPENDENTI` | otto dipendenti Rossi Manifatture con matricola, reparto, dieta, stato, pasti |
-| `COMMITTENTI` | i due committenti di partenza (azienda e comunità): modello, unità, etichetta unità, **più** anagrafica (indirizzo, P.IVA, referente), configurazione (cutoff, regola pasto, frutta, monoporzione) e listino (`prezzoUnitario`, `ivaPercentuale`, `pastiMeseDemo`) — un solo record, non tre dizionari separati come prima del 12 settembre 2026. È solo il seed: lo stato vero è `st.committenti` in `store.jsx`, esteso da "Nuovo committente" |
+| `anagraficaAzienda(nome)` | matricola e reparto veri di chi ordina in azienda: prima `DIPENDENTI`, poi la `mansione` di `UTENTI` (Antonella Rossi è un profilo demo, non è in `DIPENDENTI`) |
+| `COMMITTENTI` | i due committenti di partenza (azienda e comunità): modello, unità, etichetta unità, **più** anagrafica (indirizzo, P.IVA, `cf`, `pec`, `codiceSdi`, referente), configurazione (cutoff, regola pasto, frutta, monoporzione), listino (`prezzoUnitario`, `ivaPercentuale`, `pastiMeseDemo`) e **condizioni di fatturazione** (`termini`, `metodoPagamento`, `regimeIva`, `dicituraIva`) — un solo record. È solo il seed: lo stato vero è `st.committenti` in `store.jsx`, esteso da "Nuovo committente". Demo: Rossi a 30 gg d.f. con IVA 10 %, Il Ponte a 60 gg d.f.f.m. senza IVA con dicitura |
 | `MODELLI` | i tre modelli di ordinazione: `individuale`, `unita`, `presenze` |
 | `PAZIENTI_COMUNITA` | quattro pazienti con dieta settimanale completa |
 | `OSPITI`, `OSPITI_RSA` | ospiti RSA, fuori dal flusso attivo |
@@ -113,8 +116,15 @@ settimana già iniziata.
 ### Pazienti comunità
 
 ```js
-{ id, nome, stanza, dal, note, tipo_dieta, dieta: { giorno: { pranzo: {...}, cena: {...} } } }
+{ id, nome, stanza, dal, note, tipo_dieta, pasti: ["pranzo", "cena"],
+  dieta: { giorno: { pranzo: {...}, cena: {...} } } }
 ```
+
+`pasti` (dal 14 settembre 2026) elenca i pasti previsti dal paziente: Beatrice
+Comi e Zied Dridi fanno solo pranzo. `pastiDi(paziente)` lo legge in modo
+retrocompatibile (senza il campo valgono pranzo e cena) e `portateServite(dieta)`
+dà le portate diverse da `—` e non vuote: sono le funzioni da usare per contare
+etichette e presenze, non un fisso `× 3`.
 
 `stanza` fa doppio servizio: è anche il **reparto/struttura** usato per
 filtrare la visibilità dell'educatore (vedi `08-portale-comunita.md`). Nei
@@ -159,10 +169,22 @@ fuori dieta *ogni* piatto (leggeva `piatto.m`) è stato corretto il 3 settembre
 | `GIRI` | due giri di consegna con furgone, autista, tappe |
 | `CICLICO` | le quattro settimane della rotazione menu |
 | `ORDINI_UNITA` | quantità dichiarate dalle case della comunità |
-| `ETICHETTE_AZIENDA_DEMO` | sette ordini nominativi demo (nome, reparto, portate). Seed di `st.nominativiAzienda`, il manifesto di consegna nominativo di "Ordini in arrivo" (portale MAVI) |
+| `ETICHETTE_AZIENDA_DEMO` | sette ordini nominativi demo di mercoledì (`indiceGiorno: 2`), con matricola e reparto ricavati da `anagraficaAzienda`, `committente: "azienda"`, `committenteNome` e `unico`. Seed di `st.nominativiAzienda` |
 | `RESOCONTO_MENSILE` | dati aggregati di agosto 2026 con dettaglio giornaliero |
-| `FATTURE` | tre documenti, uno dei quali proforma |
+| `PROFORME_INIZIALI` | quattro proforma seed, due per committente (`numero, committenteId, periodo, dataEmissione, pasti, stato`); lo store le espande con listino e condizioni del committente. Ha sostituito `FATTURE`: nessun portale legge più un elenco condiviso |
 | `PREZZO_PASTO` (7,50 €), `QUOTA_DIPENDENTE` (3,20 €) | listino |
+
+## Condizioni di fatturazione (dal 14 settembre 2026)
+
+| Costante / funzione | Cosa |
+|---|---|
+| `TERMINI_PAGAMENTO` | `{ id, nome, giorni, fineMese }`: anticipato, vista fattura, 30 gg d.f., 30 gg d.f.f.m., 60 gg d.f., 60 gg d.f.f.m., 90 gg d.f.f.m. |
+| `METODI_PAGAMENTO` | bonifico (`conIban`), RiBa, SDD |
+| `REGIMI_IVA` | `ordinaria` con aliquota, `senza_iva` con dicitura di esenzione precompilata |
+| `terminiPagamento(id)`, `metodoPagamento(id)`, `regimeIva(id)` | lookup con ripiego |
+| `scadenzaPagamento(dataEmissione, terminiId)` | `Date` di scadenza: i giorni si contano dalla data di emissione; con `fineMese` dall'**ultimo giorno reale del mese di emissione** (14/09 a 60 gg d.f.f.m. → 30/09 + 60 → 29/11/2026); anticipato e vista scadono lo stesso giorno |
+| `totaliProforma(p)` | `{ quantita, imponibile, iva, totale }` dalle righe libere e dal regime, unico punto di calcolo |
+| `testoCondizioni(x)`, `ordinaProforme(lista)` | etichetta leggibile delle condizioni; ordinamento per data e numero |
 
 `allergeniDelGiorno(menu, giorno)` ritorna l'elenco ordinato dei numeri
 allergene presenti in tutte le portate di quella giornata.

@@ -38,21 +38,30 @@ utente.
 4. **Menu settimana** → griglia con navigazione settimane e filtro portata.
 5. **Conferma prenotazione.** Provare prima a confermare senza contorno: compare
    l'avviso che dice cosa manca e lascia decidere.
-6. Uscire → **Roberto Manzi** → Cruscotto → "Prenota per lui" su un dipendente,
-   scegliere i piatti, confermare.
+6. Uscire → **Roberto Manzi** → Cruscotto → "Ordini del giorno": scegliere
+   martedì, "Prenota per lui" su un dipendente, scegliere i piatti, confermare:
+   la riga compare nell'anteprima e il dipendente sparisce da "Chi non ha
+   prenotato". Poi **Stampa riepilogo**: il documento è intestato
+   `MARTEDÌ - 15/09/2026` e riporta solo la Rossi Manifatture.
 7. **Resoconti** → espandere un dipendente per il dettaglio giornaliero →
-   Excel → Export paghe.
+   Excel → **PDF** (stessi numeri) → Export paghe. Poi **Fatture**: solo le
+   proforma di Rossi, con scadenza e condizioni.
 8. Uscire → **Samuele Ferri** (educatore) → Pazienti: si vedono solo i due
    pazienti di "Spazio Giovani SGA", con il banner che lo segnala. Aprire
    Beatrice Comi → **Modifica dieta** funziona (per i pazienti del proprio
    reparto); "Elimina" e "Modifica anagrafica" restano assenti.
 9. **Presenze** (filtrate allo stesso reparto) → segnare presenti e assenti →
-   "Trasmetti a MAVI" si attiva quando sono segnati i pazienti di quel reparto.
+   "Trasmetti pranzo a MAVI" si attiva quando sono segnati i pazienti di quel
+   reparto. Passare a **Cena**: Beatrice e Zied non compaiono, fanno solo
+   pranzo.
 10. Uscire → **Ilaria Gatti** (responsabile) → Pazienti: vede tutti e quattro i
     pazienti, di entrambe le strutture. Aprire Carmelo Aronica → **Modifica
-    anagrafica** ed **Elimina**, assenti per l'educatore, compaiono qui.
+    anagrafica** (con le caselle Pranzo/Cena) ed **Elimina**, assenti per
+    l'educatore, compaiono qui.
 11. **Scarica template** → mostrare l'Excel pensato per il dietista.
-12. **Resoconti** → vista Settimana con accordion → Excel.
+12. **Presenze** → trasmettere la cena: il pranzo trasmesso da Samuele resta.
+    **Resoconti** → vista Giorno con una tabella per pasto → Excel → **PDF**.
+    **Fatture**: solo le proforma del Ponte, senza IVA con la dicitura.
 13. Uscire → **Cucina MAVI** → Etichette pasto: pannelli separati Aziende e
     Comunità, pallino rosso lampeggiante su chi ha etichette arrivate. Aprire
     Rossi Manifatture Spa (anonime, per piatto), poi Comunità Il Ponte
@@ -61,18 +70,20 @@ utente.
 14. **Produzione** → distinta multi struttura → "Filtra questa".
 15. **Ordini in arrivo** → aprire il dettaglio di Rossi Manifatture Spa: quantità
     per piatto con "per il giorno"/"generato il", poi il **dettaglio
-    nominativo riservato al fornitore** e "Genera manifesto PDF per il
-    cassone termico". Aprire anche il dettaglio di Comunità Il Ponte: elenco
-    nominativo con reparto.
+    nominativo riservato al fornitore**, scegliere la giornata e "Manifesto
+    PDF" di quel solo giorno. Aprire anche il dettaglio di Comunità Il Ponte:
+    elenco nominativo con reparto e pasto, pranzo e cena distinti.
 16. **Committenti** → "Nuovo committente": creare una struttura di prova e far
     notare che compare subito anche in Impostazioni, Fatturazione, Produzione
     e Ordini in arrivo.
-17. **Impostazioni** → prezzo unitario e IVA per committente, e il pannello
+17. **Impostazioni** → prezzo unitario e IVA, **Condizioni di fatturazione**
+    (Il Ponte a 60 gg d.f.f.m. senza IVA, Rossi a 30 gg d.f.), e il pannello
     Reparti (aggiungere un reparto, farlo comparire subito nella tendina di
     "Nuovo paziente").
-18. **Fatturazione** → tab per struttura, "Genera proforma PDF" usa il listino
-    di quella sola struttura; in fondo "Tutte le strutture" per il riepilogo e
-    la proforma unica.
+18. **Fatturazione** → tab per struttura, **Nuova proforma**: aggiungere una
+    riga, cambiare i termini solo per quel documento, "Emetti e apri PDF";
+    sotto l'elenco delle proforma emesse con PDF e Annulla. **Menu settimana**:
+    "Rendi fisso" su un piatto qualsiasi, poi Griglia settimana.
 19. **Modifica profilo** (icona matita accanto al nome, in fondo alla barra
     laterale, in qualsiasi portale) → cambiare foto e telefono.
 20. **Gestione portale** → Aspetto → provare il tema scuro. Utenti → aprire
@@ -86,7 +97,7 @@ utente.
    cambia di conseguenza.
 2. **La scheda piatto.** La `i` cerchiata apre ingredienti, allergeni, valori
    nutrizionali e consigli. "Scarica scheda PDF" apre davvero un documento
-   impaginato e lancia la stampa.
+   impaginato con lo stesso stile di proforma e resoconti.
 3. **Il ciclo completo.** Confermare la prenotazione come dipendente, poi
    entrare nel portale MAVI: nella distinta di produzione le quantità sono
    salite.
@@ -117,7 +128,9 @@ utente.
   Non ricaricare durante la demo.
 - Le frecce di navigazione settimana nel Menu del giorno sono decorative,
   mostrano solo un toast.
-- "Scarica riepilogo" nella pagina Prenotazioni è dimostrativo.
-- I dati aziendali nella proforma appaiono come placeholder in corsivo finché
+- I dati aziendali nei documenti appaiono come placeholder in corsivo finché
   non si compilano in Gestione portale. Compilarli prima se si vuole mostrare
   una proforma completa.
+- Se il browser blocca le finestre popup, i documenti non si aprono: compare
+  l'avviso e parte il download del file. Consentire i popup sul sito prima
+  della demo.
