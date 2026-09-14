@@ -5,7 +5,6 @@ import {
 } from "../data.js";
 import { Accesso, DiscoColore, Documenti, Icone, Intestazione, Messaggi, PastigliaProforma, Telaio, Velo } from "../ui.jsx";
 import { usaStato } from "../store.jsx";
-import { dataIt } from "../documento.js";
 import { generaProformaPDF } from "../proforma.js";
 import { generaResocontoPDF } from "../resoconto.js";
 import { blocco, dataIt, elenco, generaElencoNominativo, giornoDataIt, paragrafo } from "../documento.js";
