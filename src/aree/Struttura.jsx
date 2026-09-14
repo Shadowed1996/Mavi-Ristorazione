@@ -2,6 +2,7 @@ import React from "react";
 import { DIETE_TERAPEUTICHE, FATTURE, MODELLI } from "../data.js";
 import { Accesso, Documenti, Icone, Intestazione, Messaggi, Telaio } from "../ui.jsx";
 import { usaStato } from "../store.jsx";
+import { generaProformaPDF } from "../proforma.js";
 import { OrdiniUnita } from "./Modelli.jsx";
 import Comunita from "./Comunita.jsx";
 
@@ -403,10 +404,13 @@ function FattureStruttura({ cfg }) {
                     </td>
                     <td>
                       <div style={{ display: "flex", gap: 8 }}>
-                        <button className="btn linea piccolo" onClick={async () => {
-                          const { generaProformaPDF } = await import("../proforma.js");
+                        <button className="btn linea piccolo" onClick={() => {
                           const c = st.committenti.find((x) => x.id === cfg.committente);
-                          generaProformaPDF([{ nome: cfg.nome, tipo: ETICHETTA_TIPO[cfg.committente] || "Struttura", pasti: f.pasti, mese: f.periodo, prezzo: c?.prezzoUnitario, ivaPercentuale: c?.ivaPercentuale }], 7.50);
+                          generaProformaPDF(
+                            [{ nome: cfg.nome, tipo: ETICHETTA_TIPO[cfg.committente] || "Struttura", pasti: f.pasti, mese: f.periodo, prezzo: c?.prezzoUnitario, ivaPercentuale: c?.ivaPercentuale }],
+                            7.50,
+                            { datiAziendali: st.datiAziendali, avvisa: st.avvisa }
+                          );
                         }}>PDF</button>
                       </div>
                     </td>

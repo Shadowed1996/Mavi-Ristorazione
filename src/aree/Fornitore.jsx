@@ -7,6 +7,8 @@ import {
   Telaio, Velo, schedaPdf,
 } from "../ui.jsx";
 import { usaStato } from "../store.jsx";
+import { generaProformaPDF } from "../proforma.js";
+import { generaManifestoConsegna } from "../manifesto.js";
 import { ModelliServizio } from "./Modelli.jsx";
 
 const VOCI = [
@@ -671,7 +673,7 @@ function Catalogo() {
                           <button className="btn linea piccolo" onClick={() => st.togliFoto(id)}>Togli</button>
                         )}
                         <button className="btn linea piccolo" onClick={() => setModulo({ id })}>Modifica</button>
-                        <button className="btn linea piccolo" onClick={() => schedaPdf(id)}>Scheda</button>
+                        <button className="btn linea piccolo" onClick={() => schedaPdf(id, { datiAziendali: st.datiAziendali, avvisa: st.avvisa })}>Scheda</button>
                       </div>
                     </td>
                   </tr>
@@ -734,7 +736,7 @@ function Fatturazione() {
     try {
       const { scaricaExcel } = await import("../excel.js");
       await scaricaExcel("Proforma_" + x.c.nome.replace(/[^a-zA-Z0-9]+/g, "_") + ".xlsx",
-        [{ nome: "Proforma", dati: [rigaExcel(x)], colonne: COLONNE_PROFORMA }]);
+        [{ nome: "Proforma", dati: [rigaExcel(x)], colonne: COLONNE_PROFORMA }], { datiAziendali: st.datiAziendali });
       st.avvisa("Excel di " + x.c.nome + " scaricato");
     } catch (e) {
       console.error(e);
@@ -746,21 +748,27 @@ function Fatturazione() {
       const { scaricaExcel } = await import("../excel.js");
       const dati = righe.map(rigaExcel);
       dati.push({ struttura: "", tipo: "", mese: "TOTALE", pasti: totPasti, prezzo: "", imponibile: "€ " + eur(totImponibile), iva: "€ " + eur(totIva), totale: "€ " + eur(totImponibile + totIva) });
-      await scaricaExcel("Proforma_MAVI_" + MESE.replace(" ", "_") + ".xlsx", [{ nome: "Proforma", dati, colonne: COLONNE_PROFORMA }]);
+      await scaricaExcel("Proforma_MAVI_" + MESE.replace(" ", "_") + ".xlsx", [{ nome: "Proforma", dati, colonne: COLONNE_PROFORMA }], { datiAziendali: st.datiAziendali });
       st.avvisa("Excel scaricato, un rigo per committente più il totale");
     } catch (e) {
       console.error(e);
       st.avvisa("Errore nella generazione, riprova");
     }
   }
-  async function generaProformaStruttura(x) {
-    const { generaProformaPDF } = await import("../proforma.js");
-    generaProformaPDF([{ nome: x.c.nome, tipo: x.c.tipo, pasti: x.pasti, mese: MESE, prezzo: x.c.prezzoUnitario, ivaPercentuale: x.c.ivaPercentuale }]);
+  function generaProformaStruttura(x) {
+    generaProformaPDF(
+      [{ nome: x.c.nome, tipo: x.c.tipo, pasti: x.pasti, mese: MESE, prezzo: x.c.prezzoUnitario, ivaPercentuale: x.c.ivaPercentuale }],
+      undefined,
+      { datiAziendali: st.datiAziendali, avvisa: st.avvisa }
+    );
     st.logga("Cucina MAVI", "Operatore", "Proforma generata", x.c.nome, "generico");
   }
-  async function generaProformaCombinata() {
-    const { generaProformaPDF } = await import("../proforma.js");
-    generaProformaPDF(righe.map((x) => ({ nome: x.c.nome, tipo: x.c.tipo, pasti: x.pasti, mese: MESE, prezzo: x.c.prezzoUnitario, ivaPercentuale: x.c.ivaPercentuale })));
+  function generaProformaCombinata() {
+    generaProformaPDF(
+      righe.map((x) => ({ nome: x.c.nome, tipo: x.c.tipo, pasti: x.pasti, mese: MESE, prezzo: x.c.prezzoUnitario, ivaPercentuale: x.c.ivaPercentuale })),
+      undefined,
+      { datiAziendali: st.datiAziendali, avvisa: st.avvisa }
+    );
     st.logga("Cucina MAVI", "Operatore", "Proforma generata", righe.map((x) => x.c.nome).join(", ") + " (documento unico)", "generico");
   }
 
@@ -1191,21 +1199,22 @@ function FlussiOrdine() {
   async function scaricaGlobale() {
     const { scaricaExcel } = await import("../excel.js");
     const fogli = dati.map((d) => ({ nome: d.c.nome.slice(0, 28), ...foglioPerCommittente(d.c.id, pastiAzienda, st.presenzeTrasmesse) }));
-    await scaricaExcel("Ordini_in_arrivo.xlsx", fogli);
+    await scaricaExcel("Ordini_in_arrivo.xlsx", fogli, { datiAziendali: st.datiAziendali });
     st.avvisa("Resoconto globale scaricato, un foglio per struttura");
   }
   async function scaricaStruttura(d) {
     const { scaricaExcel } = await import("../excel.js");
     await scaricaExcel("Ordini_" + d.c.nome.replace(/[^a-zA-Z0-9]+/g, "_") + ".xlsx",
-      [{ nome: "Ordini", ...foglioPerCommittente(d.c.id, pastiAzienda, st.presenzeTrasmesse) }]);
+      [{ nome: "Ordini", ...foglioPerCommittente(d.c.id, pastiAzienda, st.presenzeTrasmesse) }], { datiAziendali: st.datiAziendali });
     st.avvisa("Resoconto di " + d.c.nome + " scaricato");
   }
-  async function generaManifesto(struttura) {
-    const { generaManifestoConsegna } = await import("../manifesto.js");
+  function generaManifesto(struttura) {
     generaManifestoConsegna({
       struttura, pasto: "pranzo",
       giorno: giorniConfermatiAzienda[0]?.giorno || "Mercoledì 16 settembre 2026",
       righe: st.nominativiAzienda,
+      datiAziendali: st.datiAziendali,
+      avvisa: st.avvisa,
     });
     st.logga("Cucina MAVI", "Operatore", "Manifesto di consegna generato", struttura + ", " + st.nominativiAzienda.length + " nominativi", "generico");
   }

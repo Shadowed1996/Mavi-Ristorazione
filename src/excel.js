@@ -7,8 +7,12 @@
  *   { nome: "Riepilogo", dati: [{...}, ...], colonne: [{ header, key, width }] },
  *   ...
  * ]
+ *
+ * `datiAziendali` è st.datiAziendali, compilato in Cucina MAVI › Gestione
+ * portale: quando c'è, l'intestazione del foglio usa quei dati al posto dei
+ * testi fissi di esempio.
  */
-export async function scaricaExcel(nomefile, fogli) {
+export async function scaricaExcel(nomefile, fogli, { datiAziendali } = {}) {
   const ExcelJS = await import("exceljs");
   const { saveAs } = await import("file-saver");
 
@@ -23,6 +27,16 @@ export async function scaricaExcel(nomefile, fogli) {
   const GRIGIO = "FFE8E0D6";
   const SCURO = "FF3C3632";
 
+  const azienda = datiAziendali || {};
+  const ragioneSociale = String(azienda.ragioneSociale ?? "").trim() || "MAVI Ristorazione";
+  const dettagliAzienda = [
+    String(azienda.indirizzo ?? "").trim(),
+    azienda.piva ? "P.IVA " + String(azienda.piva).trim() : "",
+  ].filter(Boolean);
+  const sottotitoloAzienda = dettagliAzienda.length
+    ? "Ristorazione collettiva · " + dettagliAzienda.join(" · ")
+    : "Ristorazione collettiva · Via dell'Industria 15, Varese · P.IVA 03456780125";
+
   for (const foglio of fogli) {
     const ws = wb.addWorksheet(foglio.nome);
 
@@ -30,14 +44,14 @@ export async function scaricaExcel(nomefile, fogli) {
     const nCol = foglio.colonne.length;
     ws.mergeCells(1, 1, 1, nCol);
     const titolo = ws.getCell("A1");
-    titolo.value = "MAVI Ristorazione";
+    titolo.value = ragioneSociale;
     titolo.font = { name: "Calibri", size: 20, bold: true, color: { argb: TERRACOTTA } };
     titolo.alignment = { horizontal: "left", vertical: "middle" };
     ws.getRow(1).height = 32;
 
     ws.mergeCells(2, 1, 2, nCol);
     const sotto = ws.getCell("A2");
-    sotto.value = "Ristorazione collettiva · Via dell'Industria 15, Varese · P.IVA 03456780125";
+    sotto.value = sottotitoloAzienda;
     sotto.font = { name: "Calibri", size: 10, color: { argb: "FF888074" } };
 
     ws.mergeCells(3, 1, 3, nCol);

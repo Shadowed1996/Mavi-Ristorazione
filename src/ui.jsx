@@ -1,6 +1,7 @@
 import React from "react";
 import { ALLERGENI, COLORI, MARCATORI, PIATTI, ingredientiEvidenziati, sostituisce } from "./data.js";
 import { usaStato } from "./store.jsx";
+import { apriDocumento, blocco, elenco, etichette, paginaDocumento, paragrafo, tabellaHtml } from "./documento.js";
 
 /* ============================ icone ============================ */
 const s = { fill: "none", stroke: "currentColor", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" };
@@ -475,6 +476,7 @@ function nutrientiDi(p) {
 }
 
 export function SchedaPiatto({ id, scelto, soloLettura, allergeniUtente = [], onChiudi, onScegli }) {
+  const st = usaStato();
   const p = PIATTI[id];
   const conflitto = p.a.filter((n) => allergeniUtente.includes(n));
   const nutrienti = nutrientiDi(p);
@@ -527,7 +529,7 @@ export function SchedaPiatto({ id, scelto, soloLettura, allergeniUtente = [], on
         <div className="consiglio"><b>Consiglio</b>{p.con}</div>
 
         <div className="modale-azioni">
-          <button className="btn linea" onClick={() => schedaPdf(id)}><Icone.scarica size={16} /> Scarica scheda PDF</button>
+          <button className="btn linea" onClick={() => schedaPdf(id, { datiAziendali: st.datiAziendali, avvisa: st.avvisa })}><Icone.scarica size={16} /> Scarica scheda PDF</button>
           {!soloLettura && (
             <button className={"btn" + (scelto ? " linea" : "")} onClick={onScegli}>
               {scelto ? "Rimuovi dalla scelta" : "Scegli questo piatto"}
@@ -552,49 +554,48 @@ export function Velo({ children, onChiudi, largo }) {
   );
 }
 
-/* i campi del catalogo si modificano dal portale: nella scheda vanno come testo, non come HTML */
-const testoHtml = (v) =>
-  String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-
-/* scheda stampabile, il browser la salva in PDF */
-export function schedaPdf(id) {
+/* scheda stampabile, il browser la salva in PDF. Impaginazione e regole di
+   escape stanno in documento.js: i campi del catalogo si modificano dal
+   portale, quindi nel documento vanno come testo, non come HTML. */
+export function schedaPdf(id, { datiAziendali, avvisa } = {}) {
   const p = PIATTI[id];
-  const w = window.open("", "_blank", "width=820,height=920");
-  if (!w) { alert("Consenti le finestre popup per scaricare la scheda."); return; }
+  if (!p) return;
   const nutrienti = nutrientiDi(p);
-  w.document.write(`<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>Scheda, ${testoHtml(p.n)}</title>
-<style>
-body{font-family:Georgia,"Times New Roman",serif;color:#1C1917;max-width:690px;margin:38px auto;padding:0 28px;line-height:1.65}
-.testa{display:flex;justify-content:space-between;align-items:baseline;border-bottom:3px solid #B4531F;padding-bottom:10px;margin-bottom:24px}
-.marchio{font-family:Helvetica,Arial,sans-serif;font-weight:700;font-size:20px;color:#B4531F;letter-spacing:-.02em}
-.marchio span{display:block;font-size:9.5px;font-weight:400;color:#857B6E;letter-spacing:.16em;text-transform:uppercase}
-.data{font-family:Helvetica,Arial,sans-serif;font-size:11px;color:#857B6E}
-h1{font-size:27px;margin:0 0 8px;font-weight:600}
-.tag{display:inline-block;font-family:Helvetica,Arial,sans-serif;font-size:10.5px;font-weight:700;background:#FBF0E7;color:#8F3F16;border-radius:5px;padding:3px 9px;margin:0 5px 5px 0}
-h2{font-family:Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#857B6E;margin:26px 0 8px;border-bottom:1px solid #E8E0D4;padding-bottom:5px}
-table{width:100%;border-collapse:collapse;font-family:Helvetica,Arial,sans-serif;font-size:12.5px}
-td{padding:7px 0;border-bottom:1px solid #F2ECE2}
-td:last-child{text-align:right;font-weight:700}
-.alle{font-family:Helvetica,Arial,sans-serif;font-size:12.5px}
-.alle b{color:#8A660B}
-.piede{margin-top:36px;padding-top:13px;border-top:1px solid #E8E0D4;font-family:Helvetica,Arial,sans-serif;font-size:10px;color:#857B6E}
-@media print{body{margin:0}}
-</style></head><body>
-<div class="testa"><div class="marchio">MAVI<span>Ristorazione</span></div><div class="data">Scheda prodotto</div></div>
-<h1>${testoHtml(p.n)}</h1>
-<div>${p.so ? `<span class="tag">Piatto unico, ${testoHtml(sostituisce(id))}</span>` : ""}${(p.mk || []).map((k) => `<span class="tag">${testoHtml(MARCATORI[k])}</span>`).join("")}</div>
-<p>${testoHtml(p.de)}</p>
-<h2>Ingredienti</h2><p>${testoHtml(p.ing)}</p>
-<h2>Allergeni, Regolamento UE 1169/2011</h2>
-<p class="alle">${p.a.length ? p.a.map((n) => `<b>${testoHtml(n)}</b> ${testoHtml(ALLERGENI[n])}`).join(" &nbsp;·&nbsp; ") : "Nessun allergene dichiarato fra i quattordici previsti dalla normativa."}</p>
-<h2>Valori nutrizionali per porzione</h2>
-<table><tbody>${nutrienti.map(([a, b]) => `<tr><td>${testoHtml(a)}</td><td>${testoHtml(b)}</td></tr>`).join("")}</tbody></table>
-<h2>Riscaldamento</h2><p>${testoHtml(p.ris)}</p>
-<h2>Consiglio di consumo</h2><p>${testoHtml(p.con)}</p>
-<div class="piede">MAVI Ristorazione. Documento generato dal portale pasti. I valori nutrizionali sono indicativi e riferiti alla porzione standard. Per informazioni su eventuali contaminazioni crociate rivolgersi al servizio.</div>
-</body></html>`);
-  w.document.close();
-  setTimeout(() => w.print(), 400);
+
+  const tag = [
+    p.so ? "Piatto unico, " + sostituisce(id) : null,
+    ...(p.mk || []).map((k) => MARCATORI[k]),
+  ].filter(Boolean);
+
+  const html = paginaDocumento({
+    titolo: p.n,
+    badge: "Scheda prodotto",
+    sottotitolo: p.de,
+    meta: [
+      { etichetta: "Codice", valore: id },
+      { etichetta: "Energia", valore: p.kcal + " kcal" },
+      { etichetta: "Colore WHP", valore: COLORI[p.col]?.nome || "—" },
+      { etichetta: "Allergeni", valore: p.a.length ? p.a.length + " dichiarati" : "nessuno" },
+    ],
+    blocchi: [
+      etichette(tag),
+      blocco("Ingredienti", paragrafo(p.ing)),
+      blocco("Allergeni, Regolamento UE 1169/2011", p.a.length
+        ? elenco(p.a.map((n) => ({ etichetta: n, valore: ALLERGENI[n] })))
+        : paragrafo("Nessun allergene dichiarato fra i quattordici previsti dalla normativa.")),
+      blocco("Valori nutrizionali per porzione", tabellaHtml({
+        colonne: [{ titolo: "Voce" }, { titolo: "Per porzione", allinea: "dx" }],
+        righe: nutrienti,
+      })),
+      blocco("Riscaldamento", paragrafo(p.ris)),
+      blocco("Consiglio di consumo", paragrafo(p.con)),
+    ],
+    piede: "I valori nutrizionali sono indicativi e riferiti alla porzione standard. "
+      + "Per informazioni su eventuali contaminazioni crociate rivolgersi al servizio.",
+    datiAziendali,
+  });
+
+  apriDocumento(html, { nomeFile: "Scheda_" + id + ".html", avvisa });
 }
 
 /* ============================ telaio dell'area ============================ */
