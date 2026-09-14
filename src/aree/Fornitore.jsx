@@ -1104,8 +1104,13 @@ function OrdiniComunita({ righe }) {
       <span>Nessuna presenza trasmessa ancora oggi. La lista si popola quando l'educatore o il responsabile trasmette a MAVI.</span>
     </div>
   );
+  const pazienti = new Set(righe.map((r) => r.id)).size;
   return (
     <div className="scorri">
+      <p style={{ fontSize: 12.5, color: "var(--muto)", margin: "0 0 10px" }}>
+        {righe.length} {righe.length === 1 ? "pasto" : "pasti"} da {pazienti} {pazienti === 1 ? "paziente" : "pazienti"}:
+        pranzo e cena sono righe distinte, trasmesse separatamente dalla struttura.
+      </p>
       <table className="dati">
         <thead><tr><th>Paziente</th><th>Reparto</th><th>Per il giorno</th><th>Pasto</th><th>Primo</th><th>Secondo</th><th>Contorno</th><th>Generato il</th></tr></thead>
         <tbody>
@@ -1167,6 +1172,8 @@ function FlussiOrdine() {
     return a;
   }, [st.ordini, st.confermati]);
   const totAzienda = Object.values(pastiAzienda).reduce((a, b) => a + b, 0);
+  /* una riga per paziente E pasto: pranzo e cena sono due pasti distinti,
+     quindi qui si contano pasti, non pazienti */
   const totComunita = st.presenzeTrasmesse.length;
   /* "generato il" e "per il giorno" sono due informazioni diverse: un ordine
      confermato oggi vale per un giorno della settimana in corso, non per oggi
@@ -1287,7 +1294,8 @@ function FlussiOrdine() {
           </div>
           <div className="pannello-piede">
             Per l'azienda il dettaglio somma i piatti confermati dai dipendenti. Per la comunità
-            elenca i pazienti trasmessi, con reparto e portate, perché il pasto è nominativo.
+            elenca i pazienti trasmessi, con reparto, pasto e portate, perché il pasto è nominativo:
+            pranzo e cena arrivano da due trasmissioni distinte e contano come due pasti.
           </div>
         </div>
       </div>
@@ -1583,7 +1591,7 @@ function EtichettePasto() {
         const nomeClean = splitPiatto(piatto).nome;
         const found = cercaPiatto(nomeClean);
         lista.push({
-          chiave: "com-" + t.id + "-" + portata,
+          chiave: "com-" + t.id + "-" + t.pasto + "-" + portata,
           nome: t.nome,
           stanza: t.stanza,
           tipoDieta: t.tipo_dieta,
@@ -1606,6 +1614,16 @@ function EtichettePasto() {
   const comFiltrate = etichetteComunita.filter((e) => !rimossi.includes(e.chiave));
   const totale = azFiltrate.length + comFiltrate.length;
   const vuoto = totale === 0;
+
+  /* i pasti realmente presenti fra le etichette comunità: pranzo e cena
+     arrivano da trasmissioni separate, la card non può essere fissa */
+  const pastiPresenti = React.useMemo(() => {
+    const presenti = new Set(comFiltrate.map((e) => e.pasto).filter(Boolean));
+    if (azFiltrate.length) presenti.add("pranzo");
+    return ["pranzo", "cena"].filter((p) => presenti.has(p));
+  }, [azFiltrate, comFiltrate]);
+  const etichettaPasto = pastiPresenti.length === 0 ? "—"
+    : pastiPresenti.map((p) => p[0].toUpperCase() + p.slice(1)).join(" + ");
 
   const righe = React.useMemo(() => committenti.map((c) => ({
     c,
@@ -1667,7 +1685,7 @@ function EtichettePasto() {
               <div className="numero"><div className="n-lab">Etichette totali</div><div className="n-val">{totale}</div><div className="n-nota">azienda + comunità</div></div>
               <div className="numero"><div className="n-lab">Azienda</div><div className="n-val">{azFiltrate.length}</div><div className="n-nota">anonime, solo piatto</div></div>
               <div className="numero"><div className="n-lab">Comunità</div><div className="n-val">{comFiltrate.length}</div><div className="n-nota">nominative, per paziente</div></div>
-              <div className="numero"><div className="n-lab">Pasto</div><div className="n-val" style={{ fontSize: 20 }}>Pranzo</div><div className="n-nota">mer 16 set 2026</div></div>
+              <div className="numero"><div className="n-lab">Pasto</div><div className="n-val" style={{ fontSize: 20 }}>{etichettaPasto}</div><div className="n-nota">mer 16 set 2026</div></div>
             </div>
 
             {[["Aziende", righeAzienda], ["Comunità", righeComunita], ["Altri committenti", righeAltro]].map(([titolo, sottoinsieme]) => sottoinsieme.length > 0 && (
