@@ -885,10 +885,20 @@ due (`09b-portale-mavi-gestione.md`).
   profili seguendo `file.md/13-demo.md` (in particolare: proforma manuale,
   riepilogo del giorno, Produzione per giorno e settimana, matrice permessi,
   popup bloccati);
-- **punto 10** (date fisse in Ordini in arrivo e pagine comunità): agente
-  lanciato, lavoro sul suo branch `worktree-agent-*` pushato se è arrivato a
-  committare; da unire con `merge --no-commit`, build e `git grep` dei
-  marcatori prima del commit;
+- **punto 10** (date fisse fuori da Produzione): **non iniziato**, l'agente
+  è stato fermato in fase di analisi, nessun branch da unire. Brief: Ordini
+  in arrivo con selettore del giorno come Produzione (`giornoDataIt`,
+  conteggi azienda per `indiceGiorno` e comunità dalle presenze del giorno,
+  manifesto ed Excel sul giorno scelto, riusando `distintaDelGiorno` e
+  l'indice `idPerNome`); occhielli comunità derivati da `DATA_DEMO`;
+  `nomeFile` del manifesto da parametrizzare con `GIORNI[i].data`. Censimento
+  su `323a3a4`: `Fornitore.jsx` :2039 occhiello fisso, :2510 «mer 16 set
+  2026», :995 «Settimana 38», :734-737 elenco settimane a mano;
+  `Comunita.jsx` :454, :567, :855 occhielli, :606 «mer 16 set 2026», :59 `dal`;
+  `Dipendente.jsx` :141, :390, :508, :522 «Settimana 38»; `Modelli.jsx` :317,
+  :805; `Struttura.jsx` :405; `Landing.jsx` :56. Da lasciare: `data.js` :452,
+  :1092, :1121, `Fornitore.jsx` :1567 (placeholder), `store.jsx` :36 (seed
+  storico), `Cliente.jsx` :470 (deriva da `RESOCONTO_MENSILE.mese`);
 - `produzione.stampa` è collegato ai bottoni di Produzione (commit `d8e32af`);
 - documentazione già allineata per tutti i punti (`file.md/`, `CHANGELOG.md`,
   `CLAUDE.md`), da rileggere dopo il punto 10.
