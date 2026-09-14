@@ -281,8 +281,14 @@ function Settimana() {
   const cat = CATEGORIE.find((c) => c.id === categoria);
 
   const catalogo = catalogoPerCategoria(categoria)
-    .filter((id) => !delGiorno.includes(id) && !fissi.includes(id))
     .filter((id) => PIATTI[id].n.toLowerCase().includes(cerca.toLowerCase()));
+
+  /* un piatto fisso vale per tutti i giorni: se era nel giorno corrente va
+     prima tolto, altrimenti resterebbe in elenco due volte */
+  const rendiFisso = (id) => {
+    if (delGiorno.includes(id)) st.cambiaMenu(giorno, categoria, id);
+    st.cambiaMenu("fissi", categoria, id);
+  };
 
   if (stampa) return <GrigliaStampa onIndietro={() => setStampa(false)} />;
 
@@ -353,7 +359,7 @@ function Settimana() {
             <div className="catalogo-testa">
               <div className="occhiello">{GIORNI[giorno].n} {GIORNI[giorno].d}</div>
               <h3>{cat.nome}</h3>
-              <p>Tocca un piatto per aggiungerlo alla portata.</p>
+              <p>Aggiungi il piatto solo a questo giorno, oppure rendilo fisso per tutta la settimana.</p>
             </div>
             <div className="catalogo-cerca">
               <input type="text" placeholder="Cerca nel catalogo" value={cerca} onChange={(e) => setCerca(e.target.value)} />
@@ -364,24 +370,42 @@ function Settimana() {
                   Nessun piatto disponibile con questo filtro.
                 </p>
               )}
-              {catalogo.map((id) => (
-                <button key={id} className="catalogo-voce" onClick={() => st.cambiaMenu(giorno, categoria, id)}>
-                  <span className="disco"><Illustrazione id={id} /></span>
-                  <span className="corpo">
-                    <b>{PIATTI[id].n}</b>
-                    <span>
-                      {COLORI[PIATTI[id].col].nome} · {PIATTI[id].kcal} kcal
-                      {PIATTI[id].a.length ? " · allergeni " + PIATTI[id].a.join(", ") : ""}
+              {catalogo.map((id) => {
+                const nelGiorno = delGiorno.includes(id);
+                const eFisso = fissi.includes(id);
+                return (
+                  <div key={id} className={"catalogo-voce" + (eFisso || nelGiorno ? " in-uso" : "")}>
+                    <span className="disco"><Illustrazione id={id} /></span>
+                    <span className="corpo">
+                      <b>{PIATTI[id].n}</b>
+                      <span>
+                        {COLORI[PIATTI[id].col].nome} · {PIATTI[id].kcal} kcal
+                        {PIATTI[id].a.length ? " · allergeni " + PIATTI[id].a.join(", ") : ""}
+                      </span>
                     </span>
-                  </span>
-                  <span className="piu">+</span>
-                </button>
-              ))}
+                    {eFisso && <span className="etichetta-fisso">fisso</span>}
+                    <span className="catalogo-azioni">
+                      <button
+                        className="cat-azione"
+                        onClick={() => st.cambiaMenu(giorno, categoria, id)}
+                        disabled={nelGiorno || eFisso}
+                      >
+                        {eFisso ? "In tutti i giorni" : nelGiorno ? "Già in questo giorno" : "Aggiungi al giorno"}
+                      </button>
+                      <button
+                        className="cat-azione forte"
+                        onClick={() => rendiFisso(id)}
+                        disabled={eFisso}
+                      >
+                        {eFisso ? "Già fisso" : "Rendi fisso"}
+                      </button>
+                    </span>
+                  </div>
+                );
+              })}
             </div>
-            <div className="scelta-piede">
-              <button className="btn linea pieno" onClick={() => st.cambiaMenu("fissi", categoria, catalogo[0])} disabled={!catalogo.length}>
-                Aggiungi il primo come piatto fisso
-              </button>
+            <div className="scelta-piede catalogo-nota">
+              Un piatto fisso compare in tutti i giorni della settimana, su ogni portale.
             </div>
           </aside>
         </div>
@@ -393,6 +417,9 @@ function Settimana() {
 function ListaOrdinabile({ giorno, categoria, variabili, fissi }) {
   const st = usaStato();
   const [trascinato, setTrascinato] = React.useState(null);
+  /* stessa deduplica di menuDelGiorno: un piatto presente in entrambi gli
+     elenchi si mostra una volta sola, come riga del giorno */
+  const soloFissi = fissi.filter((id) => !variabili.includes(id));
   return (
     <div className="blocco-lista">
       {variabili.map((id, i) => (
@@ -407,16 +434,20 @@ function ListaOrdinabile({ giorno, categoria, variabili, fissi }) {
             st.riordinaMenu(giorno, categoria, da, a);
           }}
           onTogli={() => st.cambiaMenu(giorno, categoria, id)}
+          onRendiFisso={() => {
+            st.cambiaMenu(giorno, categoria, id);
+            st.cambiaMenu("fissi", categoria, id);
+          }}
         />
       ))}
-      {fissi.map((id) => (
+      {soloFissi.map((id) => (
         <RigaPiatto key={id} id={id} fisso indice={-1} onTogli={() => st.cambiaMenu("fissi", categoria, id)} />
       ))}
     </div>
   );
 }
 
-function RigaPiatto({ id, fisso, indice, onTogli, onSposta, trascinato, setTrascinato }) {
+function RigaPiatto({ id, fisso, indice, onTogli, onRendiFisso, onSposta, trascinato, setTrascinato }) {
   const p = PIATTI[id];
   const [sopra, setSopra] = React.useState(false);
   const mobile = typeof onSposta === "function";
@@ -469,6 +500,11 @@ function RigaPiatto({ id, fisso, indice, onTogli, onSposta, trascinato, setTrasc
         </span>
       )}
       {fisso && <span className="etichetta-fisso">fisso</span>}
+      {typeof onRendiFisso === "function" && (
+        <button className="rendi-fisso" onClick={onRendiFisso} title="vale per tutti i giorni della settimana">
+          Rendi fisso
+        </button>
+      )}
       <button className="tolgo" onClick={onTogli} aria-label="togli dal menu"><Icone.x size={15} /></button>
     </div>
   );
