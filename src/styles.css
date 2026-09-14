@@ -5559,3 +5559,150 @@ tr.pz-neutro td:first-child { border-left: 3px solid var(--linea); }
 [data-tema="scuro"] .pro-righe,
 [data-tema="scuro"] .pro-anteprima { background: var(--carta); border-color: var(--linea); }
 [data-tema="scuro"] .pro-riga input { background: var(--foglio); border-color: var(--linea-forte); color: var(--inchiostro); }
+
+/* ============================ distinta di produzione ============================ */
+/* Barra di periodo e filtri della pagina Produzione: vista giorno o settimana,
+   navigazione fra le giornate, filtro per tipo o struttura, filtro pasto. */
+.dist-barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.dist-barra .commuta { margin-left: 0; }
+.dist-nav {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--linea-forte);
+  border-radius: var(--r-s);
+  background: var(--foglio);
+  overflow: hidden;
+}
+.dist-nav button {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  color: var(--muto);
+}
+.dist-nav button:hover:not(:disabled) {
+  background: var(--carta);
+  color: var(--inchiostro);
+}
+.dist-nav button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.dist-nav-giorno {
+  min-width: 196px;
+  padding: 6px 12px;
+  text-align: center;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--inchiostro);
+  border-left: 1px solid var(--linea);
+  border-right: 1px solid var(--linea);
+}
+.dist-nav-giorno.larga {
+  min-width: 300px;
+  border-left: 0;
+  border-right: 0;
+}
+.dist-nav-giorno small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--muto);
+}
+.dist-nota-barra {
+  margin-left: auto;
+  max-width: 260px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muto);
+}
+
+.numero .n-su {
+  margin-left: 8px;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muto);
+}
+
+/* riga che ripete sempre periodo e perimetro: il filtro resta leggibile anche
+   a metà pagina, e il documento stampato riporta gli stessi due valori */
+.dist-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--linea);
+  border-radius: var(--r-m);
+  background: var(--foglio);
+  font-size: 13px;
+  color: var(--muto);
+}
+.dist-banner b { color: var(--inchiostro); }
+.dist-banner.attivo {
+  border-color: var(--acc-bordo);
+  background: var(--acc-tenue);
+  color: var(--acc-scuro);
+}
+.dist-banner.attivo b { color: var(--acc-scuro); }
+.dist-banner .btn { margin-left: auto; }
+
+.dist-piatto {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.dist-senza-scheda {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--linea-forte);
+  border-radius: 10px;
+  color: var(--muto);
+}
+.dist-colore {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+.dist-totale { min-width: 170px; }
+
+@media (max-width: 860px) {
+  .dist-nota-barra { margin-left: 0; max-width: none; }
+  .dist-nav-giorno,
+  .dist-nav-giorno.larga { min-width: 0; }
+}
+
+/* i tipi di dieta sono frasi intere: la pastiglia deve poter andare a capo */
+.dist-tag-dieta {
+  white-space: normal;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-size: 11.5px;
+}
+
+.dist-piu-stima {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--muto);
+}
+
+[data-tema="scuro"] .dist-nav,
+[data-tema="scuro"] .dist-banner { background: var(--foglio); border-color: var(--linea); }
+[data-tema="scuro"] .dist-nav-giorno { border-left-color: var(--linea); border-right-color: var(--linea); }
+[data-tema="scuro"] .dist-nav button:hover:not(:disabled) { background: var(--carta); }
+[data-tema="scuro"] .dist-banner.attivo { border-color: var(--acc-bordo); background: var(--acc-tenue); color: var(--inchiostro); }
+[data-tema="scuro"] .dist-banner.attivo b { color: var(--inchiostro); }
+[data-tema="scuro"] .dist-senza-scheda { border-color: var(--linea-forte); }
