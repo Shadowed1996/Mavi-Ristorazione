@@ -681,6 +681,8 @@ h4 {
 }
 input[type="text"],
 input[type="password"],
+input[type="email"],
+input[type="tel"],
 .campo select {
   width: 100%;
   padding: 14px 18px;
@@ -4338,6 +4340,8 @@ table.settimanale td.cella {
   display: block;
 }
 .impo-riga input[type="text"],
+.impo-riga input[type="email"],
+.impo-riga input[type="tel"],
 .impo-riga input[type="number"],
 .impo-riga select {
   width: 100%;
