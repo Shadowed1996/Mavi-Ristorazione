@@ -38,6 +38,12 @@ e il progetto adotta il [Versionamento Semantico](https://semver.org/lang/it/).
 - **Menu della settimana**: ogni piatto di ogni portata si rende fisso dal
   catalogo o dalla riga del giorno; tolto "Aggiungi il primo come piatto
   fisso".
+- **Produzione per giorno e per settimana**: navigazione fra le cinque
+  giornate con la data sempre visibile, vista settimanale piatto × lun–ven,
+  filtro per tipo, committente e pasto; azienda dai nominativi del giorno più
+  una stima dichiarata, comunità dalle presenze trasmesse per giorno e pasto
+  o stima dalle diete; "Stampa / PDF" con documento dedicato ed Excel vero;
+  tolti i numeri fissi (diete "+ 4", "ultima chiusura" delle scuole).
 
 ### Corretto — 14 settembre 2026
 - Stile dei campi email e telefono in "Modifica profilo", identico agli altri.

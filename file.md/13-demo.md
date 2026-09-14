@@ -67,7 +67,9 @@ utente.
     Rossi Manifatture Spa (anonime, per piatto), poi Comunità Il Ponte
     (nominative, per reparto e paziente) → provare la ricerca per nominativo
     → "Stampa etichette di Comunità Il Ponte" per la vista dedicata.
-14. **Produzione** → distinta multi struttura → "Filtra questa".
+14. **Produzione** → la giornata con la data in cima; cambiare giorno con
+    ‹ ›, poi vista **Settimana**; "Filtra questa" su Il Ponte e il filtro
+    Pranzo / Cena; **Stampa / PDF** riporta data e filtro, **Excel** si scarica.
 15. **Ordini in arrivo** → aprire il dettaglio di Rossi Manifatture Spa: quantità
     per piatto con "per il giorno"/"generato il", poi il **dettaglio
     nominativo riservato al fornitore**, scegliere la giornata e "Manifesto

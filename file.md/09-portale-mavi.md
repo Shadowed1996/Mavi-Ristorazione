@@ -11,22 +11,47 @@ e gestione portale stanno in `09b-portale-mavi-gestione.md`.
 
 ## Produzione — `Produzione`
 
-Distinta di produzione multi struttura: quante porzioni di ogni piatto servono
-oggi, sommando i contributi di tutti i committenti.
+Riscritta il 14 settembre 2026 su richiesta di Filippo: è la dashboard con cui
+MAVI verifica i pasti in arrivo, **per giorno e per settimana**, con il
+riepilogo da stampare per la cucina. **La data che si sta guardando è sempre
+visibile**: occhiello, titolo, banner del filtro e ogni documento.
 
-La base è `AGGREGATO` in `data.js`, a cui il prototipo somma le scelte fatte
-in demo dal portale dipendente. È il collegamento che rende evidente lo stato
-condiviso: se il dipendente conferma, qui i numeri salgono.
+- **Vista Giorno**: navigazione ‹ › fra le cinque giornate di `GIORNI`
+  (apertura su mercoledì, indice 2, i giorni `chiuso` segnalati), titolo
+  `giornoDataIt(GIORNI[g].data)`.
+- **Vista Settimana**: "Settimana dal 14/09 al 18/09/2026", tabella piatto ×
+  lun–ven con il totale.
+- **Filtro**: Tutte / Aziende / Comunità / singolo committente ("Filtra
+  questa" nella tabella dei contributi, con banner che lo segnala); per le
+  comunità anche Pranzo / Cena / Entrambi.
 
-La tabella "Contributi per struttura" elenca `st.committenti` (non più un
-array fisso `CONTRIBUTI_STRUTTURE` a parte): un committente nuovo compare qui
-a zero pasti finché non trasmette qualcosa di reale, e RSA/Scuola non
-compaiono più perché sono fuori da `st.committenti`, coerente col perimetro
-attivo (prima del 12 settembre comparivano qui nonostante fossero disattivate
-altrove, vedi sezione 16 di `../MAVI_Stato_Progetto.md`).
+Fonti dei numeri, per giornata:
 
-Ogni struttura ha un bottone **"Filtra questa"**; con il filtro attivo compare
-un banner blu che lo segnala e permette di toglierlo.
+- **Azienda** — le righe di `st.nominativiAzienda` con quell'`indiceGiorno`
+  (conferme reali del portale dipendente e "Prenota per lui"), più una **stima
+  deterministica** ripartita sul `menuDelGiorno` di quella giornata
+  (`COPERTI_STIMA_AZIENDA`, `PESI_SCELTA`, funzione `ripartisci`), marcata
+  "stima" e sommata alle conferme. `AGGREGATO` non è più usato: prima la
+  pagina sommava tutti i giorni confermati insieme.
+- **Comunità** — `st.presenzeTrasmesse` per giorno e pasto (piatti reali delle
+  diete); se per quel giorno e pasto non è stato trasmesso nulla, stima da
+  `PAZIENTI_COMUNITA` con `pastiDi` e `portateServite`, marcata "stima". Il
+  colore WHP compare quando il nome del piatto corrisponde al catalogo.
+
+Quattro riquadri calcolati sulla vista scelta: pasti, porzioni, diete
+particolari (persone del periodo con `tipo_dieta` diverso da Standard), "Hanno
+trasmesso N su M". Niente più consistenze da `st.unita` né "ultima chiusura"
+delle scuole, fuori perimetro. La tabella "Contributi per struttura" elenca
+`st.committenti` con stato trasmesso / stima / in attesa: un committente nuovo
+compare a zero, in attesa. Il pannello "Diete particolari e consistenze" mostra
+le note di preparazione reali dei presenti.
+
+**Stampa / PDF** apre `generaDistintaPDF` o `generaDistintaSettimanaPDF` di
+`resoconto.js` (data o settimana, perimetro, quantità per piatto con colore
+WHP, diete e consistenze, spazio note e firma); **Excel** scarica due fogli
+("Quantità per piatto" con colonne per struttura o per giornata, "Diete
+particolari"). Non c'è più `window.print()`, che nascondeva l'intestazione con
+la data.
 
 ## Ordini in arrivo — `FlussiOrdine`
 

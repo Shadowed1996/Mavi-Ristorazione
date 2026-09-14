@@ -91,7 +91,8 @@ Ogni funzione compone `paginaDocumento` e chiude con `apriDocumento`.
 | `generaResocontoPDF({ committente, periodo, riepilogo, dettaglio, datiAziendali, avvisa })` | Referente › Resoconti › PDF. `riepilogo` è **lo stesso array** passato a `scaricaExcel`, riga `TOTALE` inclusa (`calcolaResoconto` in `Cliente.jsx`): Excel e PDF non possono divergere |
 | `generaResocontoComunitaPDF({ struttura, reparto, giorno, pasti, datiAziendali, avvisa })` | Comunità › Resoconti › PDF; `pasti` è `[{ pasto, righe }]`, ogni portata `{ nome, nota }` da `splitPiatto` |
 | `generaResocontoUnitaPDF({ struttura, modello, periodo, etichettaUnita, etichettaDiete, numeri, righe, nota, datiAziendali, avvisa })` | "Resoconto mensile" del cruscotto struttura: riporta la situazione corrente del cruscotto, lo dichiara in nota |
-| `generaDistintaPDF({ giorno, perimetro, strutture, sezioni, totali, datiAziendali, avvisa })` | distinta di produzione, `sezioni: [{ categoria, righe: [{ piatto, colore, perStruttura, totale }] }]` |
+| `generaDistintaPDF({ giorno, perimetro, strutture, sezioni, totali, diete, datiAziendali, avvisa })` | Produzione, vista Giorno: `sezioni: [{ categoria, righe: [{ piatto, colore, nota?, perStruttura, totale }] }]`, `diete: [{ nome, reparto, tipoDieta, note }]`; chiude con "Diete particolari e consistenze" e "Note di lavorazione e firma" |
+| `generaDistintaSettimanaPDF({ periodo, perimetro, giorni, sezioni, totali, diete, datiAziendali, avvisa })` | Produzione, vista Settimana: `giorni` sono le colonne lun–ven, righe con `perGiorno` |
 | `generaRiepilogoPrenotazioniPDF({ dipendente, committente, settimana, righe, datiAziendali, avvisa })` | Dipendente › Le mie prenotazioni › "Scarica riepilogo" |
 
 Il riepilogo del giorno del referente (`Cliente.jsx`, Cruscotto) usa invece
