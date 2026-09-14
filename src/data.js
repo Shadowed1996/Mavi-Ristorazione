@@ -754,7 +754,7 @@ export const PAZIENTI_COMUNITA = [
   {
     id: "p01", nome: "Beatrice Comi", stanza: "Spazio Giovani SGA", dal: "marzo 2025",
     note: "Celiachia + intolleranza al lattosio. Pasta senza glutine e riso integrale. Niente latticini.",
-    tipo_dieta: "Allergia / Intolleranza",
+    tipo_dieta: "Allergia / Intolleranza", pasti: ["pranzo"],
     dieta: {
       lunedì:    { pranzo: { primo: "Risotto agli asparagi || NO MANTECATO", secondo: "Tacchino freddo", contorno: "Patate arrosto" }, cena: { primo: "—", secondo: "—", contorno: "—" } },
       martedì:   { pranzo: { primo: "Pasta zucchine e pomodori", secondo: "Frittata alle verdure || allergene 3", contorno: "Pomodori e mais" }, cena: { primo: "—", secondo: "—", contorno: "—" } },
@@ -768,7 +768,7 @@ export const PAZIENTI_COMUNITA = [
   {
     id: "p02", nome: "Zied Dridi", stanza: "Spazio Giovani SGA", dal: "settembre 2025",
     note: "Dieta etico-religiosa. No carne di maiale, no gnocchi. Pasta = pastina.",
-    tipo_dieta: "Etico-religiosa + personalizzata",
+    tipo_dieta: "Etico-religiosa + personalizzata", pasti: ["pranzo"],
     dieta: {
       lunedì:    { pranzo: { primo: "Risotto agli asparagi || NO MANTECATO", secondo: "Fuselli di pollo al forno", contorno: "Patate arrosto" }, cena: { primo: "—", secondo: "—", contorno: "—" } },
       martedì:   { pranzo: { primo: "Pasta zucchine e pomodori", secondo: "Arrosto di tacchino alle erbe", contorno: "Piselli al tegame" }, cena: { primo: "—", secondo: "—", contorno: "—" } },
@@ -782,7 +782,7 @@ export const PAZIENTI_COMUNITA = [
   {
     id: "p03", nome: "Carmelo Aronica", stanza: "CSS Sole Luna, Desio", dal: "gennaio 2026",
     note: "Esofagite + ernia jatale. No: piccante, limone, tonno, crostacei, formaggi fermentati, pomodori, peperoni, piselli, ceci, lenticchie, agrumi.",
-    tipo_dieta: "Personalizzata per patologia",
+    tipo_dieta: "Personalizzata per patologia", pasti: ["pranzo", "cena"],
     dieta: {
       lunedì:    { pranzo: { primo: "Risotto agli asparagi", secondo: "Fuselli di pollo al forno", contorno: "Patate arrosto" }, cena: { primo: "Pasta pomodoro e basilico", secondo: "Tacchino freddo", contorno: "Carote prezzemolate" } },
       martedì:   { pranzo: { primo: "Pasta al pesto", secondo: "Arrosto di coppa alle erbe", contorno: "Insalata fresca" }, cena: { primo: "Pasta zucchine", secondo: "Frittata alle verdure", contorno: "Purè di patate" } },
@@ -796,7 +796,7 @@ export const PAZIENTI_COMUNITA = [
   {
     id: "p04", nome: "Marco Bellini", stanza: "CSS Sole Luna, Desio", dal: "maggio 2024",
     note: "Dieta standard. Nessuna allergia o intolleranza nota. Porzioni regolari.",
-    tipo_dieta: "Standard",
+    tipo_dieta: "Standard", pasti: ["pranzo", "cena"],
     dieta: {
       lunedì:    { pranzo: { primo: "Risotto agli asparagi", secondo: "Fuselli di pollo al forno", contorno: "Patate arrosto" }, cena: { primo: "Pasta pomodoro e basilico", secondo: "Tacchino freddo", contorno: "Carote prezzemolate" } },
       martedì:   { pranzo: { primo: "Pasta al pesto", secondo: "Arrosto di coppa alle erbe", contorno: "Insalata fresca" }, cena: { primo: "Pasta zucchine", secondo: "Frittata alle verdure", contorno: "Purè di patate" } },
@@ -810,6 +810,23 @@ export const PAZIENTI_COMUNITA = [
 ]
 
 export { GIORNI_SETT, PASTI_TIPO };
+
+/* Pasti previsti dal paziente, nell'ordine di PASTI_TIPO. Un paziente censito
+   prima dell'introduzione del campo (o arrivato da un import) non ha `pasti`:
+   vale pranzo e cena, com'era il comportamento del prototipo. */
+export function pastiDi(paziente) {
+  const scelti = paziente?.pasti;
+  if (!Array.isArray(scelti) || scelti.length === 0) return PASTI_TIPO;
+  const validi = PASTI_TIPO.filter((p) => scelti.includes(p));
+  return validi.length ? validi : PASTI_TIPO;
+}
+
+/* Portate effettive di un pasto: il trattino lungo e la stringa vuota
+   significano "non previsto", e non generano etichetta. */
+export function portateServite(dieta) {
+  if (!dieta) return [];
+  return ["primo", "secondo", "contorno"].filter((c) => dieta[c] && dieta[c] !== "—");
+}
 
 
 /* Separa il nome del piatto dalla nota di preparazione */

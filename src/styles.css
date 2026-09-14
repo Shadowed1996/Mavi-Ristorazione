@@ -4747,6 +4747,71 @@ tr.pz-neutro td:first-child { border-left: 3px solid var(--linea); }
   color: var(--inchiostro);
 }
 
+/* ---- pasti previsti dal paziente (pranzo e cena indipendenti) ---- */
+.pasti-scelta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.pasti-scelta label {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 0;
+  padding: 11px 18px;
+  border: 1.5px solid var(--linea);
+  border-radius: 12px;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--inchiostro-2);
+  cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s;
+}
+.pasti-scelta label.on {
+  border-color: var(--acc);
+  background: var(--acc-tenue);
+  color: var(--acc);
+}
+.pasti-scelta input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--acc);
+  cursor: pointer;
+}
+.tag-pasti {
+  display: inline-block;
+  padding: 3px 10px;
+  border: 1px solid var(--linea-forte);
+  border-radius: 999px;
+  background: var(--carta);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muto);
+  white-space: nowrap;
+}
+.menu-sett-portata.pasto-escluso {
+  background: var(--carta);
+  color: var(--muto);
+  font-style: italic;
+}
+[data-tema="scuro"] .pasti-scelta label {
+  background: var(--carta);
+  border-color: var(--linea);
+  color: var(--muto);
+}
+[data-tema="scuro"] .pasti-scelta label.on {
+  border-color: var(--acc);
+  background: var(--acc-tenue);
+  color: var(--acc);
+}
+[data-tema="scuro"] .tag-pasti {
+  background: var(--foglio);
+  border-color: var(--linea);
+}
+[data-tema="scuro"] .menu-sett-portata.pasto-escluso { background: var(--foglio); }
+
 /* ---- menu ciclico editabile ---- */
 .ciclico-voce .ciclico-edit {
   display: flex;

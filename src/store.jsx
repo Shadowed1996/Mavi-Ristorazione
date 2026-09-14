@@ -119,8 +119,10 @@ export function Provider({ children }) {
     mq.addEventListener("change", applica);
     return () => mq.removeEventListener("change", applica);
   }, [tema]);
+  /* presenza per paziente E per pasto: pranzo e cena sono indipendenti, si
+     segnano e si trasmettono separatamente */
   const [presenzeComunita, setPresenzeComunita] = React.useState(() =>
-    Object.fromEntries((PAZIENTI_COMUNITA || []).map((p) => [p.id, null]))
+    Object.fromEntries((PAZIENTI_COMUNITA || []).map((p) => [p.id, { pranzo: null, cena: null }]))
   );
   const [logOperazioni, setLogOperazioni] = React.useState([
     { id: "s1", ora: "06:00", utente: "Sistema", ruolo: "Automatico", azione: "Backup giornaliero completato", dettaglio: "Database e file multimediali", tipo: "sistema" },
@@ -144,17 +146,19 @@ export function Provider({ children }) {
     setLogOperazioni((p) => [{ id, ora: nowHM(), utente, ruolo, azione, dettaglio, tipo }, ...p]);
   }, []);
 
-  /* aggiorna per id invece di sovrascrivere: un educatore trasmette solo il
-     proprio reparto, il responsabile può trasmettere il resto più tardi, e la
-     seconda chiamata non deve far perdere la prima */
+  /* aggiorna per id E pasto invece di sovrascrivere: un educatore trasmette
+     solo il proprio reparto, il responsabile può trasmettere il resto più
+     tardi, e la cena non deve far perdere il pranzo già trasmesso */
   const trasmettiPresenze = React.useCallback((lista) => {
     const generatoIl = new Date().toISOString();
     const listaTimbrata = lista.map((r) => ({ ...r, generatoIl }));
     setPresenzeTrasmesse((prec) => {
-      const restanti = prec.filter((r) => !lista.some((n) => n.id === r.id));
+      const restanti = prec.filter((r) => !lista.some((n) => n.id === r.id && n.pasto === r.pasto));
       return [...restanti, ...listaTimbrata];
     });
-    logga("Comunità", "Operatore", "Presenze trasmesse", lista.length + " pazienti presenti", "presenze");
+    const pasti = [...new Set(lista.map((r) => r.pasto).filter(Boolean))];
+    const dettaglio = lista.length + " pazienti presenti" + (pasti.length ? ", " + pasti.join(" e ") : "");
+    logga("Comunità", "Operatore", "Presenze trasmesse", dettaglio, "presenze");
   }, [logga]);
 
   const commutaAssente = React.useCallback((id) => {

@@ -1,5 +1,5 @@
 import React from "react";
-import { PAZIENTI_COMUNITA, GIORNI_SETT, splitPiatto } from "../data.js";
+import { PAZIENTI_COMUNITA, GIORNI_SETT, PASTI_TIPO, splitPiatto, pastiDi, portateServite } from "../data.js";
 import { Icone, Intestazione, Velo } from "../ui.jsx";
 import { usaStato } from "../store.jsx";
 
@@ -85,6 +85,7 @@ function Pazienti({ soloLettura, reparto }) {
                 </span>
               </span>
               <span className="ospite-tag">
+                {pastiDi(p).length === 1 && <span className="tag-pasti">Solo {pastiDi(p)[0]}</span>}
                 {p.tipo_dieta ? <span className="tag-dieta terap">{p.tipo_dieta}</span> : <span className="tag-dieta base">Standard</span>}
               </span>
               <span className="ospite-dettaglio">Apri scheda <Icone.dx size={13} /></span>
@@ -126,6 +127,7 @@ function SchedaPaziente({ paziente, onChiudi, onModifica, onElimina, soloLettura
   const fileRef = React.useRef(null);
   const st = usaStato();
   const NOMI_GIORNI = { "lunedì": "Lunedì", "martedì": "Martedì", "mercoledì": "Mercoledì", "giovedì": "Giovedì", "venerdì": "Venerdì" };
+  const pastiPrevisti = pastiDi(paziente);
 
   function salvaOverride(giorno, pasto, portata) {
     if (editVal.trim()) {
@@ -172,6 +174,7 @@ function SchedaPaziente({ paziente, onChiudi, onModifica, onElimina, soloLettura
         <h2>{paziente.nome}</h2>
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <p style={{ flex: 1, minWidth: 200 }}>{paziente.note}</p>
+          <span className="tag-pasti">{pastiPrevisti.length === 2 ? "Pranzo e cena" : "Solo " + pastiPrevisti[0]}</span>
           {paziente.tipo_dieta && <span className="tag-dieta terap">{paziente.tipo_dieta}</span>}
           {puoDieta && (
             <button
@@ -194,7 +197,7 @@ function SchedaPaziente({ paziente, onChiudi, onModifica, onElimina, soloLettura
                 <div className="menu-sett-giorno-testa">
                   <h3>{NOMI_GIORNI[g]}</h3>
                 </div>
-                {["pranzo", "cena"].map((pasto) => (
+                {pastiPrevisti.map((pasto) => (
                   <div key={pasto} className="menu-sett-portata">
                     <div className="menu-sett-portata-lab">{pasto}</div>
                     {["primo", "secondo", "contorno"].map((portata) => (
@@ -203,6 +206,12 @@ function SchedaPaziente({ paziente, onChiudi, onModifica, onElimina, soloLettura
                         {renderPortata(g, pasto, portata)}
                       </div>
                     ))}
+                  </div>
+                ))}
+                {PASTI_TIPO.filter((p) => !pastiPrevisti.includes(p)).map((pasto) => (
+                  <div key={pasto} className="menu-sett-portata pasto-escluso">
+                    <div className="menu-sett-portata-lab">{pasto}</div>
+                    <div style={{ fontSize: 12 }}>{pasto === "cena" ? "Non prevista" : "Non previsto"} per questo paziente</div>
                   </div>
                 ))}
               </div>
@@ -309,15 +318,20 @@ function ModuloPaziente({ paziente, reparti, onChiudi, onSalva }) {
     ? [paziente.stanza, ...reparti] : reparti;
   const [stanza, setStanza] = React.useState(paziente?.stanza || reparti[0] || "");
   const [note, setNote] = React.useState(paziente?.note || "");
+  const [pasti, setPasti] = React.useState(() => (paziente ? pastiDi(paziente) : [...PASTI_TIPO]));
+
+  const commutaPasto = (p) =>
+    setPasti((prec) => (prec.includes(p) ? prec.filter((x) => x !== p) : PASTI_TIPO.filter((x) => x === p || prec.includes(x))));
 
   function invia(e) {
     e.preventDefault();
-    if (!nome.trim() || !stanza) return;
+    if (!nome.trim() || !stanza || pasti.length === 0) return;
     onSalva({
       ...(paziente || {}),
       nome: nome.trim(),
       stanza,
       note: note.trim(),
+      pasti,
       dieta: paziente?.dieta || dietaVuota(),
     });
   }
@@ -350,12 +364,28 @@ function ModuloPaziente({ paziente, reparti, onChiudi, onSalva }) {
           </p>
         </div>
         <div className="campo">
+          <label>Pasti previsti</label>
+          <div className="pasti-scelta">
+            {PASTI_TIPO.map((p) => (
+              <label key={p} className={pasti.includes(p) ? "on" : ""}>
+                <input type="checkbox" checked={pasti.includes(p)} onChange={() => commutaPasto(p)} />
+                {p === "pranzo" ? "Pranzo" : "Cena"}
+              </label>
+            ))}
+          </div>
+          <p style={{ fontSize: 11, color: "var(--muto)", margin: "6px 0 0" }}>
+            {pasti.length === 0
+              ? "Serve almeno un pasto: il paziente comparirà solo nelle presenze dei pasti selezionati."
+              : "Il paziente comparirà solo nelle presenze e nelle etichette dei pasti selezionati."}
+          </p>
+        </div>
+        <div className="campo">
           <label>Note per la cucina</label>
           <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Allergie, preferenze, consistenza" />
         </div>
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", paddingTop: 10 }}>
           <button type="button" className="btn linea" onClick={onChiudi}>Annulla</button>
-          <button type="submit" className="btn" disabled={!nome.trim() || !stanza}>
+          <button type="submit" className="btn" disabled={!nome.trim() || !stanza || pasti.length === 0}>
             {paziente ? "Salva modifiche" : "Crea paziente"}
           </button>
         </div>
@@ -376,13 +406,21 @@ function PresenzeComunita({ reparto }) {
   const st = usaStato();
   const [pasto, setPasto] = React.useState("pranzo");
   const presenti = st.presenzeComunita;
-  const paz = reparto ? PAZIENTI_COMUNITA.filter((p) => p.stanza === reparto) : PAZIENTI_COMUNITA;
+  /* pranzo e cena si segnano separatamente: nel pasto scelto compaiono solo i
+     pazienti che lo prevedono, e i contatori valgono solo per quel pasto */
+  const tuttiPaz = reparto ? PAZIENTI_COMUNITA.filter((p) => p.stanza === reparto) : PAZIENTI_COMUNITA;
+  const paz = tuttiPaz.filter((p) => pastiDi(p).includes(pasto));
 
-  const segnaPresente = (id) => st.setPresenzeComunita({ ...presenti, [id]: true });
-  const segnaAssente = (id) => st.setPresenzeComunita({ ...presenti, [id]: false });
-  const totPresenti = paz.filter((p) => presenti[p.id] === true).length;
-  const totAssenti = paz.filter((p) => presenti[p.id] === false).length;
-  const totNonSegnati = paz.filter((p) => presenti[p.id] == null).length;
+  const statoDi = (id) => presenti[id]?.[pasto] ?? null;
+  const segna = (id, valore) =>
+    st.setPresenzeComunita({ ...presenti, [id]: { ...(presenti[id] || {}), [pasto]: valore } });
+  const totPresenti = paz.filter((p) => statoDi(p.id) === true).length;
+  const totAssenti = paz.filter((p) => statoDi(p.id) === false).length;
+  const totNonSegnati = paz.filter((p) => statoDi(p.id) == null).length;
+  const totEtichette = paz
+    .filter((p) => statoDi(p.id) === true)
+    .reduce((somma, p) => somma + portateServite(p.dieta[GIORNO_DEMO]?.[pasto]).length, 0);
+  const esclusi = tuttiPaz.length - paz.length;
 
   return (
     <>
@@ -391,9 +429,9 @@ function PresenzeComunita({ reparto }) {
         titolo="Presenze del giorno"
         sotto="Segna ogni paziente come presente o assente. La cucina prepara solo i pasti dei presenti"
         azioni={
-          <button className="btn piccolo" disabled={totNonSegnati > 0} onClick={() => {
+          <button className="btn piccolo" disabled={totNonSegnati > 0 || paz.length === 0} onClick={() => {
             const trasmessi = paz
-              .filter((p) => presenti[p.id] === true)
+              .filter((p) => statoDi(p.id) === true)
               .map((p) => ({
                 id: p.id,
                 nome: p.nome,
@@ -405,9 +443,9 @@ function PresenzeComunita({ reparto }) {
                 dieta: p.dieta[GIORNO_DEMO]?.[pasto] || {},
               }));
             st.trasmettiPresenze(trasmessi);
-            st.avvisa(trasmessi.length + " presenze trasmesse alla cucina MAVI con " + (trasmessi.length * 3) + " etichette");
+            st.avvisa(trasmessi.length + " presenze del " + pasto + " trasmesse alla cucina MAVI con " + totEtichette + " etichette");
           }}>
-            {totNonSegnati > 0 ? "Segna tutti prima di trasmettere" : "Trasmetti a MAVI"}
+            {paz.length === 0 ? "Nessun paziente per questo pasto" : totNonSegnati > 0 ? "Segna tutti prima di trasmettere" : "Trasmetti " + pasto + " a MAVI"}
           </button>
         }
       />
@@ -417,11 +455,18 @@ function PresenzeComunita({ reparto }) {
           <button className={pasto === "cena" ? "on" : ""} onClick={() => setPasto("cena")}>Cena</button>
         </div>
         <div className="numeri">
-          <div className="numero"><div className="n-lab">Presenti</div><div className="n-val" style={{ color: "#2d6a2d" }}>{totPresenti}</div><div className="n-nota">pasti da preparare</div></div>
+          <div className="numero"><div className="n-lab">Presenti</div><div className="n-val" style={{ color: "#2d6a2d" }}>{totPresenti}</div><div className="n-nota">{pasto === "pranzo" ? "pranzi" : "cene"} da preparare</div></div>
           <div className="numero"><div className="n-lab">Assenti</div><div className="n-val" style={{ color: "#8b2020" }}>{totAssenti}</div><div className="n-nota">nessun pasto</div></div>
-          <div className="numero"><div className="n-lab">Da segnare</div><div className="n-val">{totNonSegnati}</div><div className="n-nota">non ancora segnati</div></div>
-          <div className="numero"><div className="n-lab">Etichette</div><div className="n-val">{totPresenti * 3}</div><div className="n-nota">una per portata</div></div>
+          <div className="numero"><div className="n-lab">Da segnare</div><div className="n-val">{totNonSegnati}</div><div className="n-nota">non ancora segnati, solo {pasto}</div></div>
+          <div className="numero"><div className="n-lab">Etichette</div><div className="n-val">{totEtichette}</div><div className="n-nota">una per portata prevista</div></div>
         </div>
+
+        {esclusi > 0 && (
+          <div className="banner-dieta" style={{ background: "#f4f0f6", borderColor: "#d8c8e0", color: "#5a3a68" }}>
+            <Icone.attenzione size={15} />
+            {esclusi === 1 ? "Un paziente non è" : esclusi + " pazienti non sono"} in elenco: non {esclusi === 1 ? "prevede" : "prevedono"} <b>{pasto === "pranzo" ? "il pranzo" : "la cena"}</b>. I pasti previsti si impostano dall'anagrafica del paziente.
+          </div>
+        )}
 
         {reparto && (
           <div className="banner-dieta" style={{ background: "#eef3fa", borderColor: "#b8cce0", color: "#2c4a6c" }}>
@@ -432,7 +477,7 @@ function PresenzeComunita({ reparto }) {
 
         <div className="pannello">
           <div className="pannello-testa">
-            <h2>Pazienti della struttura</h2>
+            <h2>Pazienti della struttura, {pasto}</h2>
             <span className="conta-piatti">{totPresenti} presenti, {totAssenti} assenti su {paz.length}</span>
           </div>
           <div className="scorri">
@@ -450,7 +495,7 @@ function PresenzeComunita({ reparto }) {
               <tbody>
                 {paz.map((p) => {
                   const dieta = p.dieta[GIORNO_DEMO]?.[pasto];
-                  const stato = presenti[p.id]; // null, true, false
+                  const stato = statoDi(p.id); // null, true, false
                   const cls = stato === true ? "pz-presente" : stato === false ? "pz-assente" : "pz-neutro";
                   return (
                     <tr key={p.id} className={cls}>
@@ -463,11 +508,11 @@ function PresenzeComunita({ reparto }) {
                         <div className="toggle-presenza">
                           <button
                             className={stato === true ? "on-verde" : ""}
-                            onClick={() => segnaPresente(p.id)}
+                            onClick={() => segna(p.id, true)}
                           >✓ Presente</button>
                           <button
                             className={stato === false ? "on-rosso" : ""}
-                            onClick={() => segnaAssente(p.id)}
+                            onClick={() => segna(p.id, false)}
                           >✕ Assente</button>
                         </div>
                       </td>
@@ -478,7 +523,8 @@ function PresenzeComunita({ reparto }) {
             </table>
           </div>
           <div className="pannello-piede">
-            Segna ogni paziente come presente o assente. Il pulsante Trasmetti a MAVI si attiva quando tutti sono segnati.
+            Segna ogni paziente come presente o assente. Il pulsante Trasmetti si attiva quando tutti sono segnati
+            per questo pasto: pranzo e cena sono indipendenti e si trasmettono separatamente, senza cancellarsi a vicenda.
             I pasti dei pazienti assenti non vengono preparati.
           </div>
         </div>
@@ -520,15 +566,17 @@ function EtichetteComunita() {
         </div>
 
         {PAZIENTI_COMUNITA.map((p) => {
+          if (!pastiDi(p).includes(pasto)) return null;
           const dieta = p.dieta[GIORNO_DEMO]?.[pasto];
-          if (!dieta || (dieta.primo === "—" && dieta.secondo === "—")) return null;
+          const portate = portateServite(dieta);
+          if (!portate.length) return null;
           return (
             <div key={p.id} style={{ marginBottom: 24 }}>
               <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 10, color: "var(--inchiostro-2)" }}>
                 {p.nome} · {p.stanza}
               </h3>
               <div className="etichette-griglia">
-                {["primo", "secondo", "contorno"].map((portata) => (
+                {portate.map((portata) => (
                   <div className="etichetta" key={portata}>
                     <div className="etichetta-testa">
                       <span className="marchio-t" style={{ fontSize: 14 }}>MAVI</span>
@@ -568,6 +616,7 @@ function EtichetteComunita() {
 function PazienteAccordion({ paziente, giorni }) {
   const [aperto, setAperto] = React.useState(false);
   const p = paziente;
+  const pastiPrevisti = pastiDi(p);
   return (
     <div style={{ borderBottom: "1px solid var(--linea)" }}>
       <button onClick={() => setAperto(!aperto)} style={{
@@ -579,28 +628,37 @@ function PazienteAccordion({ paziente, giorni }) {
         <b style={{ fontSize: 15, fontFamily: "var(--serif)", flex: 1 }}>{p.nome}</b>
         <span style={{ fontSize: 12, color: "var(--muto)" }}>{p.stanza}</span>
         {p.tipo_dieta && p.tipo_dieta !== "Standard" && <span className="tag-dieta terap" style={{ fontSize: 10 }}>{p.tipo_dieta}</span>}
+        <span className="tag-pasti">{pastiPrevisti.length === 2 ? "Pranzo e cena" : "Solo " + pastiPrevisti[0]}</span>
         <span style={{ fontSize: 12, color: "var(--muto)" }}>{giorni.length} giorni</span>
       </button>
       {aperto && (
         <div style={{ padding: "0 20px 16px" }}>
           <div className="menu-sett-grid" style={{ marginTop: 8 }}>
             {giorni.map((g) => {
-              const d = p.dieta[g]?.pranzo;
-              if (!d) return null;
+              if (!p.dieta[g]) return null;
               return (
                 <div className="menu-sett-giorno" key={g} style={{ fontSize: 13 }}>
                   <div className="menu-sett-giorno-testa" style={{ padding: "8px 12px" }}>
                     <h3 style={{ fontSize: 14, textTransform: "capitalize" }}>{g}</h3>
                   </div>
-                  {["primo", "secondo", "contorno"].map((portata) => {
-                    const val = d[portata] || "—";
+                  {pastiPrevisti.map((pasto) => {
+                    const d = p.dieta[g][pasto];
+                    if (!d) return null;
                     return (
-                      <div key={portata} style={{ padding: "6px 12px", borderBottom: "1px solid var(--linea)" }}>
-                        <div style={{ fontSize: 9, fontWeight: 700, color: "var(--muto)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{portata}</div>
-                        <div style={{ fontSize: 13, marginTop: 2 }}>
-                          {splitPiatto(val).nome}
-                          {splitPiatto(val).nota && <span className="nota-prep piccola"> ⚠ {splitPiatto(val).nota}</span>}
-                        </div>
+                      <div key={pasto} className="menu-sett-portata">
+                        <div className="menu-sett-portata-lab">{pasto}</div>
+                        {["primo", "secondo", "contorno"].map((portata) => {
+                          const val = d[portata] || "—";
+                          return (
+                            <div key={portata} style={{ padding: "4px 0" }}>
+                              <div style={{ fontSize: 9, fontWeight: 700, color: "var(--muto)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{portata}</div>
+                              <div style={{ fontSize: 13, marginTop: 2 }}>
+                                {splitPiatto(val).nome}
+                                {splitPiatto(val).nota && <span className="nota-prep piccola"> ⚠ {splitPiatto(val).nota}</span>}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     );
                   })}
@@ -614,42 +672,107 @@ function PazienteAccordion({ paziente, giorni }) {
   );
 }
 
+/* ---- una tabella per pasto nella vista giorno dei resoconti ---- */
+function TabellaGiornoPasto({ pasto, inviato, pazienti }) {
+  return (
+    <div className="pannello" style={{ marginBottom: 20 }}>
+      <div className="pannello-testa">
+        <h2>Dettaglio per paziente, {pasto}</h2>
+        <span className="conta-piatti">
+          {pazienti.length} {pazienti.length === 1 ? "paziente" : "pazienti"} ·{" "}
+          {inviato ? "trasmesso alla cucina MAVI" : "non ancora trasmesso"}
+        </span>
+      </div>
+      <div className="scorri">
+        <table className="dati">
+          <thead>
+            <tr><th>Paziente</th><th>Tipo dieta</th><th>Primo</th><th>Secondo</th><th>Contorno</th></tr>
+          </thead>
+          <tbody>
+            {pazienti.map((p) => {
+              const dieta = p.dieta[GIORNO_DEMO]?.[pasto];
+              return (
+                <tr key={p.id}>
+                  <td><b>{p.nome}</b><div style={{ fontSize: 11, color: "var(--muto)" }}>{p.stanza}</div></td>
+                  <td>{p.tipo_dieta ? <span className="tag-dieta terap">{p.tipo_dieta}</span> : <span className="tag-dieta base">Standard</span>}</td>
+                  <td>{splitPiatto(dieta?.primo).nome}{splitPiatto(dieta?.primo).nota && <div className="nota-prep piccola">⚠ {splitPiatto(dieta?.primo).nota}</div>}</td>
+                  <td>{splitPiatto(dieta?.secondo).nome}{splitPiatto(dieta?.secondo).nota && <div className="nota-prep piccola">⚠ {splitPiatto(dieta?.secondo).nota}</div>}</td>
+                  <td>{splitPiatto(dieta?.contorno).nome}{splitPiatto(dieta?.contorno).nota && <div className="nota-prep piccola">⚠ {splitPiatto(dieta?.contorno).nota}</div>}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="pannello-piede">
+        Il resoconto resta consultabile anche dopo la chiusura. Le etichette adesive
+        per le vaschette vengono generate dalla cucina MAVI, non dalla struttura.
+      </div>
+    </div>
+  );
+}
+
 /* ==================== resoconti per il gestore ==================== */
 function ResocontiComunita({ reparto }) {
   const st = usaStato();
   const GIORNI_SETT_DEMO = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì"];
   const [vista, setVista] = React.useState("giorno"); // "giorno" o "mese"
   const paz = reparto ? PAZIENTI_COMUNITA.filter((p) => p.stanza === reparto) : PAZIENTI_COMUNITA;
-  const trasmesso = paz.some((p) => st.presenzeComunita[p.id] != null) || st.presenzeTrasmesse.some((t) => paz.some((p) => p.id === t.id));
+
+  /* lo stato "trasmesso" vale per pasto: il pranzo può essere già partito
+     mentre la cena è ancora da segnare */
+  const pazientiDelPasto = (pasto) => paz.filter((p) => pastiDi(p).includes(pasto));
+  const statoPasto = (pasto) => {
+    const elenco = pazientiDelPasto(pasto);
+    if (!elenco.length) return null;
+    return elenco.some((p) => st.presenzeComunita[p.id]?.[pasto] != null)
+      || st.presenzeTrasmesse.some((t) => t.pasto === pasto && elenco.some((p) => p.id === t.id));
+  };
+  const statiPasto = PASTI_TIPO.map((pasto) => [pasto, statoPasto(pasto)]).filter(([, v]) => v !== null);
+  const pastiInviati = statiPasto.filter(([, v]) => v);
+  const etichettaStato = statiPasto.length === 0 ? "—"
+    : pastiInviati.length === statiPasto.length ? "Trasmesso"
+      : pastiInviati.length > 0 ? "Parziale" : "Da trasmettere";
+  const notaStato = statiPasto.length === 0 ? "nessun pasto previsto"
+    : statiPasto.map(([nome, v]) => nome + ": " + (v ? "inviato" : "da inviare")).join(" · ");
+  const portateTotali = paz.reduce((somma, p) =>
+    somma + pastiDi(p).reduce((s, pasto) => s + portateServite(p.dieta[GIORNO_DEMO]?.[pasto]).length, 0), 0);
 
   async function esportaExcel() {
     try {
       const { scaricaExcel } = await import("../excel.js");
-      const righe = paz.map((p) => {
-        const dieta = p.dieta["mercoledì"]?.pranzo;
-        return {
-          paziente: p.nome, stanza: p.stanza, tipoDieta: p.tipo_dieta || "Standard",
-          primo: splitPiatto(dieta?.primo).nome, secondo: splitPiatto(dieta?.secondo).nome,
-          contorno: splitPiatto(dieta?.contorno).nome,
-          note: [splitPiatto(dieta?.primo).nota, splitPiatto(dieta?.secondo).nota, splitPiatto(dieta?.contorno).nota].filter(Boolean).join("; ") || "—",
-        };
+      const righe = [];
+      paz.forEach((p) => {
+        pastiDi(p).forEach((pasto) => {
+          const dieta = p.dieta[GIORNO_DEMO]?.[pasto];
+          if (!dieta) return;
+          righe.push({
+            paziente: p.nome, stanza: p.stanza, tipoDieta: p.tipo_dieta || "Standard", pasto,
+            primo: splitPiatto(dieta?.primo).nome, secondo: splitPiatto(dieta?.secondo).nome,
+            contorno: splitPiatto(dieta?.contorno).nome,
+            note: [splitPiatto(dieta?.primo).nota, splitPiatto(dieta?.secondo).nota, splitPiatto(dieta?.contorno).nota].filter(Boolean).join("; ") || "—",
+          });
+        });
       });
       const sett = [];
       paz.forEach((p) => {
         GIORNI_SETT_DEMO.forEach((g) => {
-          const d = p.dieta[g]?.pranzo;
-          if (!d || (d.primo === "—" && d.secondo === "—")) return;
-          sett.push({ paziente: p.nome, giorno: g, pasto: "pranzo",
-            primo: splitPiatto(d?.primo).nome, secondo: splitPiatto(d?.secondo).nome,
-            contorno: splitPiatto(d?.contorno).nome });
+          pastiDi(p).forEach((pasto) => {
+            const d = p.dieta[g]?.[pasto];
+            if (!d || !portateServite(d).length) return;
+            sett.push({ paziente: p.nome, giorno: g, pasto,
+              primo: splitPiatto(d?.primo).nome, secondo: splitPiatto(d?.secondo).nome,
+              contorno: splitPiatto(d?.contorno).nome });
+          });
         });
       });
       const nomeFile = "Resoconto_Comunita_Il_Ponte" + (reparto ? "_" + reparto.replace(/[^a-zA-Z0-9]+/g, "_") : "") + ".xlsx";
       await scaricaExcel(nomeFile, [
-        { nome: "Pranzo mercoledì", dati: righe, colonne: [
+        { nome: "Mercoledì", dati: righe, colonne: [
           { header: "Paziente", key: "paziente", width: 22 },
           { header: "Stanza", key: "stanza", width: 24 },
           { header: "Tipo dieta", key: "tipoDieta", width: 22 },
+          { header: "Pasto", key: "pasto", width: 10 },
           { header: "Primo", key: "primo", width: 26 },
           { header: "Secondo", key: "secondo", width: 26 },
           { header: "Contorno", key: "contorno", width: 26 },
@@ -664,7 +787,7 @@ function ResocontiComunita({ reparto }) {
           { header: "Contorno", key: "contorno", width: 26 },
         ]},
       ]);
-      st.avvisa("Resoconto Excel scaricato con dettaglio giornaliero e settimanale");
+      st.avvisa("Resoconto Excel scaricato con pranzo e cena, dettaglio giornaliero e settimanale");
     } catch (e) {
       console.error(e);
       st.avvisa("Errore nell'export Excel, riprova");
@@ -697,43 +820,28 @@ function ResocontiComunita({ reparto }) {
         </div>
         <div className="numeri">
           <div className="numero"><div className="n-lab">Pazienti</div><div className="n-val">{paz.length}</div><div className="n-nota">{reparto ? "in " + reparto : "in tutta la comunità"}</div></div>
-          <div className="numero"><div className="n-lab">Portate totali</div><div className="n-val">{paz.length * 3}</div><div className="n-nota">primo + secondo + contorno</div></div>
+          <div className="numero"><div className="n-lab">Portate totali</div><div className="n-val">{portateTotali}</div><div className="n-nota">pranzo e cena del giorno</div></div>
           <div className="numero"><div className="n-lab">Diete speciali</div><div className="n-val">{paz.filter(p => p.tipo_dieta && p.tipo_dieta !== "Standard").length}</div><div className="n-nota">con restrizioni</div></div>
-          <div className="numero"><div className="n-lab">Stato</div><div className="n-val" style={{ fontSize: 20 }}>{trasmesso ? "Trasmesso" : "Da trasmettere"}</div><div className="n-nota">{trasmesso ? "presenze inviate a MAVI" : "vedi Presenze del giorno"}</div></div>
+          <div className="numero"><div className="n-lab">Stato</div><div className="n-val" style={{ fontSize: 20 }}>{etichettaStato}</div><div className="n-nota">{notaStato}</div></div>
         </div>
 
         {vista === "giorno" ? (
-          <div className="pannello">
-            <div className="pannello-testa">
-              <h2>Dettaglio per paziente, pranzo</h2>
-              <span className="conta-piatti">trasmesso alla cucina MAVI</span>
-            </div>
-            <div className="scorri">
-              <table className="dati">
-                <thead>
-                  <tr><th>Paziente</th><th>Tipo dieta</th><th>Primo</th><th>Secondo</th><th>Contorno</th></tr>
-                </thead>
-                <tbody>
-                  {paz.map((p) => {
-                    const dieta = p.dieta["mercoledì"]?.pranzo;
-                    return (
-                      <tr key={p.id}>
-                        <td><b>{p.nome}</b><div style={{ fontSize: 11, color: "var(--muto)" }}>{p.stanza}</div></td>
-                        <td>{p.tipo_dieta ? <span className="tag-dieta terap">{p.tipo_dieta}</span> : <span className="tag-dieta base">Standard</span>}</td>
-                        <td>{splitPiatto(dieta?.primo).nome}{splitPiatto(dieta?.primo).nota && <div className="nota-prep piccola">⚠ {splitPiatto(dieta?.primo).nota}</div>}</td>
-                        <td>{splitPiatto(dieta?.secondo).nome}{splitPiatto(dieta?.secondo).nota && <div className="nota-prep piccola">⚠ {splitPiatto(dieta?.secondo).nota}</div>}</td>
-                        <td>{splitPiatto(dieta?.contorno).nome}{splitPiatto(dieta?.contorno).nota && <div className="nota-prep piccola">⚠ {splitPiatto(dieta?.contorno).nota}</div>}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <div className="pannello-piede">
-              Il resoconto resta consultabile anche dopo la chiusura. Le etichette adesive
-              per le vaschette vengono generate dalla cucina MAVI, non dalla struttura.
-            </div>
-          </div>
+          <>
+            {statiPasto.map(([pasto, inviato]) => (
+              <TabellaGiornoPasto
+                key={pasto}
+                pasto={pasto}
+                inviato={inviato}
+                pazienti={pazientiDelPasto(pasto)}
+              />
+            ))}
+            {statiPasto.length === 0 && (
+              <div className="avviso info">
+                <Icone.attenzione size={16} />
+                <span>Nessun paziente in elenco per questo giorno.</span>
+              </div>
+            )}
+          </>
         ) : (
           /* vista settimanale: accordion per paziente */
           <div className="pannello">
