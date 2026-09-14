@@ -274,3 +274,24 @@ export function apriDocumento(html, { nomeFile = "Documento_MAVI.html", avvisa }
   URL.revokeObjectURL(url);
   return false;
 }
+
+/* elenco nominativo stampabile: una tabella di persone con quello che hanno
+   ordinato, più le sezioni facoltative prima e dopo. Lo usano il manifesto di
+   consegna del fornitore (`manifesto.js`) e il riepilogo del giorno del
+   referente, che stampano lo stesso oggetto con intestazioni diverse.
+   `blocchiPrima` e `blocchiDopo` sono HTML già composto (di solito il ritorno
+   di `blocco`, `paragrafo` o `elenco`). Come `apriDocumento`, va chiamata
+   dentro il gesto dell'utente. Ritorna true se la scheda si è aperta. */
+export function generaElencoNominativo({
+  titolo, badge, sottotitolo, meta = [], colonne = [], righe = [], totale,
+  vuota = "Nessun nominativo per questa giornata.",
+  blocchiPrima = [], blocchiDopo = [], note, piede,
+  nomeFile = "Elenco_MAVI.html", datiAziendali, avvisa,
+}) {
+  const html = paginaDocumento({
+    titolo, badge, sottotitolo, meta,
+    blocchi: [...blocchiPrima, tabellaHtml({ colonne, righe, totale, vuota }), ...blocchiDopo],
+    note, piede, datiAziendali,
+  });
+  return apriDocumento(html, { nomeFile, avvisa });
+}

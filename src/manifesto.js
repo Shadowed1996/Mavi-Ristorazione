@@ -5,38 +5,42 @@
    cliente o al dipendente.
    Impaginazione e regole di escape stanno in documento.js. */
 
-import { apriDocumento, cellaConNota, dataIt, paginaDocumento, tabellaHtml } from "./documento.js";
+import { GIORNI } from "./data.js";
+import { cellaConNota, dataIt, generaElencoNominativo, giornoDataIt } from "./documento.js";
 
-/* righe: [{ nome, reparto, primo, secondo, contorno }] — è st.nominativiAzienda */
-export function generaManifestoConsegna({ struttura, giorno, pasto, righe = [], datiAziendali, avvisa }) {
+/* righe: st.nominativiAzienda, l'elenco completo di tutte le giornate.
+   Il manifesto è di una consegna sola, quindi qui si filtra su `indiceGiorno`:
+   in cassone finisce il foglio di quel giorno, non la settimana intera. */
+export function generaManifestoConsegna({ struttura, indiceGiorno, pasto = "pranzo", righe = [], datiAziendali, avvisa }) {
+  const g = GIORNI[indiceGiorno];
+  const delGiorno = righe.filter((r) => r.indiceGiorno === indiceGiorno);
   const oggi = dataIt(new Date());
   const ora = new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
 
-  const tabella = tabellaHtml({
-    colonne: [{ titolo: "Nominativo" }, { titolo: "Primo" }, { titolo: "Secondo" }, { titolo: "Contorno" }],
-    righe: righe.map((r) => [cellaConNota(r.nome, r.reparto), r.primo, r.secondo, r.contorno]),
-    vuota: "Nessun ordine nominativo per questa giornata.",
-  });
-
-  const html = paginaDocumento({
+  return generaElencoNominativo({
     titolo: "Manifesto di consegna",
     badge: "Riservato al fornitore",
-    sottotitolo: [struttura, [giorno, pasto].filter(Boolean).join(", "), "generato il " + oggi + " alle " + ora]
-      .filter(Boolean).join(" · "),
+    sottotitolo: [struttura, [g ? giornoDataIt(g.data) : "", pasto].filter(Boolean).join(", "),
+      "generato il " + oggi + " alle " + ora].filter(Boolean).join(" · "),
     meta: [
       { etichetta: "Struttura", valore: struttura },
-      { etichetta: "Giornata", valore: giorno },
+      { etichetta: "Giornata", valore: g ? giornoDataIt(g.data) : "—" },
       { etichetta: "Pasto", valore: pasto },
-      { etichetta: "Nominativi", valore: righe.length },
+      { etichetta: "Nominativi", valore: delGiorno.length },
     ],
-    blocchi: [
-      `<p class="doc-riservato">Riservato al fornitore — non esporre al cliente</p>`,
-      tabella,
-    ],
+    colonne: [{ titolo: "Nominativo" }, { titolo: "Primo" }, { titolo: "Secondo" }, { titolo: "Contorno" }],
+    righe: delGiorno.map((r) => [
+      cellaConNota(r.nome, r.reparto),
+      r.unico ? "Piatto unico: " + r.unico : r.primo,
+      r.secondo,
+      r.contorno,
+    ]),
+    vuota: "Nessun ordine nominativo per questa giornata.",
+    blocchiPrima: [`<p class="doc-riservato">Riservato al fornitore — non esporre al cliente</p>`],
     piede: "Da inserire nel cassone termico in consegna. Le etichette pasto in cucina restano anonime: "
       + "questo foglio è l'unico documento nominativo, ad uso esclusivo del fornitore per la distribuzione in azienda.",
+    nomeFile: "Manifesto_consegna.html",
     datiAziendali,
+    avvisa,
   });
-
-  apriDocumento(html, { nomeFile: "Manifesto_consegna.html", avvisa });
 }

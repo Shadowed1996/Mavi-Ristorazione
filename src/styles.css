@@ -5427,3 +5427,29 @@ tr.pz-neutro td:first-child { border-left: 3px solid var(--linea); }
 [data-tema="scuro"] .rot-step { background: #262422; border-color: #3a3632; }
 [data-tema="scuro"] .rot-step.attiva { background: #1a2820; border-color: var(--acc); }
 [data-tema="scuro"] .rot-n { background: #1e1c1a; }
+
+/* ============================================================
+   Riepilogo del giorno, cruscotto del referente
+   ============================================================ */
+.scelta-giorno {
+  padding: 0 22px;
+}
+.scelta-giorno .giorni-tab {
+  margin-bottom: 14px;
+}
+.giorni-tab button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.giorni-tab button:disabled:hover {
+  background: var(--foglio);
+}
+.dati td.riga-vuota {
+  text-align: center;
+  color: var(--muto);
+  font-size: 13px;
+  padding: 26px 22px;
+}
+.dati tbody tr:hover td.riga-vuota {
+  background: transparent;
+}

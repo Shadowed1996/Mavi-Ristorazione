@@ -1,9 +1,10 @@
 import React from "react";
-import { CATEGORIE, DIPENDENTI, FATTURE, PIATTI, PREZZO_PASTO, QUOTA_DIPENDENTE, RESOCONTO_MENSILE, menuDelGiorno } from "../data.js";
+import { CATEGORIE, DIPENDENTI, FATTURE, GIORNI, PIATTI, PREZZO_PASTO, QUOTA_DIPENDENTE, RESOCONTO_MENSILE, etichettaGiorno, menuDelGiorno } from "../data.js";
 import { Accesso, DiscoColore, Documenti, Icone, Intestazione, Messaggi, Telaio, Velo } from "../ui.jsx";
 import { usaStato } from "../store.jsx";
 import { generaProformaPDF } from "../proforma.js";
 import { generaResocontoPDF } from "../resoconto.js";
+import { blocco, dataIt, elenco, generaElencoNominativo, giornoDataIt, paragrafo } from "../documento.js";
 
 const VOCI = [
   ["cruscotto", "Cruscotto", Icone.grafico],
@@ -52,7 +53,7 @@ export default function Cliente({ onEsci, utente }) {
       setPagina={setPagina}
       onEsci={() => (onEsci ? onEsci() : null)}
     >
-      {pagina === "cruscotto" && <Cruscotto />}
+      {pagina === "cruscotto" && <Cruscotto utente={utente} />}
       {pagina === "dipendenti" && <Dipendenti />}
       {pagina === "resoconti" && <Resoconti />}
       {pagina === "fatture" && <Fatture />}
@@ -62,26 +63,73 @@ export default function Cliente({ onEsci, utente }) {
   );
 }
 
-function Cruscotto() {
+function Cruscotto({ utente }) {
   const st = usaStato();
+  const [giorno, setGiorno] = React.useState(2); // mercoledì, la giornata di partenza della demo
   const [prenota, setPrenota] = React.useState(null); // dipendente selezionato
   const [scelte, setScelte] = React.useState({});
+  const referente = utente ? utente.nome : "Roberto Manzi";
+  const azienda = (st.committenti.find((c) => c.id === "azienda") || {}).nome || "Rossi Manifatture Spa";
+
+  /* il referente vede il nominativo della sua azienda e basta: le righe degli
+     altri committenti non entrano mai in questa pagina */
+  const ordinati = st.nominativiAzienda.filter((n) => n.committente === "azienda" && n.indiceGiorno === giorno);
+  const attivi = DIPENDENTI.filter((d) => d.stato === "attivo");
+  const senzaOrdine = attivi.filter((d) => !ordinati.some((n) => n.nome === d.n));
+  const primoPortata = (n) => (n.unico ? "Piatto unico: " + n.unico : n.primo);
 
   function confermaPrenotazione() {
     const nPortate = Object.keys(scelte).length;
-    Object.entries(scelte).forEach(([categoria, id]) => st.scegli(2, categoria, id));
-    st.conferma(2, { nome: prenota.n, ruolo: "Referente (per conto suo)" });
-    st.avvisa("Prenotazione confermata per " + prenota.n + ": " + nPortate + " portate. Il dipendente riceverà la conferma via email.");
+    /* le scelte passano direttamente a `conferma`: il carrello del portale
+       dipendente non va toccato, è di un'altra persona */
+    st.conferma(giorno, {
+      nome: prenota.n, matricola: prenota.m, ruolo: "Dipendente",
+      inseritaDa: { nome: referente, ruolo: "Referente" },
+    }, scelte);
+    st.avvisa("Prenotazione confermata per " + prenota.n + ", " + etichettaGiorno(giorno).toLowerCase()
+      + ": " + nPortate + (nPortate === 1 ? " portata" : " portate") + ". Il dipendente riceverà la conferma via email.");
     setPrenota(null);
     setScelte({});
   }
 
+  function stampaRiepilogo() {
+    const g = GIORNI[giorno];
+    generaElencoNominativo({
+      titolo: giornoDataIt(g.data),
+      badge: "Riepilogo del giorno",
+      sottotitolo: azienda + " · pranzo · " + ordinati.length + (ordinati.length === 1 ? " pasto" : " pasti"),
+      meta: [
+        { etichetta: "Azienda", valore: azienda },
+        { etichetta: "Giornata", valore: giornoDataIt(g.data) },
+        { etichetta: "Pasto", valore: "Pranzo" },
+        { etichetta: "Pasti", valore: ordinati.length },
+      ],
+      colonne: [{ titolo: "Dipendente" }, { titolo: "Reparto" }, { titolo: "Primo" }, { titolo: "Secondo" }, { titolo: "Contorno" }],
+      righe: ordinati.map((n) => [n.nome, n.reparto, primoPortata(n), n.secondo, n.contorno]),
+      totale: ["Totale pasti", String(ordinati.length), "", "", ""],
+      vuota: "Nessun ordine registrato per questa giornata.",
+      blocchiDopo: [
+        blocco("Non hanno ordinato", senzaOrdine.length
+          ? elenco(senzaOrdine.map((d) => ({ etichetta: d.n, valore: d.rep })))
+          : paragrafo("Tutti i dipendenti attivi hanno ordinato.")),
+      ],
+      note: "Elenco a uso interno dell'azienda: riporta le sole portate scelte. Le diete con "
+        + "motivazione medica restano riservate e non compaiono in questo documento.",
+      piede: "Riepilogo generato dal portale MAVI Ristorazione per " + azienda + " il " + dataIt(new Date()),
+      nomeFile: "Riepilogo_" + g.data + ".html",
+      datiAziendali: st.datiAziendali,
+      avvisa: st.avvisa,
+    });
+    st.logga(referente, "Referente", "Riepilogo del giorno stampato",
+      etichettaGiorno(giorno) + ", " + ordinati.length + " pasti", "generico");
+  }
+
   return (
     <>
-      <Intestazione occhiello="Rossi Manifatture Spa" titolo="Cruscotto" sotto="Mensa aziendale, situazione aggiornata a oggi" />
+      <Intestazione occhiello={azienda} titolo="Cruscotto" sotto="Mensa aziendale, situazione aggiornata a oggi" />
       <div className="tela">
         <div className="numeri">
-          <div className="numero"><div className="n-lab">Dipendenti attivi</div><div className="n-val">{DIPENDENTI.filter((d) => d.stato === "attivo").length}</div><div className="n-nota">su {DIPENDENTI.length} utenze create</div></div>
+          <div className="numero"><div className="n-lab">Dipendenti attivi</div><div className="n-val">{attivi.length}</div><div className="n-nota">su {DIPENDENTI.length} utenze create</div></div>
           <div className="numero"><div className="n-lab">Prenotazioni di domani</div><div className="n-val">22</div><div className="n-nota">su 28 possibili</div><div className="progresso"><i style={{ width: "79%" }} /></div></div>
           <div className="numero"><div className="n-lab">Pasti del mese</div><div className="n-val">143</div><div className="n-nota">media 20 al giorno</div></div>
           <div className="numero"><div className="n-lab">Diete speciali attive</div><div className="n-val">4</div><div className="n-nota">2 senza glutine, 2 vegetariane</div></div>
@@ -89,22 +137,71 @@ function Cruscotto() {
 
         <div className="pannello">
           <div className="pannello-testa">
-            <h2>Chi non ha ancora prenotato per domani</h2>
+            <h2>Ordini del giorno</h2>
+            <span className="pastiglia p-neu">{ordinati.length} {ordinati.length === 1 ? "pasto" : "pasti"}</span>
             <div className="az">
-              <button className="btn piccolo" onClick={() => st.avvisa("Promemoria inviato ai tre dipendenti")}>Invia promemoria</button>
+              <button className="btn piccolo" onClick={stampaRiepilogo}>
+                <Icone.stampa size={16} /> Stampa riepilogo
+              </button>
+            </div>
+          </div>
+          <div className="scelta-giorno">
+            <div className="giorni-tab">
+              {GIORNI.map((g, i) => (
+                <button key={g.n} className={i === giorno ? "on" : ""} disabled={g.chiuso} onClick={() => setGiorno(i)}>
+                  {g.n}<span>{g.chiuso ? "chiuso" : g.d}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="scorri">
+            <table className="dati">
+              <thead><tr><th>Dipendente</th><th>Reparto</th><th>Primo</th><th>Secondo</th><th>Contorno</th></tr></thead>
+              <tbody>
+                {ordinati.length === 0 ? (
+                  <tr><td colSpan={5} className="riga-vuota">Nessun ordine registrato per {etichettaGiorno(giorno).toLowerCase()}.</td></tr>
+                ) : ordinati.map((n) => (
+                  <tr key={n.id}>
+                    <td><b>{n.nome}</b></td>
+                    <td style={{ color: "var(--muto)" }}>{n.reparto}</td>
+                    <td>{primoPortata(n)}</td>
+                    <td>{n.secondo}</td>
+                    <td>{n.contorno}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="pannello-piede">
+            Il riepilogo stampato riporta la stessa tabella, con in fondo chi non ha ordinato e il
+            totale dei pasti. Nessuna dieta o informazione sanitaria compare nel documento.
+          </div>
+        </div>
+
+        <div className="pannello">
+          <div className="pannello-testa">
+            <h2>Chi non ha ancora prenotato per {etichettaGiorno(giorno).toLowerCase()}</h2>
+            <div className="az">
+              <button className="btn piccolo" disabled={senzaOrdine.length === 0}
+                onClick={() => st.avvisa("Promemoria inviato a " + senzaOrdine.length + (senzaOrdine.length === 1 ? " dipendente" : " dipendenti"))}>
+                Invia promemoria
+              </button>
             </div>
           </div>
           <div className="scorri">
             <table className="dati">
               <thead><tr><th>Matricola</th><th>Nome</th><th>Reparto</th><th /></tr></thead>
               <tbody>
-                {DIPENDENTI.slice(3, 6).map((d) => (
+                {senzaOrdine.length === 0 ? (
+                  <tr><td colSpan={4} className="riga-vuota">Tutti i dipendenti attivi hanno ordinato.</td></tr>
+                ) : senzaOrdine.map((d) => (
                   <tr key={d.m}>
                     <td className="cifra">{d.m}</td>
                     <td><b>{d.n}</b></td>
                     <td>{d.rep}</td>
                     <td>
-                      <button className="btn linea piccolo" onClick={() => { setPrenota(d); setScelte({}); }}>
+                      <button className="btn linea piccolo" disabled={GIORNI[giorno].chiuso}
+                        onClick={() => { setPrenota(d); setScelte({}); }}>
                         Prenota per lui
                       </button>
                     </td>
@@ -123,7 +220,7 @@ function Cruscotto() {
       {prenota && (
         <Velo onChiudi={() => setPrenota(null)} largo>
           <div className="scelta-testa">
-            <div className="occhiello">Prenotazione per conto di un dipendente · Mercoledì 16 settembre</div>
+            <div className="occhiello">Prenotazione per conto di un dipendente · {etichettaGiorno(giorno)}</div>
             <h2>Prenota per {prenota.n}</h2>
             <p>{prenota.rep} · Matricola {prenota.m}</p>
           </div>
@@ -132,7 +229,7 @@ function Cruscotto() {
             {["primo", "sost_primo", "secondo", "sost_secondo", "contorno", "unico"].map((catId) => {
               const cat = CATEGORIE.find((c) => c.id === catId);
               if (!cat) return null;
-              const piatti = menuDelGiorno(st.menu, 2, catId);
+              const piatti = menuDelGiorno(st.menu, giorno, catId);
               if (!piatti.length) return null;
               return (
                 <div key={catId} style={{ marginBottom: 16 }}>
@@ -154,6 +251,17 @@ function Cruscotto() {
                               if (catId === "sost_primo") delete n.primo;
                               if (catId === "secondo") delete n.sost_secondo;
                               if (catId === "sost_secondo") delete n.secondo;
+                              /* stesse esclusioni di `scegli` nello store: il
+                                 piatto unico cancella le portate che copre */
+                              if (catId === "unico") {
+                                (p.so || []).forEach((c) => {
+                                  delete n[c];
+                                  if (c === "primo") delete n.sost_primo;
+                                  if (c === "secondo") delete n.sost_secondo;
+                                });
+                              } else if (n.unico && (PIATTI[n.unico].so || []).includes(catId)) {
+                                delete n.unico;
+                              }
                             }
                             return n;
                           })}

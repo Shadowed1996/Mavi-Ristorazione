@@ -443,13 +443,22 @@ export const VARIABILI = [
   { primo: ["min_orz", "ris_fun", "cre_spi", "pas_arr"], sost_primo: ["ins_far", "zup_leg"], secondo: ["sal_for", "tac_lim", "cot_mil", "spe_pol"], sost_secondo: ["fri_zuc", "sfo_ver"], contorno: ["ver_gri"], unico: ["uni_las"] },
 ];
 
+/* `data` è la data ISO del giorno: serve ai documenti stampabili, che
+   intestano il riepilogo con "MARTEDÌ - 15/09/2026". `d` e `breve` restano i
+   testi già usati a schermo. */
 export const GIORNI = [
-  { n: "Lunedì", d: "14 settembre", breve: "14 set", chiuso: false },
-  { n: "Martedì", d: "15 settembre", breve: "15 set", chiuso: false },
-  { n: "Mercoledì", d: "16 settembre", breve: "16 set", chiuso: false },
-  { n: "Giovedì", d: "17 settembre", breve: "17 set", chiuso: false },
-  { n: "Venerdì", d: "18 settembre", breve: "18 set", chiuso: false },
+  { n: "Lunedì", d: "14 settembre", breve: "14 set", data: "2026-09-14", chiuso: false },
+  { n: "Martedì", d: "15 settembre", breve: "15 set", data: "2026-09-15", chiuso: false },
+  { n: "Mercoledì", d: "16 settembre", breve: "16 set", data: "2026-09-16", chiuso: false },
+  { n: "Giovedì", d: "17 settembre", breve: "17 set", data: "2026-09-17", chiuso: false },
+  { n: "Venerdì", d: "18 settembre", breve: "18 set", data: "2026-09-18", chiuso: false },
 ];
+
+/* etichetta leggibile del giorno di menu, la stessa ovunque: "Martedì 15 settembre" */
+export function etichettaGiorno(indice) {
+  const g = GIORNI[indice];
+  return g ? g.n + " " + g.d : "";
+}
 
 /* menu = { variabili: [...5 giorni], fissi: {...} }, tenuto nello stato */
 export const MENU_INIZIALE = {
@@ -630,6 +639,19 @@ export const UTENTI = [
   { u: "ilaria.gatti", nome: "Ilaria Gatti", iniziali: "IG", struttura: "comunita", ruolo: "responsabile", committente: "Comunità Il Ponte", mansione: "Responsabile" },
       { u: "cucina.mavi", nome: "Cucina centrale", iniziali: "MV", struttura: "mavi", ruolo: "fornitore", committente: "MAVI Ristorazione", mansione: "Produzione e amministrazione" },
 ];
+
+/* matricola e reparto veri di chi ordina in azienda, cercati per nome:
+   prima l'anagrafica dipendenti, poi la mansione del profilo di accesso
+   (Antonella Rossi è un profilo demo, non è in DIPENDENTI). Serve ai
+   nominativi dell'azienda, che senza questo riportavano il ruolo al posto
+   del reparto. */
+export function anagraficaAzienda(nome) {
+  const chiave = String(nome || "").trim().toLowerCase();
+  const dipendente = DIPENDENTI.find((d) => d.n.toLowerCase() === chiave);
+  if (dipendente) return { matricola: dipendente.m, reparto: dipendente.rep };
+  const utente = UTENTI.find((u) => u.nome.toLowerCase() === chiave);
+  return { matricola: "", reparto: (utente && utente.mansione) || "" };
+}
 
 export const ETICHETTE_STRUTTURA = {
   azienda: "Azienda",
@@ -839,22 +861,30 @@ export function splitPiatto(testo) {
 /* ============================================================
    Etichette demo dipendenti azienda — ordini già confermati
    ============================================================ */
+const GIORNO_ETICHETTE_DEMO = 2; // mercoledì 16 settembre
+
+/* Il giorno è strutturato (`indiceGiorno`, 0–4) e non più una stringa: il
+   riepilogo del referente e il manifesto del fornitore filtrano per giornata.
+   `committente` è l'id, `committenteNome` la ragione sociale per chi la
+   mostra. Matricola e reparto arrivano da DIPENDENTI, un dato solo. */
 export const ETICHETTE_AZIENDA_DEMO = [
-  { id: "ea01", nome: "Anna Ferrari", matricola: "MV0142", reparto: "Amministrazione", committente: "Rossi Manifatture Spa",
-    giorno: "mer 16 set 2026", pasto: "pranzo", primo: "Pasta al pomodoro", secondo: "Pollo grigliato", contorno: "Verdure grigliate" },
-  { id: "ea02", nome: "Marco Bassi", matricola: "MV0143", reparto: "Produzione", committente: "Rossi Manifatture Spa",
-    giorno: "mer 16 set 2026", pasto: "pranzo", primo: "Risotto ai funghi", secondo: "Salmone al forno", contorno: "Insalata mista" },
-  { id: "ea03", nome: "Sara Colombo", matricola: "MV0144", reparto: "Amministrazione", committente: "Rossi Manifatture Spa",
-    giorno: "mer 16 set 2026", pasto: "pranzo", primo: "Vellutata di zucca", secondo: "Tofu alla piastra", contorno: "Fagiolini a vapore" },
-  { id: "ea04", nome: "Luca De Santis", matricola: "MV0145", reparto: "Logistica", committente: "Rossi Manifatture Spa",
-    giorno: "mer 16 set 2026", pasto: "pranzo", primo: "Lasagne alla bolognese", secondo: "Polpette al sugo", contorno: "Patate al forno" },
-  { id: "ea05", nome: "Giulia Moretti", matricola: "MV0146", reparto: "Logistica", committente: "Rossi Manifatture Spa",
-    giorno: "mer 16 set 2026", pasto: "pranzo", primo: "Insalata di farro", secondo: "Formaggio misto", contorno: "Insalata mista" },
-  { id: "ea06", nome: "Chiara Vitali", matricola: "MV0148", reparto: "Commerciale", committente: "Rossi Manifatture Spa",
-    giorno: "mer 16 set 2026", pasto: "pranzo", primo: "Pasta al pomodoro", secondo: "Tofu alla piastra", contorno: "Verdure grigliate" },
-  { id: "ea07", nome: "Davide Orlando", matricola: "MV0149", reparto: "Produzione", committente: "Rossi Manifatture Spa",
-    giorno: "mer 16 set 2026", pasto: "pranzo", primo: "Risotto ai funghi", secondo: "Pollo grigliato", contorno: "Patate al forno" },
-];
+  { id: "ea01", nome: "Anna Ferrari", primo: "Pasta al pomodoro", secondo: "Pollo grigliato", contorno: "Verdure grigliate" },
+  { id: "ea02", nome: "Marco Bassi", primo: "Risotto ai funghi", secondo: "Salmone al forno", contorno: "Insalata mista" },
+  { id: "ea03", nome: "Sara Colombo", primo: "Vellutata di zucca", secondo: "Tofu alla piastra", contorno: "Fagiolini a vapore" },
+  { id: "ea04", nome: "Luca De Santis", primo: "Lasagne alla bolognese", secondo: "Polpette al sugo", contorno: "Patate al forno" },
+  { id: "ea05", nome: "Giulia Moretti", primo: "Insalata di farro", secondo: "Formaggio misto", contorno: "Insalata mista" },
+  { id: "ea06", nome: "Chiara Vitali", primo: "Pasta al pomodoro", secondo: "Tofu alla piastra", contorno: "Verdure grigliate" },
+  { id: "ea07", nome: "Davide Orlando", primo: "Risotto ai funghi", secondo: "Pollo grigliato", contorno: "Patate al forno" },
+].map((r) => ({
+  ...r,
+  ...anagraficaAzienda(r.nome),
+  committente: "azienda",
+  committenteNome: "Rossi Manifatture Spa",
+  indiceGiorno: GIORNO_ETICHETTE_DEMO,
+  giorno: etichettaGiorno(GIORNO_ETICHETTE_DEMO),
+  pasto: "pranzo",
+  unico: "",
+}));
 
 /* ============================================================
    Resoconto mensile demo — dati aggregati per il mese

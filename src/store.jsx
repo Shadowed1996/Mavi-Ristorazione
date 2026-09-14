@@ -1,5 +1,5 @@
 import React from "react";
-import { PIATTI, GIORNI, MENU_INIZIALE, COMMITTENTI, ORDINI_UNITA, PAZIENTI_COMUNITA, ETICHETTE_AZIENDA_DEMO } from "./data.js";
+import { PIATTI, GIORNI, MENU_INIZIALE, COMMITTENTI, ORDINI_UNITA, PAZIENTI_COMUNITA, ETICHETTE_AZIENDA_DEMO, anagraficaAzienda, etichettaGiorno } from "./data.js";
 
 const Ctx = React.createContext(null);
 export const usaStato = () => React.useContext(Ctx);
@@ -257,30 +257,62 @@ export function Provider({ children }) {
     [ordini, coperte]
   );
 
+  /* `conferma` viene passata ai figli e memorizzata: senza questa ref
+     leggerebbe gli `ordini` catturati dalla closure al momento della
+     creazione, non quelli aggiornati un istante prima dal clic. */
+  const ordiniRef = React.useRef(ordini);
+  ordiniRef.current = ordini;
+
+  /* `chi` è la persona per cui vale il pasto: `{ nome, matricola, ruolo }`.
+     Se porta anche `inseritaDa: { nome, ruolo }` la prenotazione è fatta da
+     qualcun altro (il referente per un dipendente) e il log lo attribuisce a
+     lui, non al commensale.
+     `piatti` è la prenotazione per conto di un altro, nella forma
+     `{ categoria: idPiatto }`: in quel caso non si toccano né `ordini` né
+     `confermati`, che sono il carrello del dipendente collegato, e si produce
+     solo la riga nominativa. */
   const conferma = React.useCallback(
-    (giorno, chi = { nome: "Antonella Rossi", ruolo: "Dipendente" }) => {
-      setConfermati((c) => ({ ...c, [giorno]: true }));
-      setOraConferma((o) => ({ ...o, [giorno]: new Date().toISOString() }));
-      avvisa("Prenotazione confermata, entra nella distinta di MAVI");
-      logga(chi.nome, chi.ruolo, "Prenotazione confermata", GIORNI[giorno]?.n + " " + GIORNI[giorno]?.breve + ", portale dipendente", "ordine");
-      /* entra anche nel manifesto nominativo del fornitore: quali portate,
-         non solo quante. Sostituisce l'eventuale riga precedente della stessa
-         persona per lo stesso giorno, non la somma. */
-      setNominativiAzienda((prec) => {
-        const o = ordini[giorno] || {};
-        const nomePortata = (id) => (id && PIATTI[id] ? PIATTI[id].n : "—");
-        const riga = {
-          id: "conf-" + giorno + "-" + chi.nome.replace(/\s+/g, "_"),
-          nome: chi.nome, matricola: "", reparto: chi.ruolo, committente: "Rossi Manifatture Spa",
-          giorno: (GIORNI[giorno]?.n || "") + " " + (GIORNI[giorno]?.d || ""), pasto: "pranzo",
-          primo: nomePortata(o.primo || o.sost_primo || o.unico),
-          secondo: nomePortata(o.secondo || o.sost_secondo),
-          contorno: nomePortata(o.contorno),
-        };
-        return [...prec.filter((r) => r.id !== riga.id), riga];
-      });
+    (giorno, chi = { nome: "Antonella Rossi", ruolo: "Dipendente" }, piatti) => {
+      const perConto = !!piatti;
+      const scelte = piatti || ordiniRef.current[giorno] || {};
+      if (!perConto) {
+        setConfermati((c) => ({ ...c, [giorno]: true }));
+        setOraConferma((o) => ({ ...o, [giorno]: new Date().toISOString() }));
+        avvisa("Prenotazione confermata, entra nella distinta di MAVI");
+      }
+      const autore = chi.inseritaDa || chi;
+      logga(
+        autore.nome, autore.ruolo,
+        chi.inseritaDa ? "Prenotazione per conto di " + chi.nome : "Prenotazione confermata",
+        etichettaGiorno(giorno) + ", " + (chi.inseritaDa ? "cruscotto referente" : "portale dipendente"),
+        "ordine"
+      );
+      /* entra nell'elenco nominativo, che alimenta il riepilogo del giorno del
+         referente e il manifesto di consegna del fornitore: quali portate, non
+         solo quante. Sostituisce l'eventuale riga precedente della stessa
+         persona per lo stesso giorno, seme compreso, non la somma. */
+      const nomePortata = (id) => (id && PIATTI[id] ? PIATTI[id].n : "—");
+      const anagrafica = anagraficaAzienda(chi.nome);
+      const riga = {
+        id: "conf-" + giorno + "-" + chi.nome.replace(/\s+/g, "_"),
+        nome: chi.nome,
+        matricola: chi.matricola || anagrafica.matricola,
+        reparto: anagrafica.reparto || chi.ruolo,
+        committente: "azienda",
+        committenteNome: "Rossi Manifatture Spa",
+        indiceGiorno: giorno,
+        giorno: etichettaGiorno(giorno),
+        pasto: "pranzo",
+        primo: nomePortata(scelte.primo || scelte.sost_primo),
+        secondo: nomePortata(scelte.secondo || scelte.sost_secondo),
+        contorno: nomePortata(scelte.contorno),
+        unico: scelte.unico && PIATTI[scelte.unico] ? PIATTI[scelte.unico].n : "",
+      };
+      setNominativiAzienda((prec) =>
+        [...prec.filter((r) => !(r.nome === riga.nome && r.indiceGiorno === giorno)), riga]
+      );
     },
-    [avvisa, logga, ordini]
+    [avvisa, logga]
   );
 
   const disdici = React.useCallback(

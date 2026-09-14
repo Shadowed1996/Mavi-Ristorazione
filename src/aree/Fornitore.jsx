@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  AGGREGATO, ALLERGENI, CATEGORIE, splitPiatto, COLORI, GIORNI, GIRI, INGREDIENTI_DIETE, MARCATORI, PIATTI, catalogoPerCategoria, sostituisce,
+  AGGREGATO, ALLERGENI, CATEGORIE, splitPiatto, COLORI, GIORNI, GIRI, INGREDIENTI_DIETE, MARCATORI, PIATTI, catalogoPerCategoria, etichettaGiorno, sostituisce,
 } from "../data.js";
 import {
   Accesso, DiscoColore, Documenti, Icone, Illustrazione, Intestazione, Messaggi,
@@ -1078,6 +1078,13 @@ function formattaQuando(iso) {
 
 function OrdiniAzienda({ pasti, giorniConfermati, nominativi, onManifesto }) {
   const righe = Object.entries(pasti).sort((a, b) => b[1] - a[1]);
+  /* il manifesto è di una consegna sola: si sceglie la giornata e l'elenco
+     nominativo mostra quella, così il foglio stampato è quello che si vede */
+  const primoConNominativi = nominativi.length
+    ? Math.min(...nominativi.map((n) => n.indiceGiorno))
+    : 0;
+  const [giorno, setGiorno] = React.useState(primoConNominativi);
+  const delGiorno = nominativi.filter((n) => n.indiceGiorno === giorno);
   if (!righe.length) return (
     <div className="avviso info">
       <Icone.attenzione size={16} />
@@ -1108,22 +1115,32 @@ function OrdiniAzienda({ pasti, giorniConfermati, nominativi, onManifesto }) {
         <span className="pastiglia p-att">riservato al fornitore</span>
       </div>
       <p style={{ fontSize: 12, color: "var(--muto)", margin: "0 0 10px" }}>
-        Chi ha ordinato cosa. Non è mai visibile al cliente né al dipendente: le etichette pasto
-        dell'azienda restano anonime, questo elenco serve solo al fornitore per il cassone termico.
+        Chi ha ordinato cosa, una giornata alla volta. Non è mai visibile al cliente né al
+        dipendente: le etichette pasto dell'azienda restano anonime, questo elenco serve solo al
+        fornitore per il cassone termico.
       </p>
-      {nominativi.length === 0 ? (
-        <div className="avviso info"><Icone.attenzione size={16} /><span>Nessun nominativo disponibile per oggi.</span></div>
+      <div className="giorni-tab">
+        {GIORNI.map((g, i) => {
+          const quanti = nominativi.filter((n) => n.indiceGiorno === i).length;
+          return (
+            <button key={g.n} className={i === giorno ? "on" : ""} onClick={() => setGiorno(i)}>
+              {g.n}<span>{quanti ? quanti + (quanti === 1 ? " nominativo" : " nominativi") : "nessuno"}</span>
+            </button>
+          );
+        })}
+      </div>
+      {delGiorno.length === 0 ? (
+        <div className="avviso info"><Icone.attenzione size={16} /><span>Nessun nominativo per {etichettaGiorno(giorno)}.</span></div>
       ) : (
         <div className="scorri">
           <table className="dati">
-            <thead><tr><th>Nominativo</th><th>Reparto</th><th>Per il giorno</th><th>Primo</th><th>Secondo</th><th>Contorno</th></tr></thead>
+            <thead><tr><th>Nominativo</th><th>Reparto</th><th>Primo</th><th>Secondo</th><th>Contorno</th></tr></thead>
             <tbody>
-              {nominativi.map((n) => (
+              {delGiorno.map((n) => (
                 <tr key={n.id}>
                   <td><b>{n.nome}</b></td>
                   <td style={{ color: "var(--muto)" }}>{n.reparto}</td>
-                  <td>{n.giorno}</td>
-                  <td>{n.primo}</td>
+                  <td>{n.unico ? "Piatto unico: " + n.unico : n.primo}</td>
                   <td>{n.secondo}</td>
                   <td>{n.contorno}</td>
                 </tr>
@@ -1133,8 +1150,8 @@ function OrdiniAzienda({ pasti, giorniConfermati, nominativi, onManifesto }) {
         </div>
       )}
       <div style={{ marginTop: 12 }}>
-        <button className="btn linea piccolo" onClick={onManifesto}>
-          <Icone.stampa size={16} /> Genera manifesto PDF per il cassone termico
+        <button className="btn linea piccolo" onClick={() => onManifesto(giorno)}>
+          <Icone.stampa size={16} /> Manifesto PDF di {etichettaGiorno(giorno)} per il cassone termico
         </button>
       </div>
     </>
@@ -1251,15 +1268,16 @@ function FlussiOrdine() {
       [{ nome: "Ordini", ...foglioPerCommittente(d.c.id, pastiAzienda, st.presenzeTrasmesse) }], { datiAziendali: st.datiAziendali });
     st.avvisa("Resoconto di " + d.c.nome + " scaricato");
   }
-  function generaManifesto(struttura) {
+  function generaManifesto(struttura, indiceGiorno) {
+    const quanti = st.nominativiAzienda.filter((n) => n.indiceGiorno === indiceGiorno).length;
     generaManifestoConsegna({
-      struttura, pasto: "pranzo",
-      giorno: giorniConfermatiAzienda[0]?.giorno || "Mercoledì 16 settembre 2026",
+      struttura, pasto: "pranzo", indiceGiorno,
       righe: st.nominativiAzienda,
       datiAziendali: st.datiAziendali,
       avvisa: st.avvisa,
     });
-    st.logga("Cucina MAVI", "Operatore", "Manifesto di consegna generato", struttura + ", " + st.nominativiAzienda.length + " nominativi", "generico");
+    st.logga("Cucina MAVI", "Operatore", "Manifesto di consegna generato",
+      struttura + ", " + etichettaGiorno(indiceGiorno) + ", " + quanti + " nominativi", "generico");
   }
 
   return (
@@ -1320,7 +1338,7 @@ function FlussiOrdine() {
                       <tr>
                         <td colSpan={6} style={{ background: "var(--carta)", padding: "16px 18px" }}>
                           {d.c.id === "azienda"
-                            ? <OrdiniAzienda pasti={pastiAzienda} giorniConfermati={giorniConfermatiAzienda} nominativi={st.nominativiAzienda} onManifesto={() => generaManifesto(d.c.nome)} />
+                            ? <OrdiniAzienda pasti={pastiAzienda} giorniConfermati={giorniConfermatiAzienda} nominativi={st.nominativiAzienda} onManifesto={(i) => generaManifesto(d.c.nome, i)} />
                             : d.c.id === "comunita"
                               ? <OrdiniComunita righe={st.presenzeTrasmesse} />
                               : <div className="avviso info"><Icone.attenzione size={16} /><span>Nessuna fonte di ordini collegata ancora per questo committente.</span></div>}
