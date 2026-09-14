@@ -496,10 +496,106 @@ export const DIPENDENTI = [
   { m: "MV0149", n: "Davide Orlando", rep: "Produzione", dieta: "nessuna", stato: "attivo", pasti: 17 },
 ];
 
-export const FATTURE = [
-  { num: "2026/0412", periodo: "Giugno 2026", pasti: 842, imp: "6.315,00", stato: "pagata", sdi: "consegnata" },
-  { num: "2026/0489", periodo: "Luglio 2026", pasti: 790, imp: "5.925,00", stato: "da pagare", sdi: "consegnata" },
-  { num: "proforma", periodo: "Agosto 2026", pasti: 301, imp: "2.257,50", stato: "in corso", sdi: "non emessa" },
+/* ============================================================
+   Condizioni di fatturazione
+   Ogni committente ha le proprie: termini, metodo di incasso e regime IVA.
+   Le proforma le ereditano al momento dell'emissione e da lì restano ferme,
+   anche se poi il committente cambia condizioni.
+   ============================================================ */
+
+/* `giorni` si contano dalla data di emissione; con `fineMese` si contano
+   dall'ultimo giorno del mese di emissione (d.f.f.m.). */
+export const TERMINI_PAGAMENTO = [
+  { id: "anticipato", nome: "Pagamento anticipato", giorni: 0, fineMese: false },
+  { id: "vista", nome: "Vista fattura", giorni: 0, fineMese: false },
+  { id: "30gg", nome: "30 gg d.f.", giorni: 30, fineMese: false },
+  { id: "30gg_fm", nome: "30 gg d.f.f.m.", giorni: 30, fineMese: true },
+  { id: "60gg", nome: "60 gg d.f.", giorni: 60, fineMese: false },
+  { id: "60gg_fm", nome: "60 gg d.f.f.m.", giorni: 60, fineMese: true },
+  { id: "90gg_fm", nome: "90 gg d.f.f.m.", giorni: 90, fineMese: true },
+];
+
+export const METODI_PAGAMENTO = [
+  { id: "bonifico", nome: "Bonifico bancario", conIban: true },
+  { id: "riba", nome: "RiBa", conIban: false },
+  { id: "sdd", nome: "SDD, addebito diretto", conIban: true },
+];
+
+export const REGIMI_IVA = [
+  { id: "ordinaria", nome: "IVA ordinaria", conIva: true, dicitura: "" },
+  {
+    id: "senza_iva", nome: "Senza IVA", conIva: false,
+    dicitura: "Operazione esente IVA ai sensi dell'art. 10 DPR 633/72",
+  },
+];
+
+export const terminiPagamento = (id) => TERMINI_PAGAMENTO.find((t) => t.id === id) || TERMINI_PAGAMENTO[2];
+export const metodoPagamento = (id) => METODI_PAGAMENTO.find((m) => m.id === id) || METODI_PAGAMENTO[0];
+export const regimeIva = (id) => REGIMI_IVA.find((r) => r.id === id) || REGIMI_IVA[0];
+
+/* le date ISO si costruiscono a mano, altrimenti slittano di un giorno nei
+   fusi a ovest di Greenwich */
+function aGiorno(v) {
+  if (v instanceof Date && !Number.isNaN(v.getTime())) return new Date(v.getFullYear(), v.getMonth(), v.getDate());
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v ?? ""));
+  if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+  const libera = new Date(v);
+  const d = Number.isNaN(libera.getTime()) ? new Date() : libera;
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+/* data di scadenza del pagamento.
+   Anticipato e vista fattura scadono il giorno stesso dell'emissione; i
+   termini "fine mese" partono dall'ultimo giorno reale del mese di emissione
+   (emissione 14/09/2026 a 60 gg d.f.f.m. → 30/09 + 60 gg → 29/11/2026). */
+export function scadenzaPagamento(dataEmissione, terminiId) {
+  const t = terminiPagamento(terminiId);
+  const emessa = aGiorno(dataEmissione);
+  if (!t.giorni) return emessa;
+  const base = t.fineMese ? new Date(emessa.getFullYear(), emessa.getMonth() + 1, 0) : emessa;
+  return new Date(base.getFullYear(), base.getMonth(), base.getDate() + t.giorni);
+}
+
+const arrotonda = (n) => Math.round((Number(n) || 0) * 100) / 100;
+
+/* totali di una proforma: le righe sono libere, l'IVA dipende dal regime.
+   Unico punto di calcolo, usato dal portale MAVI, dai portali cliente e dal PDF. */
+export function totaliProforma(proforma) {
+  const righe = (proforma && proforma.righe) || [];
+  const quantita = righe.reduce((s, r) => s + (Number(r.quantita) || 0), 0);
+  const imponibile = arrotonda(righe.reduce((s, r) => s + (Number(r.quantita) || 0) * (Number(r.prezzo) || 0), 0));
+  const conIva = regimeIva(proforma && proforma.regimeIva).conIva;
+  const aliquota = conIva ? Number((proforma && proforma.aliquota) || 0) : 0;
+  const iva = arrotonda(imponibile * (aliquota / 100));
+  return { quantita, imponibile, aliquota, iva, totale: arrotonda(imponibile + iva), conIva };
+}
+
+/* riassunto leggibile delle condizioni, di una proforma o di un committente:
+   la percentuale IVA sta in `aliquota` sul documento e in `ivaPercentuale` sul
+   committente, il resto dei campi ha lo stesso nome */
+export function testoCondizioni(x) {
+  const regime = regimeIva(x && x.regimeIva);
+  const aliquota = x && (x.aliquota != null ? x.aliquota : x.ivaPercentuale);
+  return terminiPagamento(x && x.termini).nome
+    + ", " + metodoPagamento(x && x.metodoPagamento).nome
+    + ", " + (regime.conIva ? "IVA " + (Number(aliquota) || 0) + "%" : regime.nome.toLowerCase());
+}
+
+/* proforma dalla più recente alla più vecchia */
+export function ordinaProforme(lista) {
+  return [...lista].sort((a, b) => (a.dataEmissione === b.dataEmissione
+    ? String(b.numero).localeCompare(String(a.numero))
+    : String(b.dataEmissione).localeCompare(String(a.dataEmissione))));
+}
+
+/* Proforma già emesse prima della demo: seed di `st.proforme`, espanso in
+   store.jsx con il listino e le condizioni del committente, così l'importo in
+   elenco è lo stesso che esce nel PDF. La numerazione prosegue da qui. */
+export const PROFORME_INIZIALI = [
+  { numero: "PRO-2026/001", committenteId: "azienda", periodo: "Giugno 2026", dataEmissione: "2026-07-01", pasti: 842, stato: "pagata" },
+  { numero: "PRO-2026/002", committenteId: "azienda", periodo: "Luglio 2026", dataEmissione: "2026-08-03", pasti: 790, stato: "emessa" },
+  { numero: "PRO-2026/003", committenteId: "comunita", periodo: "Giugno 2026", dataEmissione: "2026-07-01", pasti: 262, stato: "pagata" },
+  { numero: "PRO-2026/004", committenteId: "comunita", periodo: "Luglio 2026", dataEmissione: "2026-08-03", pasti: 248, stato: "emessa" },
 ];
 
 /* base della distinta di produzione, il prototipo somma le scelte fatte in demo */
@@ -562,12 +658,14 @@ export const COMMITTENTI = [
     etichettaUnita: "Reparto", pasti: 28, attivo: true,
     nota: "Modello classico della mensa aziendale, ogni dipendente compone il proprio pasto.",
     indirizzo: "Via dell'Industria 42, Varese", piva: "02114560123",
+    cf: "02114560123", pec: "amministrazione@pec.rossimanifatture.it", codiceSdi: "M5UXCR1",
     referente: "Roberto Manzi", ruoloReferente: "Ufficio del personale",
     email: "r.manzi@rossimanifatture.it", telefono: "0332 445 122",
     cutoff: "14:00 del giorno precedente",
     regolaPasto: "Composizione libera, dipendente sceglie",
     listino: "Tariffa unica, 7,50 €", frutta: false, monoporzione: false,
     prezzoUnitario: 7.5, ivaPercentuale: 10, pastiMeseDemo: 790,
+    termini: "30gg", metodoPagamento: "bonifico", regimeIva: "ordinaria", dicituraIva: "",
   },
   {
     id: "comunita", nome: "Comunità Il Ponte", tipo: "Comunità", modello: "unita",
@@ -575,12 +673,15 @@ export const COMMITTENTI = [
     etichettaUnita: "Reparto", pasti: 31, attivo: true,
     nota: "Menu fisso con poche personalizzazioni, ordine dichiarato dall'educatore di turno.",
     indirizzo: "Via Sole Luna 8, Desio (MB)", piva: "03887120968",
+    cf: "91038870968", pec: "comunitailponte@pec.it", codiceSdi: "KRRH6B9",
     referente: "Ilaria Gatti", ruoloReferente: "Responsabile struttura",
     email: "i.gatti@comunitailponte.it", telefono: "0362 998 741",
     cutoff: "16:00 del giorno precedente",
     regolaPasto: "Menu fisso, personalizzazioni per singola casa",
     listino: "Convenzione, fatturazione mensile", frutta: true, monoporzione: false,
-    prezzoUnitario: 7.5, ivaPercentuale: 10, pastiMeseDemo: 248,
+    prezzoUnitario: 7.5, ivaPercentuale: 0, pastiMeseDemo: 248,
+    termini: "60gg_fm", metodoPagamento: "bonifico", regimeIva: "senza_iva",
+    dicituraIva: "Operazione esente IVA ai sensi dell'art. 10 DPR 633/72",
   },
 ];
 

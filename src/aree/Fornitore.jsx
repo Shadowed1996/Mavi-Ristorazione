@@ -1,12 +1,15 @@
 import React from "react";
 import {
-  AGGREGATO, ALLERGENI, CATEGORIE, splitPiatto, COLORI, GIORNI, GIRI, INGREDIENTI_DIETE, MARCATORI, PIATTI, catalogoPerCategoria, etichettaGiorno, sostituisce,
+  AGGREGATO, ALLERGENI, CATEGORIE, splitPiatto, COLORI, GIORNI, GIRI, INGREDIENTI_DIETE, MARCATORI,
+  METODI_PAGAMENTO, PIATTI, REGIMI_IVA, TERMINI_PAGAMENTO, catalogoPerCategoria, etichettaGiorno, metodoPagamento,
+  ordinaProforme, regimeIva, scadenzaPagamento, sostituisce, terminiPagamento, testoCondizioni, totaliProforma,
 } from "../data.js";
 import {
   Accesso, DiscoColore, Documenti, Icone, Illustrazione, Intestazione, Messaggi,
-  Telaio, Velo, schedaPdf,
+  PastigliaProforma, Telaio, Velo, schedaPdf,
 } from "../ui.jsx";
 import { usaStato } from "../store.jsx";
+import { dataIt } from "../documento.js";
 import { generaProformaPDF } from "../proforma.js";
 import { generaManifestoConsegna } from "../manifesto.js";
 import { ModelliServizio } from "./Modelli.jsx";
@@ -729,83 +732,131 @@ function Catalogo() {
   );
 }
 
-/* ==================== fatturazione — solo proforma ==================== */
+/* ==================== fatturazione — proforma create a mano ==================== */
+const MESI = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+  "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
+
+function eurIt(n) {
+  return (Number(n) || 0).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/* il periodo da fatturare è il mese appena chiuso */
+function meseChiuso() {
+  const oggi = new Date();
+  const prec = new Date(oggi.getFullYear(), oggi.getMonth() - 1, 1);
+  return { mese: MESI[prec.getMonth()], anno: prec.getFullYear() };
+}
+
 function Fatturazione() {
   const st = usaStato();
-  const MESE = "Agosto 2026";
   const [attivo, setAttivo] = React.useState(st.committenti[0]?.id);
+  const [nuova, setNuova] = React.useState(false);
 
-  function eur(n) { return n.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  const c = st.committenti.find((x) => x.id === attivo) || st.committenti[0];
 
-  /* listino, IVA e pasti del mese vengono dal committente stesso (Impostazioni
-     per committente): ogni struttura può avere un prezzo diverso, non più un
-     prezzo unico fisso per tutti. */
-  const righe = React.useMemo(() => st.committenti.map((c) => {
-    const pasti = c.pastiMeseDemo ?? Math.round((c.pasti || 0) * 22);
-    const imponibile = pasti * c.prezzoUnitario;
-    const iva = imponibile * (c.ivaPercentuale / 100);
-    return { c, pasti, imponibile, iva, totale: imponibile + iva };
-  }), [st.committenti]);
+  /* riepilogo per committente: quello che si è davvero emesso, non una stima */
+  const righe = React.useMemo(() => st.committenti.map((x) => {
+    const elenco = ordinaProforme(st.proforme.filter((p) => p.committenteId === x.id));
+    const valide = elenco.filter((p) => p.stato !== "annullata");
+    const somma = valide.reduce((s, p) => {
+      const t = totaliProforma(p);
+      return { imponibile: s.imponibile + t.imponibile, iva: s.iva + t.iva, totale: s.totale + t.totale };
+    }, { imponibile: 0, iva: 0, totale: 0 });
+    return { c: x, elenco, valide, somma, ultima: elenco[0] || null };
+  }), [st.committenti, st.proforme]);
 
   const r = righe.find((x) => x.c.id === attivo) || righe[0];
-  const totPasti = righe.reduce((s, x) => s + x.pasti, 0);
-  const totImponibile = righe.reduce((s, x) => s + x.imponibile, 0);
-  const totIva = righe.reduce((s, x) => s + x.iva, 0);
+  const totImponibile = righe.reduce((s, x) => s + x.somma.imponibile, 0);
+  const totIva = righe.reduce((s, x) => s + x.somma.iva, 0);
+  const totProforme = righe.reduce((s, x) => s + x.valide.length, 0);
 
-  const COLONNE_PROFORMA = [
-    { header: "Struttura", key: "struttura", width: 28 },
-    { header: "Tipo", key: "tipo", width: 14 },
-    { header: "Periodo", key: "mese", width: 16 },
-    { header: "Pasti", key: "pasti", width: 10 },
-    { header: "Prezzo unitario", key: "prezzo", width: 16 },
+  function apriPdf(p) {
+    const dest = st.committenti.find((x) => x.id === p.committenteId);
+    generaProformaPDF(p, { datiAziendali: st.datiAziendali, committente: dest, avvisa: st.avvisa });
+  }
+
+  /* emissione e apertura del PDF nello stesso gesto di click: nessun await in
+     mezzo, altrimenti il browser considera la scheda un popup e la blocca */
+  function emetti(dati) {
+    const p = st.emettiProforma({ ...dati, committenteId: c.id, nomeCommittente: c.nome });
+    generaProformaPDF(p, { datiAziendali: st.datiAziendali, committente: c, avvisa: st.avvisa });
+    st.avvisa("Proforma " + p.numero + " emessa per " + c.nome);
+    setNuova(false);
+  }
+
+  const COLONNE_ELENCO = [
+    { header: "Numero", key: "numero", width: 16 },
+    { header: "Periodo", key: "periodo", width: 16 },
+    { header: "Emissione", key: "emissione", width: 14 },
+    { header: "Scadenza", key: "scadenza", width: 14 },
     { header: "Imponibile", key: "imponibile", width: 16 },
     { header: "IVA", key: "iva", width: 14 },
     { header: "Totale", key: "totale", width: 16 },
+    { header: "Stato", key: "stato", width: 14 },
   ];
-  const rigaExcel = (x) => ({
-    struttura: x.c.nome, tipo: x.c.tipo, mese: MESE, pasti: x.pasti,
-    prezzo: "€ " + eur(x.c.prezzoUnitario), imponibile: "€ " + eur(x.imponibile),
-    iva: "€ " + eur(x.iva) + " (" + x.c.ivaPercentuale + "%)", totale: "€ " + eur(x.totale),
-  });
+  const COLONNE_RIEPILOGO = [
+    { header: "Struttura", key: "struttura", width: 28 },
+    { header: "Tipo", key: "tipo", width: 14 },
+    { header: "Termini", key: "termini", width: 18 },
+    { header: "Metodo", key: "metodo", width: 20 },
+    { header: "Regime IVA", key: "regime", width: 18 },
+    { header: "Proforma", key: "proforma", width: 12 },
+    { header: "Imponibile", key: "imponibile", width: 16 },
+    { header: "IVA", key: "iva", width: 14 },
+    { header: "Totale", key: "totale", width: 16 },
+    { header: "Ultima scadenza", key: "scadenza", width: 18 },
+  ];
 
   async function scaricaExcelStruttura(x) {
     try {
       const { scaricaExcel } = await import("../excel.js");
+      const dati = x.elenco.map((p) => {
+        const t = totaliProforma(p);
+        return {
+          numero: p.numero, periodo: p.periodo, emissione: dataIt(p.dataEmissione), scadenza: dataIt(p.scadenza),
+          imponibile: "€ " + eurIt(t.imponibile), iva: "€ " + eurIt(t.iva), totale: "€ " + eurIt(t.totale),
+          stato: p.stato,
+        };
+      });
+      dati.push({
+        numero: "", periodo: "", emissione: "", scadenza: "TOTALE",
+        imponibile: "€ " + eurIt(x.somma.imponibile), iva: "€ " + eurIt(x.somma.iva),
+        totale: "€ " + eurIt(x.somma.totale), stato: x.valide.length + " valide",
+      });
       await scaricaExcel("Proforma_" + x.c.nome.replace(/[^a-zA-Z0-9]+/g, "_") + ".xlsx",
-        [{ nome: "Proforma", dati: [rigaExcel(x)], colonne: COLONNE_PROFORMA }], { datiAziendali: st.datiAziendali });
+        [{ nome: "Proforma", dati, colonne: COLONNE_ELENCO }], { datiAziendali: st.datiAziendali });
       st.avvisa("Excel di " + x.c.nome + " scaricato");
     } catch (e) {
       console.error(e);
       st.avvisa("Errore nella generazione, riprova");
     }
   }
+
   async function scaricaExcelTutte() {
     try {
       const { scaricaExcel } = await import("../excel.js");
-      const dati = righe.map(rigaExcel);
-      dati.push({ struttura: "", tipo: "", mese: "TOTALE", pasti: totPasti, prezzo: "", imponibile: "€ " + eur(totImponibile), iva: "€ " + eur(totIva), totale: "€ " + eur(totImponibile + totIva) });
-      await scaricaExcel("Proforma_MAVI_" + MESE.replace(" ", "_") + ".xlsx", [{ nome: "Proforma", dati, colonne: COLONNE_PROFORMA }], { datiAziendali: st.datiAziendali });
+      const dati = righe.map((x) => ({
+        struttura: x.c.nome, tipo: x.c.tipo,
+        termini: terminiPagamento(x.c.termini).nome,
+        metodo: metodoPagamento(x.c.metodoPagamento).nome,
+        regime: regimeIva(x.c.regimeIva).conIva ? "IVA " + (x.c.ivaPercentuale || 0) + "%" : regimeIva(x.c.regimeIva).nome,
+        proforma: x.valide.length,
+        imponibile: "€ " + eurIt(x.somma.imponibile), iva: "€ " + eurIt(x.somma.iva),
+        totale: "€ " + eurIt(x.somma.totale),
+        scadenza: x.ultima ? dataIt(x.ultima.scadenza) : "—",
+      }));
+      dati.push({
+        struttura: "", tipo: "", termini: "", metodo: "", regime: "TOTALE", proforma: totProforme,
+        imponibile: "€ " + eurIt(totImponibile), iva: "€ " + eurIt(totIva),
+        totale: "€ " + eurIt(totImponibile + totIva), scadenza: "",
+      });
+      await scaricaExcel("Proforma_MAVI_riepilogo.xlsx",
+        [{ nome: "Riepilogo", dati, colonne: COLONNE_RIEPILOGO }], { datiAziendali: st.datiAziendali });
       st.avvisa("Excel scaricato, un rigo per committente più il totale");
     } catch (e) {
       console.error(e);
       st.avvisa("Errore nella generazione, riprova");
     }
-  }
-  function generaProformaStruttura(x) {
-    generaProformaPDF(
-      [{ nome: x.c.nome, tipo: x.c.tipo, pasti: x.pasti, mese: MESE, prezzo: x.c.prezzoUnitario, ivaPercentuale: x.c.ivaPercentuale }],
-      undefined,
-      { datiAziendali: st.datiAziendali, avvisa: st.avvisa }
-    );
-    st.logga("Cucina MAVI", "Operatore", "Proforma generata", x.c.nome, "generico");
-  }
-  function generaProformaCombinata() {
-    generaProformaPDF(
-      righe.map((x) => ({ nome: x.c.nome, tipo: x.c.tipo, pasti: x.pasti, mese: MESE, prezzo: x.c.prezzoUnitario, ivaPercentuale: x.c.ivaPercentuale })),
-      undefined,
-      { datiAziendali: st.datiAziendali, avvisa: st.avvisa }
-    );
-    st.logga("Cucina MAVI", "Operatore", "Proforma generata", righe.map((x) => x.c.nome).join(", ") + " (documento unico)", "generico");
   }
 
   if (!r) return null;
@@ -814,7 +865,7 @@ function Fatturazione() {
     <>
       <Intestazione
         occhiello="Chiusura mensile" titolo="Proforma"
-        sotto="Scegli la struttura: la proforma si genera con il listino e le impostazioni di quella struttura"
+        sotto="Ogni proforma si compone a mano: righe, periodo e condizioni si decidono documento per documento"
       />
       <div className="tela">
         <div className="giorni-tab">
@@ -826,69 +877,289 @@ function Fatturazione() {
         </div>
 
         <div className="numeri">
-          <div className="numero"><div className="n-lab">Pasti nel mese</div><div className="n-val">{r.pasti}</div><div className="n-nota">{MESE}</div></div>
-          <div className="numero"><div className="n-lab">Prezzo unitario</div><div className="n-val" style={{ fontSize: 22 }}>€ {eur(r.c.prezzoUnitario)}</div><div className="n-nota">da Impostazioni per committente</div></div>
-          <div className="numero"><div className="n-lab">Imponibile</div><div className="n-val" style={{ fontSize: 22 }}>€ {eur(r.imponibile)}</div><div className="n-nota">IVA {r.c.ivaPercentuale}%, € {eur(r.iva)}</div></div>
-          <div className="numero"><div className="n-lab">Totale documento</div><div className="n-val" style={{ fontSize: 22 }}>€ {eur(r.totale)}</div><div className="n-nota">{r.c.nome}</div></div>
+          <div className="numero"><div className="n-lab">Proforma emesse</div><div className="n-val">{r.valide.length}</div><div className="n-nota">{r.elenco.length - r.valide.length} annullate</div></div>
+          <div className="numero"><div className="n-lab">Imponibile</div><div className="n-val" style={{ fontSize: 22 }}>€ {eurIt(r.somma.imponibile)}</div><div className="n-nota">IVA € {eurIt(r.somma.iva)}</div></div>
+          <div className="numero"><div className="n-lab">Totale documenti</div><div className="n-val" style={{ fontSize: 22 }}>€ {eurIt(r.somma.totale)}</div><div className="n-nota">{r.c.nome}</div></div>
+          <div className="numero"><div className="n-lab">Prezzo unitario</div><div className="n-val" style={{ fontSize: 22 }}>€ {eurIt(r.c.prezzoUnitario)}</div><div className="n-nota">{testoCondizioni(r.c)}</div></div>
         </div>
 
         <div className="pannello">
           <div className="pannello-testa">
             <h2>Proforma di {r.c.nome}</h2>
-            <span className="conta-piatti">{MESE}</span>
+            <span className="conta-piatti">{r.elenco.length} documenti</span>
+            <button className="btn piccolo" style={{ marginLeft: "auto" }} onClick={() => setNuova(true)}>
+              <Icone.piu size={14} /> Nuova proforma
+            </button>
           </div>
-          <div style={{ padding: "18px 24px", display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button className="btn" onClick={() => generaProformaStruttura(r)}>Genera proforma PDF</button>
-            <button className="btn linea" onClick={() => scaricaExcelStruttura(r)}><Icone.scarica size={16} /> Scarica Excel</button>
+          <div className="scorri">
+            <table className="dati">
+              <thead><tr><th>Numero</th><th>Periodo</th><th>Emissione</th><th>Imponibile</th><th>IVA</th><th>Totale</th><th>Scadenza</th><th>Stato</th><th /></tr></thead>
+              <tbody>
+                {r.elenco.length === 0 && (
+                  <tr><td colSpan={9} style={{ textAlign: "center", color: "var(--muto)", padding: 22 }}>
+                    Nessuna proforma per questo committente. Creane una con "Nuova proforma".
+                  </td></tr>
+                )}
+                {r.elenco.map((p) => {
+                  const t = totaliProforma(p);
+                  const annullata = p.stato === "annullata";
+                  return (
+                    <tr key={p.id} className={annullata ? "riga-annullata" : undefined}>
+                      <td className="cifra"><b>{p.numero}</b></td>
+                      <td>{p.periodo}</td>
+                      <td className="cifra">{dataIt(p.dataEmissione)}</td>
+                      <td className="cifra">€ {eurIt(t.imponibile)}</td>
+                      <td className="cifra">€ {eurIt(t.iva)}{t.conIva && <span style={{ color: "var(--muto)", fontSize: 11 }}> ({t.aliquota}%)</span>}</td>
+                      <td className="cifra"><b>€ {eurIt(t.totale)}</b></td>
+                      <td className="cifra">{dataIt(p.scadenza)}</td>
+                      <td><PastigliaProforma stato={p.stato} /></td>
+                      <td>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <button className="btn linea piccolo" onClick={() => apriPdf(p)}>PDF</button>
+                          {!annullata && (
+                            <button className="btn linea piccolo" onClick={() => st.annullaProforma(p.id)}>Annulla</button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-          <div className="pannello-piede">
-            Prezzo unitario, IVA e pasti stimati al mese si impostano in <b>Impostazioni per committente</b> →
-            {" " + r.c.nome}. Non transita dal Sistema di Interscambio — la fattura elettronica si emette dal
-            gestionale contabile.
+          <div className="pannello-piede" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <span style={{ flex: 1 }}>
+              Le condizioni proposte arrivano da <b>Impostazioni per committente</b> e restano modificabili
+              per la singola proforma. Una proforma annullata resta in elenco, anche per il cliente.
+            </span>
+            <button className="btn linea piccolo" onClick={() => scaricaExcelStruttura(r)}><Icone.scarica size={16} /> Scarica Excel</button>
           </div>
         </div>
 
         <div className="pannello">
           <div className="pannello-testa">
             <h2>Tutte le strutture</h2>
-            <span className="conta-piatti">{righe.length} committenti, {totPasti} pasti nel mese</span>
+            <span className="conta-piatti">{righe.length} committenti, {totProforme} proforma valide</span>
           </div>
           <div className="scorri">
             <table className="dati">
-              <thead><tr><th>Struttura</th><th>Tipo</th><th>Pasti</th><th>Prezzo unitario</th><th>Imponibile</th><th>IVA</th><th>Totale</th><th /></tr></thead>
+              <thead><tr><th>Struttura</th><th>Termini</th><th>Metodo</th><th>Regime IVA</th><th>Proforma</th><th>Imponibile</th><th>IVA</th><th>Totale</th><th>Ultima scadenza</th><th /></tr></thead>
               <tbody>
-                {righe.map((x) => (
-                  <tr key={x.c.id} style={x.c.id === attivo ? { background: "var(--carta)" } : undefined}>
-                    <td><b>{x.c.nome}</b></td>
-                    <td><span className="pastiglia p-neu">{x.c.tipo}</span></td>
-                    <td className="quantita">{x.pasti}</td>
-                    <td className="cifra">€ {eur(x.c.prezzoUnitario)}</td>
-                    <td className="cifra">€ {eur(x.imponibile)}</td>
-                    <td className="cifra">€ {eur(x.iva)} <span style={{ color: "var(--muto)", fontSize: 11 }}>({x.c.ivaPercentuale}%)</span></td>
-                    <td className="cifra"><b>€ {eur(x.totale)}</b></td>
-                    <td><button className="btn linea piccolo" onClick={() => setAttivo(x.c.id)}>Apri</button></td>
-                  </tr>
-                ))}
+                {righe.map((x) => {
+                  const regime = regimeIva(x.c.regimeIva);
+                  return (
+                    <tr key={x.c.id} style={x.c.id === attivo ? { background: "var(--carta)" } : undefined}>
+                      <td><b>{x.c.nome}</b><div style={{ fontSize: 11, color: "var(--muto)" }}>{x.c.tipo}</div></td>
+                      <td>{terminiPagamento(x.c.termini).nome}</td>
+                      <td>{metodoPagamento(x.c.metodoPagamento).nome}</td>
+                      <td>{regime.conIva ? "IVA " + (x.c.ivaPercentuale || 0) + "%" : <span className="pastiglia p-neu">senza IVA</span>}</td>
+                      <td className="quantita">{x.valide.length}</td>
+                      <td className="cifra">€ {eurIt(x.somma.imponibile)}</td>
+                      <td className="cifra">€ {eurIt(x.somma.iva)}</td>
+                      <td className="cifra"><b>€ {eurIt(x.somma.totale)}</b></td>
+                      <td className="cifra">{x.ultima ? dataIt(x.ultima.scadenza) : "—"}</td>
+                      <td><button className="btn linea piccolo" onClick={() => setAttivo(x.c.id)}>Apri</button></td>
+                    </tr>
+                  );
+                })}
                 <tr className="riga-totale">
-                  <td colSpan={2}><b>Totale</b></td>
-                  <td className="quantita">{totPasti}</td>
-                  <td />
-                  <td className="cifra">€ {eur(totImponibile)}</td>
-                  <td className="cifra">€ {eur(totIva)}</td>
-                  <td className="cifra"><b>€ {eur(totImponibile + totIva)}</b></td>
-                  <td />
+                  <td colSpan={4}><b>Totale</b></td>
+                  <td className="quantita">{totProforme}</td>
+                  <td className="cifra">€ {eurIt(totImponibile)}</td>
+                  <td className="cifra">€ {eurIt(totIva)}</td>
+                  <td className="cifra"><b>€ {eurIt(totImponibile + totIva)}</b></td>
+                  <td colSpan={2} />
                 </tr>
               </tbody>
             </table>
           </div>
           <div className="pannello-piede" style={{ display: "flex", gap: 10, justifyContent: "flex-end", alignItems: "center" }}>
-            <span style={{ flex: 1 }}>Un unico documento con tutte le strutture insieme, se serve.</span>
+            <span style={{ flex: 1 }}>Riepilogo di quello che è stato emesso, annullate escluse dai totali.</span>
             <button className="btn linea piccolo" onClick={scaricaExcelTutte}><Icone.scarica size={16} /> Excel di tutte</button>
-            <button className="btn piccolo" onClick={generaProformaCombinata}>Proforma unica PDF</button>
           </div>
         </div>
       </div>
+
+      {nuova && <ModuloProforma committente={r.c} datiAziendali={st.datiAziendali} onChiudi={() => setNuova(false)} onEmetti={emetti} />}
     </>
+  );
+}
+
+/* ==================== nuova proforma, righe e condizioni a mano ==================== */
+function ModuloProforma({ committente, datiAziendali, onChiudi, onEmetti }) {
+  const iniziale = meseChiuso();
+  const periodoIniziale = iniziale.mese + " " + iniziale.anno;
+  const regimeCommittente = regimeIva(committente.regimeIva);
+
+  const [mese, setMese] = React.useState(iniziale.mese);
+  const [anno, setAnno] = React.useState(iniziale.anno);
+  /* un committente appena creato non ha uno storico: si parte dai pasti
+     stimati al giorno per ventidue giorni lavorativi, poi si corregge a mano */
+  const pastiProposti = committente.pastiMeseDemo != null
+    ? committente.pastiMeseDemo
+    : Math.round((committente.pasti || 0) * 22);
+  const [righe, setRighe] = React.useState(() => [{
+    descrizione: "Pasti " + periodoIniziale,
+    quantita: pastiProposti,
+    prezzo: committente.prezzoUnitario || 0,
+  }]);
+  const [termini, setTermini] = React.useState(committente.termini || datiAziendali.terminiDefault);
+  const [metodo, setMetodo] = React.useState(committente.metodoPagamento || datiAziendali.metodoDefault);
+  const [regime, setRegime] = React.useState(regimeCommittente.id);
+  const [aliquota, setAliquota] = React.useState(regimeCommittente.conIva ? (committente.ivaPercentuale || 0) : 10);
+  const [dicitura, setDicitura] = React.useState(committente.dicituraIva || regimeCommittente.dicitura);
+  const [note, setNote] = React.useState("");
+
+  const periodo = mese + " " + anno;
+  const conIva = regimeIva(regime).conIva;
+  const totali = totaliProforma({ righe, regimeIva: regime, aliquota });
+  const scadenza = scadenzaPagamento(new Date(), termini);
+  const valido = righe.some((r) => r.descrizione.trim() && (Number(r.quantita) || 0) > 0);
+
+  /* cambiando periodo si riscrive la descrizione solo delle righe rimaste
+     quelle proposte: una riga scritta a mano non va toccata */
+  function cambiaPeriodo(nuovoMese, nuovoAnno) {
+    const vecchia = "Pasti " + mese + " " + anno;
+    const nuovaDescrizione = "Pasti " + nuovoMese + " " + nuovoAnno;
+    setRighe((rs) => rs.map((r) => (r.descrizione === vecchia ? { ...r, descrizione: nuovaDescrizione } : r)));
+    setMese(nuovoMese);
+    setAnno(nuovoAnno);
+  }
+
+  const cambiaRiga = (i, campo, valore) =>
+    setRighe((rs) => rs.map((r, k) => (k === i ? { ...r, [campo]: valore } : r)));
+  const aggiungiRiga = () =>
+    setRighe((rs) => [...rs, { descrizione: "", quantita: 1, prezzo: committente.prezzoUnitario || 0 }]);
+  const togliRiga = (i) => setRighe((rs) => rs.filter((_, k) => k !== i));
+
+  function cambiaRegime(id) {
+    setRegime(id);
+    const r = regimeIva(id);
+    if (!r.conIva && !dicitura.trim()) setDicitura(r.dicitura);
+    if (r.conIva && !(Number(aliquota) > 0)) setAliquota(10);
+  }
+
+  function invia() {
+    if (!valido) return;
+    onEmetti({
+      periodo,
+      righe: righe.filter((r) => r.descrizione.trim()),
+      termini, metodoPagamento: metodo, regimeIva: regime,
+      aliquota: Number(aliquota) || 0,
+      dicituraIva: dicitura,
+      note: note.trim(),
+    });
+  }
+
+  return (
+    <Velo largo onChiudi={onChiudi}>
+      <div className="scelta-testa">
+        <div className="occhiello">Nuova proforma</div>
+        <h2>{committente.nome}</h2>
+        <p>Righe e condizioni valgono solo per questo documento: le impostazioni del committente restano come sono.</p>
+      </div>
+      <div className="modulo" style={{ padding: "0 26px 8px" }}>
+        <div className="modulo-riga due">
+          <label>
+            <span>Mese del periodo</span>
+            <select value={mese} onChange={(e) => cambiaPeriodo(e.target.value, anno)}>
+              {MESI.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Anno</span>
+            <input type="number" min="2020" max="2099" value={anno}
+              onChange={(e) => cambiaPeriodo(mese, Number(e.target.value) || anno)} />
+          </label>
+        </div>
+
+        <div className="pro-righe">
+          <div className="pro-righe-testa">
+            <span>Righe del documento</span>
+            <button type="button" className="btn linea piccolo" onClick={aggiungiRiga}>
+              <Icone.piu size={14} /> Aggiungi riga
+            </button>
+          </div>
+          {righe.map((r, i) => (
+            <div key={i} className="pro-riga">
+              <label>
+                <span>Descrizione</span>
+                <input type="text" value={r.descrizione} placeholder="Es. Pasti Agosto 2026"
+                  onChange={(e) => cambiaRiga(i, "descrizione", e.target.value)} />
+              </label>
+              <label>
+                <span>Quantità</span>
+                <input type="number" min="0" step="1" value={r.quantita}
+                  onChange={(e) => cambiaRiga(i, "quantita", e.target.value)} />
+              </label>
+              <label>
+                <span>Prezzo unit.</span>
+                <input type="number" min="0" step="0.10" value={r.prezzo}
+                  onChange={(e) => cambiaRiga(i, "prezzo", e.target.value)} />
+              </label>
+              <div className="pro-riga-importo">
+                <span>€ {eurIt((Number(r.quantita) || 0) * (Number(r.prezzo) || 0))}</span>
+                <button type="button" onClick={() => togliRiga(i)} disabled={righe.length === 1}
+                  aria-label="togli riga" title="Togli riga">
+                  <Icone.x size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="modulo-riga due">
+          <label>
+            <span>Termini di pagamento</span>
+            <select value={termini} onChange={(e) => setTermini(e.target.value)}>
+              {TERMINI_PAGAMENTO.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Metodo di pagamento</span>
+            <select value={metodo} onChange={(e) => setMetodo(e.target.value)}>
+              {METODI_PAGAMENTO.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
+            </select>
+          </label>
+        </div>
+        <div className="modulo-riga due">
+          <label>
+            <span>Regime IVA</span>
+            <select value={regime} onChange={(e) => cambiaRegime(e.target.value)}>
+              {REGIMI_IVA.map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Aliquota IVA %</span>
+            <input type="number" min="0" max="100" step="1" value={conIva ? aliquota : 0} disabled={!conIva}
+              onChange={(e) => setAliquota(e.target.value)} />
+          </label>
+        </div>
+        {!conIva && (
+          <label className="modulo-blocco">
+            <span>Dicitura di esenzione</span>
+            <input type="text" value={dicitura} onChange={(e) => setDicitura(e.target.value)}
+              placeholder="Operazione esente IVA ai sensi dell'art. 10 DPR 633/72" />
+          </label>
+        )}
+        <label className="modulo-blocco">
+          <span>Note sul documento</span>
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2}
+            placeholder="Facoltative, finiscono in fondo alla proforma" />
+        </label>
+
+        <div className="pro-anteprima">
+          <div><span>Imponibile</span><b>€ {eurIt(totali.imponibile)}</b></div>
+          <div><span>{conIva ? "IVA " + (Number(aliquota) || 0) + "%" : "IVA, operazione esente"}</span><b>€ {eurIt(totali.iva)}</b></div>
+          <div className="forte"><span>Totale documento</span><b>€ {eurIt(totali.totale)}</b></div>
+          <div><span>Scadenza</span><b>{dataIt(scadenza)}</b></div>
+        </div>
+      </div>
+      <div className="scelta-piede modulo-piede">
+        <button className="btn linea" onClick={onChiudi}>Annulla</button>
+        <button className="btn" disabled={!valido} onClick={invia}>Emetti e apri PDF</button>
+      </div>
+    </Velo>
   );
 }
 
@@ -1956,6 +2227,19 @@ function GestionePortale() {
     );
   }
 
+  function campoScelta(label, chiave, opzioni, nota) {
+    return (
+      <div style={{ marginBottom: 14 }}>
+        <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muto)", marginBottom: 4 }}>{label}</label>
+        <select value={dati[chiave] || opzioni[0].id} onChange={(e) => setDati((d) => ({ ...d, [chiave]: e.target.value }))}
+          style={{ width: "100%", fontSize: 13, padding: "8px 10px" }}>
+          {opzioni.map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}
+        </select>
+        {nota && <div style={{ fontSize: 11.5, color: "var(--muto)", marginTop: 4 }}>{nota}</div>}
+      </div>
+    );
+  }
+
   function toggleNotifica(chiave, label) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--linea)" }}>
@@ -1998,24 +2282,37 @@ function GestionePortale() {
               </div>
             </div>
             <div className="pannello-piede">
-              Questi dati vengono usati nella generazione delle proforma e nei documenti del portale.
-              I campi vuoti appariranno come placeholder nelle proforma.
+              Ragione sociale, indirizzo, dati fiscali e contatti compaiono nella testata di ogni
+              documento stampabile del portale: proforma, manifesto di consegna e scheda piatto.
+              Quello che resta vuoto esce nel documento come segnaposto in corsivo terracotta.
             </div>
           </div>
         )}
 
         {tab === "fatturazione" && (
           <div className="pannello">
-            <div className="pannello-testa"><h2>Impostazioni fatturazione</h2></div>
+            <div className="pannello-testa"><h2>Condizioni predefinite per i nuovi committenti</h2></div>
             <div style={{ padding: "20px 24px" }}>
-              {campo("Condizioni di pagamento", "condizioniPagamento")}
+              <p style={{ fontSize: 12.5, color: "var(--muto)", margin: "0 0 16px" }}>
+                Sono la proposta di partenza quando si crea un committente. Ogni committente poi le
+                cambia in <b>Impostazioni per committente</b>, e ogni singola proforma può scostarsene
+                al momento dell'emissione. Cambiare qui non tocca i committenti già censiti.
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px" }}>
+                {campoScelta("Termini di pagamento", "terminiDefault", TERMINI_PAGAMENTO)}
+                {campoScelta("Metodo di pagamento", "metodoDefault", METODI_PAGAMENTO)}
+                {campoScelta("Regime IVA", "regimeIvaDefault", REGIMI_IVA)}
+                {campo("Dicitura di esenzione IVA", "dicituraIvaDefault")}
+              </div>
               {campo("Note standard proforma", "noteProforma", "area")}
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
                 <button className="btn" onClick={salvaDati}>Salva</button>
               </div>
             </div>
             <div className="pannello-piede">
-              Condizioni e note vengono inserite automaticamente in ogni proforma generata.
+              L'<b>IBAN</b> della scheda Dati aziendali finisce nel blocco "Condizioni di pagamento"
+              della proforma, quando il metodo è bonifico o SDD. Le <b>note standard</b> finiscono in
+              fondo a ogni proforma, sopra le note scritte per il singolo documento.
             </div>
           </div>
         )}
@@ -2255,6 +2552,22 @@ function ImpostazioniServizio() {
   const [nuovoReparto, setNuovoReparto] = React.useState("");
   const c = strutture.find((s) => s.id === attivo) || strutture[0];
   const cambia = (campo, val) => st.aggiornaCommittente(attivo, { [campo]: val });
+  const conIva = regimeIva(c.regimeIva).conIva;
+
+  /* passando a "senza IVA" l'aliquota si azzera e si propone la dicitura di
+     esenzione; tornando a ordinaria si riparte dal 10%, che è l'aliquota
+     della ristorazione collettiva */
+  function cambiaRegime(id) {
+    const r = regimeIva(id);
+    const patch = { regimeIva: id };
+    if (!r.conIva) {
+      patch.ivaPercentuale = 0;
+      if (!(c.dicituraIva || "").trim()) patch.dicituraIva = r.dicitura;
+    } else if (!(Number(c.ivaPercentuale) > 0)) {
+      patch.ivaPercentuale = 10;
+    }
+    st.aggiornaCommittente(c.id, patch);
+  }
 
   function aggiungiReparto(e) {
     e.preventDefault();
@@ -2274,7 +2587,7 @@ function ImpostazioniServizio() {
       <Intestazione
         occhiello="Configurazione servizio"
         titolo="Impostazioni per committente"
-        sotto="Ogni struttura ha le sue regole. Qui si definiscono orari limite, listino, composizione del pasto"
+        sotto="Ogni struttura ha le sue regole. Qui si definiscono orari limite, listino, composizione del pasto e condizioni di fatturazione"
         azioni={<button className="btn piccolo" onClick={() => st.avvisa("Impostazioni salvate per " + c.nome)}>Salva</button>}
       />
       <div className="tela">
@@ -2304,21 +2617,84 @@ function ImpostazioniServizio() {
               <span className="so-lab">Prezzo unitario a pasto</span>
               <input type="number" min="0" step="0.10" value={c.prezzoUnitario}
                 onChange={(e) => cambia("prezzoUnitario", Number(e.target.value) || 0)} />
-              <em>Usato per calcolare imponibile e proforma di questo committente.</em>
+              <em>Precompila le righe di ogni nuova proforma di questo committente.</em>
             </label>
-            <label>
-              <span className="so-lab">IVA</span>
-              <input type="number" min="0" max="100" step="1" value={c.ivaPercentuale}
-                onChange={(e) => cambia("ivaPercentuale", Number(e.target.value) || 0)} />
-              <em>Percentuale applicata sull'imponibile in fattura e proforma.</em>
-            </label>
-          </div>
-          <div className="impo-riga">
             <label>
               <span className="so-lab">Regola di composizione del pasto</span>
               <input type="text" value={c.regolaPasto} onChange={(e) => cambia("regolaPasto", e.target.value)} />
               <em>Base per l'indicatore di equilibrio nel vassoio del commensale.</em>
             </label>
+          </div>
+        </div>
+
+        <div className="pannello">
+          <div className="pannello-testa">
+            <h2>Condizioni di fatturazione</h2>
+            <span className="conta-piatti">{testoCondizioni(c)}</span>
+          </div>
+          <div style={{ padding: "18px 24px" }}>
+            <div className="impo-riga">
+              <label>
+                <span className="so-lab">Termini di pagamento</span>
+                <select value={c.termini || "30gg"} onChange={(e) => cambia("termini", e.target.value)}>
+                  {TERMINI_PAGAMENTO.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
+                </select>
+                <em>I termini "fine mese" contano i giorni dall'ultimo giorno del mese di emissione.</em>
+              </label>
+              <label>
+                <span className="so-lab">Metodo di pagamento</span>
+                <select value={c.metodoPagamento || "bonifico"} onChange={(e) => cambia("metodoPagamento", e.target.value)}>
+                  {METODI_PAGAMENTO.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
+                </select>
+                <em>Con bonifico e SDD la proforma riporta l'IBAN dei Dati aziendali.</em>
+              </label>
+            </div>
+            <div className="impo-riga">
+              <label>
+                <span className="so-lab">Regime IVA</span>
+                <select value={c.regimeIva || "ordinaria"} onChange={(e) => cambiaRegime(e.target.value)}>
+                  {REGIMI_IVA.map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
+                </select>
+                <em>Senza IVA la proforma espone comunque la riga IVA a zero, con la dicitura.</em>
+              </label>
+              <label>
+                <span className="so-lab">Aliquota IVA %</span>
+                <input type="number" min="0" max="100" step="1" value={c.ivaPercentuale} disabled={!conIva}
+                  onChange={(e) => cambia("ivaPercentuale", Number(e.target.value) || 0)} />
+                <em>{conIva ? "Applicata sull'imponibile di ogni proforma." : "Disattivata: il regime scelto è senza IVA."}</em>
+              </label>
+            </div>
+            {!conIva && (
+              <div className="impo-riga">
+                <label style={{ gridColumn: "1 / -1" }}>
+                  <span className="so-lab">Dicitura di esenzione</span>
+                  <input type="text" value={c.dicituraIva || ""} onChange={(e) => cambia("dicituraIva", e.target.value)}
+                    placeholder="Operazione esente IVA ai sensi dell'art. 10 DPR 633/72" />
+                  <em>Stampata nel blocco Condizioni della proforma.</em>
+                </label>
+              </div>
+            )}
+            <div className="impo-riga tre">
+              <label>
+                <span className="so-lab">Codice fiscale</span>
+                <input type="text" value={c.cf || ""} onChange={(e) => cambia("cf", e.target.value)} />
+                <em>Se diverso dalla P.IVA.</em>
+              </label>
+              <label>
+                <span className="so-lab">PEC</span>
+                <input type="text" value={c.pec || ""} onChange={(e) => cambia("pec", e.target.value)} />
+                <em>Recapito per la fattura elettronica.</em>
+              </label>
+              <label>
+                <span className="so-lab">Codice destinatario SDI</span>
+                <input type="text" value={c.codiceSdi || ""} onChange={(e) => cambia("codiceSdi", e.target.value)} />
+                <em>Sette caratteri, in alternativa alla PEC.</em>
+              </label>
+            </div>
+          </div>
+          <div className="pannello-piede">
+            Queste condizioni precompilano ogni nuova proforma di {c.nome} in <b>Fatturazione</b>, dove
+            restano modificabili per il singolo documento. Le proforma già emesse non cambiano.
           </div>
         </div>
 
