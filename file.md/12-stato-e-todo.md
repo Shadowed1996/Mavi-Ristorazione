@@ -64,7 +64,10 @@ dalla tabella senza bisogno di una decisione separata.
 
 - Prezzi, quota aziendale, visibilità del prezzo al dipendente.
 - Reparti aziendali: come funzionano davvero.
-- Se servono più listini e se serve la cena oltre al pranzo.
+- Regola di scadenza "fine mese" (oggi: giorni contati dall'ultimo giorno del
+  mese di emissione) e dicitura di esenzione IVA da usare davvero.
+- Se la "base demo" di Produzione e la stima delle presenze non trasmesse
+  vanno tenute anche in produzione o tolte.
 - Formato reale delle etichette termiche e modello di stampante.
 
 ## Sviluppi tecnici aperti
@@ -85,10 +88,29 @@ note di preparazione.
 
 ### Altri
 
-- Export PDF vero lato server. Oggi `proforma.js` e `manifesto.js` producono
-  HTML stampabile.
+- Export PDF vero lato server. Oggi `documento.js` e i moduli che lo usano
+  producono HTML stampabile che il browser salva in PDF.
 - Import Excel dell'anagrafica dipendenti.
 - Persistenza: oggi non esiste. Tutto vive in memoria, tranne il tema.
+- Numeri fissi rimasti nel cruscotto del referente (prenotazioni, pasti del
+  mese, diete): decorativi, non calcolati.
+
+## TO DO MAVI del 14 settembre 2026 — fatto in questa sessione
+
+Nove punti lasciati in `TO DO MAVI.txt` sul Desktop, lavorati in parallelo da
+agenti separati su un clone git (branch `todo-14-settembre`). Stato:
+
+- **CSS email e telefono in Modifica profilo** — fatto (`styles.css`).
+- **Pazienti con pranzo e cena indipendenti** — fatto (`08-portale-comunita.md`).
+- **Fatturazione per committente e proforma manuali** — fatto
+  (`09b-portale-mavi-gestione.md`, `03-store.md`, `04-dati.md`).
+- **Ogni piatto impostabile come fisso** — fatto (`09b-portale-mavi-gestione.md`).
+- **Export PDF strutturato** — fatto: `documento.js` (`10-export-e-documenti.md`).
+- **Export PDF in azienda non funzionava** — fatto: `resoconto.js`, nessun
+  bottone PDF finto rimasto.
+- **Riepilogo del giorno per il referente** — fatto (`07-portale-referente.md`).
+- **Permessi e ruoli applicati** — vedi `02-architettura.md` e `09b`.
+- **Produzione per giorno e settimana con stampa** — vedi `09-portale-mavi.md`.
 
 ## TO DO di Filippo del 12 settembre 2026 — fatto in questa sessione
 

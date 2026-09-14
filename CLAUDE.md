@@ -135,7 +135,8 @@ quello che serve al task in corso.
 | `file.md/06-portale-dipendente.md` | menu del giorno, vassoio, equilibrio |
 | `file.md/07-portale-referente.md` | cruscotto azienda, resoconti, fatture |
 | `file.md/08-portale-comunita.md` | pazienti, diete, presenze, resoconti |
-| `file.md/09-portale-mavi.md` | produzione, etichette, committenti, gestione |
+| `file.md/09-portale-mavi.md` | produzione, ordini in arrivo, etichette, committenti |
+| `file.md/09b-portale-mavi-gestione.md` | menu, catalogo, impostazioni, fatturazione, ruoli e gestione |
 | `file.md/10-export-e-documenti.md` | Excel, template diete, proforma PDF |
 | `file.md/11-convenzioni.md` | regole di stile del codice, trappole note |
 | `file.md/12-stato-e-todo.md` | cosa manca, decisioni aperte con il cliente |
@@ -169,8 +170,10 @@ Login unico, password `dimostrazione` per tutti.
 |---|---|---|
 | Antonella Rossi | azienda | dipendente |
 | Roberto Manzi | azienda | referente |
-| Samuele Ferri | comunità | educatore (sola lettura sulle diete) |
+| Samuele Ferri | comunità | educatore (solo il proprio reparto, ruolo configurabile) |
 | Ilaria Gatti | comunità | responsabile |
-| Cucina MAVI | mavi | fornitore |
+| Cucina MAVI | mavi | fornitore (ruolo bloccato, non può chiudersi fuori) |
 
-Dettagli in `file.md/13-demo.md`.
+Ruoli e permessi si configurano da Cucina MAVI › Gestione portale › Ruoli e
+permessi e si applicano subito a voci di menu e azioni. Dettagli in
+`file.md/13-demo.md` e `file.md/09b-portale-mavi-gestione.md`.

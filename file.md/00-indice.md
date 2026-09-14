@@ -57,11 +57,16 @@ Anagrafica pazienti, scheda dieta settimanale su cinque giorni con pranzo e
 cena, modifica inline, import ed export Excel della dieta, presenze del giorno,
 resoconti giorno e settimana.
 
-### 09 — Portale MAVI
+### 09 — Portale MAVI, operatività
 `09-portale-mavi.md`
-Distinta di produzione, ordini in arrivo, giri di consegna, etichette pasto,
-committenti, menu della settimana, catalogo, impostazioni per committente e reparti,
-proforma, log operazioni, gestione portale.
+Distinta di produzione per giorno e settimana, ordini in arrivo, giri di
+consegna, etichette pasto, committenti.
+
+### 09b — Portale MAVI, gestione
+`09b-portale-mavi-gestione.md`
+Menu della settimana e piatti fissi, catalogo, impostazioni per committente e
+reparti, condizioni di fatturazione, proforma create a mano, log operazioni,
+gestione portale con ruoli e permessi.
 
 ### 10 — Export e documenti
 `10-export-e-documenti.md`

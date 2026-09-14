@@ -1,12 +1,20 @@
 import React from "react";
 import {
-  AGGREGATO, ALLERGENI, CATEGORIE, splitPiatto, COLORI, GIORNI, GIRI, INGREDIENTI_DIETE, MARCATORI, PIATTI, catalogoPerCategoria, sostituisce,
+  ALLERGENI, CATEGORIE, splitPiatto, COLORI, DIPENDENTI, ETICHETTE_PORTALE, GIORNI, GIORNI_SETT, GIRI,
+  INGREDIENTI_DIETE, MARCATORI, METODI_PAGAMENTO, PASTI_TIPO, PAZIENTI_COMUNITA, PERMESSI, PIATTI,
+  REGIMI_IVA, TERMINI_PAGAMENTO, catalogoPerCategoria, etichettaGiorno, menuDelGiorno, metodoPagamento,
+  ordinaProforme, pastiDi, permessiDelPortale, portateServite, regimeIva, scadenzaPagamento, sostituisce,
+  terminiPagamento, testoCondizioni, totaliProforma,
 } from "../data.js";
 import {
-  Accesso, DiscoColore, Documenti, Icone, Illustrazione, Intestazione, Messaggi,
-  Telaio, Velo, schedaPdf,
+  Accesso, DiscoColore, Documenti, Icone, Illustrazione, Intestazione, Messaggi, NessunPermesso,
+  PastigliaProforma, Telaio, Velo, schedaPdf, usaVociPermesse,
 } from "../ui.jsx";
 import { usaStato } from "../store.jsx";
+import { dataIt, giornoDataIt } from "../documento.js";
+import { generaDistintaPDF, generaDistintaSettimanaPDF } from "../resoconto.js";
+import { generaProformaPDF } from "../proforma.js";
+import { generaManifestoConsegna } from "../manifesto.js";
 import { ModelliServizio } from "./Modelli.jsx";
 
 const VOCI = [
@@ -24,10 +32,25 @@ const VOCI = [
   ["documenti", "Documenti", Icone.lista],
 ];
 
-export default function Fornitore({ diretto, onEsci }) {
+const PERMESSO_PAGINA = {
+  produzione: "produzione.vedi",
+  flussi: "flussi.vedi",
+  consegne: "consegne.vedi",
+  etichette: "etichette.vedi",
+  modelli: "modelli.vedi",
+  impostazioni: "impostazioni.vedi",
+  settimana: "menu.vedi",
+  catalogo: "catalogo.vedi",
+  fatturazione: "fatturazione.vedi",
+  log: "log.vedi",
+  gestione: "gestione.vedi",
+  documenti: "documenti.vedi",
+};
+
+export default function Fornitore({ diretto, onEsci, utente }) {
   const [dentro, setDentro] = React.useState(!!diretto);
-  const [pagina, setPagina] = React.useState("produzione");
   const st = usaStato();
+  const [voci, pagina, setPagina] = usaVociPermesse(VOCI, PERMESSO_PAGINA);
 
   if (!dentro)
     return (
@@ -51,14 +74,19 @@ export default function Fornitore({ diretto, onEsci }) {
     <Telaio
       area="fornitore"
       marchio="Portale fornitore"
-      ruolo="MAVI Ristorazione"
-      utente={{ iniziali: "MV", nome: "Cucina centrale", sotto: "MAVI Ristorazione" }}
-      chiaveUtente="cucina.mavi"
-      voci={VOCI}
+      ruolo={(st.ruoloSessione && st.ruoloSessione.nome) || "MAVI Ristorazione"}
+      utente={{
+        iniziali: (utente && utente.iniziali) || "MV",
+        nome: (utente && utente.nome) || "Cucina centrale",
+        sotto: (utente && utente.committente) || "MAVI Ristorazione",
+      }}
+      chiaveUtente={(utente && utente.u) || "cucina.mavi"}
+      voci={voci}
       pagina={pagina}
       setPagina={setPagina}
       onEsci={() => (onEsci ? onEsci() : null)}
     >
+      {voci.length === 0 && <NessunPermesso onEsci={onEsci} />}
       {pagina === "produzione" && <Produzione />}
       {pagina === "flussi" && <FlussiOrdine />}
       {pagina === "consegne" && <GiriConsegna />}
@@ -70,86 +98,474 @@ export default function Fornitore({ diretto, onEsci }) {
       {pagina === "fatturazione" && <Fatturazione />}
       {pagina === "log" && <LogOperazioni />}
       {pagina === "gestione" && <GestionePortale />}
-      {pagina === "documenti" && <Documenti gestibile />}
+      {pagina === "documenti" && (
+        <Documenti soloPubblici={!st.puo("documenti.riservati")} gestibile={st.puo("documenti.gestisci")} />
+      )}
       <Messaggi lista={st.messaggi} />
     </Telaio>
   );
 }
 
-/* ==================== distinta di produzione, multi struttura ==================== */
+/* ==================== distinta di produzione, per giorno e per settimana ==================== */
+
+/* La settimana della demo è quella di GIORNI; si apre sul mercoledì, il giorno
+   su cui sono seminati gli ordini nominativi dell'azienda. */
+const GIORNO_APERTURA = 2;
+const ETICHETTA_SETTIMANA = "Settimana dal " + dataIt(GIORNI[0].data).slice(0, 5)
+  + " al " + dataIt(GIORNI[GIORNI.length - 1].data);
+
+/* Coperti stimati dell'azienda, uno per giornata. Finché i dipendenti non
+   confermano, la cucina deve comunque avere un ordine di grandezza su cui
+   lavorare: sono numeri deterministici, dichiarati sempre come stima e mai
+   confusi con un ordine trasmesso. */
+const COPERTI_STIMA_AZIENDA = [26, 24, 28, 25, 22];
+
+/* Peso di scelta per posizione nel menu del giorno: il primo piatto in elenco è
+   il più richiesto. I pesi si normalizzano sul numero di piatti realmente a
+   menu, così la somma delle porzioni resta esattamente il numero di coperti. */
+const PESI_SCELTA = [40, 26, 18, 10, 6];
+const PORTATE_STIMA = ["primo", "secondo", "contorno"];
+const NOME_CATEGORIA = CATEGORIE.reduce((o, c) => { o[c.id] = c.nome; return o; }, {});
+const ORDINE_CATEGORIA = CATEGORIE.map((c) => c.id);
+
+function ripartisci(totale, quanti) {
+  if (quanti <= 0 || totale <= 0) return [];
+  const pesi = Array.from({ length: quanti }, (unused, i) => PESI_SCELTA[i] || 4);
+  const somma = pesi.reduce((a, b) => a + b, 0);
+  const quote = pesi.map((p) => Math.floor((totale * p) / somma));
+  let resto = totale - quote.reduce((a, b) => a + b, 0);
+  for (let i = 0; resto > 0; i = (i + 1) % quanti) {
+    quote[i] += 1;
+    resto -= 1;
+  }
+  return quote;
+}
+
+function ordinaVoci(a, b) {
+  const posA = ORDINE_CATEGORIA.indexOf(a.categoria);
+  const posB = ORDINE_CATEGORIA.indexOf(b.categoria);
+  if (posA !== posB) return posA - posB;
+  if (b.totale !== a.totale) return b.totale - a.totale;
+  return a.nome.localeCompare(b.nome, "it");
+}
+
+/* dieta dichiarata in anagrafica dipendenti: "riservata" resta riservata, il
+   portale sa che c'è una prescrizione, non cosa contiene */
+function dietaDipendente(nome) {
+  const chiave = String(nome || "").trim().toLowerCase();
+  const d = DIPENDENTI.find((x) => x.n.toLowerCase() === chiave);
+  if (!d || d.dieta === "nessuna") return null;
+  if (d.dieta === "riservata") {
+    return { tipoDieta: "Riservata", note: "Prescrizione non visibile al portale, chiedere al referente aziendale" };
+  }
+  return { tipoDieta: d.dieta.charAt(0).toUpperCase() + d.dieta.slice(1), note: "" };
+}
+
+/* Distinta di una giornata: una voce per piatto con il contributo di ogni
+   committente, i coperti per committente e le diete particolari delle persone
+   in elenco. `pasti` sono i pasti chiesti alla comunità (pranzo, cena o
+   entrambi); l'azienda serve solo il pranzo.
+   L'azienda somma le righe nominative già confermate per quel giorno e una
+   stima deterministica sul menu del giorno; la comunità usa le presenze
+   trasmesse per quel giorno e pasto e, se non ce ne sono, stima dalle diete
+   dei pazienti censiti. */
+function distintaDelGiorno({ committenti, indiceGiorno, menu, nominativi, presenze, pasti, idPerNome }) {
+  const voci = new Map();
+  const contributi = new Map();
+  const diete = new Map();
+
+  const contributo = (id) => {
+    if (!contributi.has(id)) contributi.set(id, { coperti: 0, porzioni: 0, trasmesso: false, stima: false });
+    return contributi.get(id);
+  };
+
+  const aggiungi = (testo, categoria, idCommittente, quanti) => {
+    const nome = splitPiatto(testo).nome;
+    if (!nome || nome === "—" || !(quanti > 0)) return;
+    const chiave = categoria + "|" + nome.toLowerCase();
+    if (!voci.has(chiave)) {
+      const idPiatto = idPerNome.get(nome.toLowerCase()) || "";
+      voci.set(chiave, {
+        chiave, nome, categoria, idPiatto,
+        colore: idPiatto ? PIATTI[idPiatto].col : "",
+        per: {}, totale: 0,
+      });
+    }
+    const voce = voci.get(chiave);
+    voce.per[idCommittente] = (voce.per[idCommittente] || 0) + quanti;
+    voce.totale += quanti;
+    contributo(idCommittente).porzioni += quanti;
+  };
+
+  const azienda = committenti.find((c) => c.id === "azienda");
+  if (azienda) {
+    const confermati = nominativi.filter((n) => n.indiceGiorno === indiceGiorno);
+    confermati.forEach((r) => {
+      aggiungi(r.primo, "primo", azienda.id, 1);
+      aggiungi(r.secondo, "secondo", azienda.id, 1);
+      aggiungi(r.contorno, "contorno", azienda.id, 1);
+      aggiungi(r.unico, "unico", azienda.id, 1);
+      const dieta = dietaDipendente(r.nome);
+      if (dieta) {
+        diete.set("az|" + r.nome, {
+          committente: azienda.id, nome: r.nome,
+          reparto: r.reparto || azienda.nome, tipoDieta: dieta.tipoDieta, note: dieta.note,
+        });
+      }
+    });
+    if (confermati.length) {
+      contributo(azienda.id).coperti += confermati.length;
+      contributo(azienda.id).trasmesso = true;
+    }
+    const stimati = COPERTI_STIMA_AZIENDA[indiceGiorno] || 0;
+    if (stimati > 0) {
+      PORTATE_STIMA.forEach((categoria) => {
+        const lista = menuDelGiorno(menu, indiceGiorno, categoria).filter((id) => PIATTI[id]);
+        ripartisci(stimati, lista.length).forEach((q, i) => aggiungi(PIATTI[lista[i]].n, categoria, azienda.id, q));
+      });
+      contributo(azienda.id).coperti += stimati;
+      contributo(azienda.id).stima = true;
+    }
+  }
+
+  const comunita = committenti.find((c) => c.id === "comunita");
+  if (comunita) {
+    const giornoSett = GIORNI_SETT[indiceGiorno] || "";
+    const segnaDieta = (chiave, p) => {
+      if (!p.tipo_dieta || p.tipo_dieta === "Standard") return;
+      diete.set(chiave, {
+        committente: comunita.id, nome: p.nome, reparto: p.stanza,
+        tipoDieta: p.tipo_dieta, note: p.note || "",
+      });
+    };
+    pasti.forEach((pasto) => {
+      const trasmesse = presenze.filter((r) => r.giorno === giornoSett && r.pasto === pasto);
+      if (trasmesse.length) {
+        trasmesse.forEach((r) => {
+          portateServite(r.dieta).forEach((categoria) => aggiungi(r.dieta[categoria], categoria, comunita.id, 1));
+          segnaDieta("com|" + r.id, r);
+        });
+        contributo(comunita.id).coperti += trasmesse.length;
+        contributo(comunita.id).trasmesso = true;
+        return;
+      }
+      PAZIENTI_COMUNITA.forEach((p) => {
+        if (!pastiDi(p).includes(pasto)) return;
+        const dieta = (p.dieta || {})[giornoSett] ? p.dieta[giornoSett][pasto] : null;
+        const portate = portateServite(dieta);
+        if (!portate.length) return;
+        portate.forEach((categoria) => aggiungi(dieta[categoria], categoria, comunita.id, 1));
+        segnaDieta("com|" + p.id, p);
+        contributo(comunita.id).coperti += 1;
+        contributo(comunita.id).stima = true;
+      });
+    });
+  }
+
+  return { voci: [...voci.values()], contributi, diete: [...diete.values()] };
+}
+
 function Produzione() {
   const st = usaStato();
   const committenti = st.committenti;
+  const [vista, setVista] = React.useState("giorno");
+  const [giorno, setGiorno] = React.useState(GIORNO_APERTURA);
   const [filtro, setFiltro] = React.useState("tutte");
+  const [pasto, setPasto] = React.useState("entrambi");
 
-  /* aggregato azienda dai vassoi confermati + AGGREGATO base */
-  const aggAzienda = React.useMemo(() => {
-    const a = { ...AGGREGATO };
-    Object.keys(st.confermati).forEach((g) => {
-      Object.values(st.ordini[g] || {}).forEach((id) => { a[id] = (a[id] || 0) + 1; });
-    });
-    return a;
-  }, [st.ordini, st.confermati]);
+  /* i piatti delle diete sono testo libero, non codici: per il colore WHP si
+     risale all'id di catalogo dal nome. Dipende da st.versione perché PIATTI è
+     mutato fuori da React, vedi file.md/11-convenzioni.md */
+  const idPerNome = React.useMemo(() => {
+    const indice = new Map();
+    Object.keys(PIATTI).forEach((id) => indice.set(PIATTI[id].n.trim().toLowerCase(), id));
+    return indice;
+  }, [st.versione]);
 
-  /* aggregato comunità: contiamo le teste per dieta e supponiamo il menu del giorno */
-  const contaUnita = (righe) =>
-    righe.reduce((s, r) => s + Object.keys(r).filter((k) => k !== "unita").reduce((x, k) => x + r[k], 0), 0);
-  const aggComunita = contaUnita(st.unita.comunita || []);
+  const pasti = React.useMemo(() => (pasto === "entrambi" ? PASTI_TIPO : [pasto]), [pasto]);
 
-  /* piatti del giorno per struttura, usiamo i primi tre del menu di mercoledì */
-  const menuOggi = ["ris_fun", "pol_sug", "ver_gri", "pas_arr"];
-  const perStruttura = {
-    azienda: aggAzienda,
-    comunita: menuOggi.slice(0, 3).reduce((o, id, i) => { o[id] = Math.round(aggComunita / 3); return o; }, {}),
+  const giorni = React.useMemo(() => GIORNI.map((unused, i) => distintaDelGiorno({
+    committenti, indiceGiorno: i, menu: st.menu, nominativi: st.nominativiAzienda,
+    presenze: st.presenzeTrasmesse, pasti, idPerNome,
+  })), [committenti, st.menu, st.nominativiAzienda, st.presenzeTrasmesse, pasti, idPerNome]);
+
+  const giornate = vista === "giorno" ? [giorni[giorno]] : giorni;
+  const dentroFiltro = (c) => {
+    if (filtro === "tutte") return true;
+    if (filtro.indexOf("tipo:") === 0) return c.tipo === filtro.slice(5);
+    return c.id === filtro;
   };
 
-  /* somma totale per piatto */
-  const totali = {};
-  Object.entries(perStruttura).forEach(([sId, aggr]) => {
-    if (filtro !== "tutte" && filtro !== sId) return;
-    Object.entries(aggr).forEach(([id, q]) => { totali[id] = (totali[id] || 0) + q; });
+  const contributi = committenti.map((c) => {
+    const parti = giornate.map((g) => g.contributi.get(c.id));
+    return {
+      c,
+      dentro: dentroFiltro(c),
+      coperti: parti.reduce((s, p) => s + (p ? p.coperti : 0), 0),
+      porzioni: parti.reduce((s, p) => s + (p ? p.porzioni : 0), 0),
+      trasmesso: parti.some((p) => p && p.trasmesso),
+      stima: parti.some((p) => p && p.stima),
+    };
   });
-  const righe = Object.keys(totali).sort((a, b) => totali[b] - totali[a]);
-  const massimo = Math.max(1, ...Object.values(totali));
-  const complessivo = Object.values(totali).reduce((a, b) => a + b, 0);
+  const dentro = contributi.filter((r) => r.dentro);
+  const idsDentro = dentro.map((r) => r.c.id);
+  const colonne = dentro.filter((r) => r.porzioni > 0).map((r) => r.c);
+  const conColonne = vista === "giorno" && colonne.length > 1;
 
-  const dietePartic = (st.unita.comunita || []).reduce((s, r) => s + (r.iposodica || 0) + (r.diabetica || 0) + (r.senza_glutine || 0), 0);
-  const consistenze = (st.unita.comunita || []).reduce((s, r) => s + (r.tritato || 0) + (r.frullato || 0), 0);
+  const quotaVoce = (v) => idsDentro.reduce((s, id) => s + (v.per[id] || 0), 0);
+  const righe = React.useMemo(() => {
+    if (vista === "giorno") {
+      return giorni[giorno].voci
+        .map((v) => ({ ...v, totale: quotaVoce(v) }))
+        .filter((v) => v.totale > 0)
+        .sort(ordinaVoci);
+    }
+    const unite = new Map();
+    giorni.forEach((g, i) => g.voci.forEach((v) => {
+      const q = quotaVoce(v);
+      if (q <= 0) return;
+      if (!unite.has(v.chiave)) unite.set(v.chiave, { ...v, perGiorno: GIORNI.map(() => 0), totale: 0 });
+      const riga = unite.get(v.chiave);
+      riga.perGiorno[i] += q;
+      riga.totale += q;
+    }));
+    return [...unite.values()].sort(ordinaVoci);
+  }, [giorni, giorno, vista, idsDentro.join("|")]);
+
+  const massimo = Math.max(1, ...righe.map((v) => v.totale));
+  const porzioni = righe.reduce((s, v) => s + v.totale, 0);
+  const copertiTotali = dentro.reduce((s, r) => s + r.coperti, 0);
+  const copertiAzienda = dentro.filter((r) => r.c.tipo === "Azienda").reduce((s, r) => s + r.coperti, 0);
+  const copertiComunita = dentro.filter((r) => r.c.tipo === "Comunità").reduce((s, r) => s + r.coperti, 0);
+  const trasmessi = dentro.filter((r) => r.trasmesso).length;
+  const copertiPerGiorno = giorni.map((g) =>
+    idsDentro.reduce((s, id) => s + (g.contributi.get(id) ? g.contributi.get(id).coperti : 0), 0));
+
+  const diete = [];
+  const vistiDiete = new Set();
+  giornate.forEach((g) => g.diete.forEach((d) => {
+    if (idsDentro.indexOf(d.committente) < 0) return;
+    const chiave = d.committente + "|" + d.nome;
+    if (vistiDiete.has(chiave)) return;
+    vistiDiete.add(chiave);
+    diete.push(d);
+  }));
+
+  const giornoCorrente = GIORNI[giorno];
+  const etichettaVista = vista === "giorno" ? etichettaGiorno(giorno) : ETICHETTA_SETTIMANA;
+  const etichettaPasto = pasto === "entrambi" ? "pranzo e cena" : pasto;
+  const nomeFiltro = filtro === "tutte" ? "Tutte le strutture"
+    : filtro === "tipo:Azienda" ? "Solo le aziende"
+      : filtro === "tipo:Comunità" ? "Solo le comunità"
+        : (committenti.find((c) => c.id === filtro) || {}).nome || "Struttura non in elenco";
+  const perimetro = nomeFiltro + " · pasto " + etichettaPasto;
+  const nColonne = 4 + (vista === "giorno" ? (conColonne ? colonne.length : 0) : GIORNI.length);
+
+  const sezioniDocumento = (chiave) => ORDINE_CATEGORIA
+    .map((cat) => ({
+      categoria: NOME_CATEGORIA[cat],
+      righe: righe.filter((v) => v.categoria === cat).map((v) => ({
+        piatto: v.nome,
+        colore: v.colore ? COLORI[v.colore].nome : "fuori catalogo",
+        perStruttura: chiave === "perStruttura" && conColonne ? colonne.map((c) => v.per[c.id] || 0) : [],
+        perGiorno: chiave === "perGiorno" ? v.perGiorno : [],
+        totale: v.totale,
+      })),
+    }))
+    .filter((sez) => sez.righe.length);
+
+  const totaliDocumento = [
+    { etichetta: "Pasti", valore: copertiTotali },
+    { etichetta: "Porzioni", valore: porzioni },
+    { etichetta: "Diete particolari", valore: diete.length },
+  ];
+
+  /* import statico dei generatori: apriDocumento deve restare dentro il gesto
+     di click, un await prima dell'apertura farebbe bloccare la scheda */
+  function stampaDistinta() {
+    try {
+      if (vista === "giorno") {
+        generaDistintaPDF({
+          giorno: giornoCorrente.data,
+          perimetro,
+          strutture: conColonne ? colonne.map((c) => c.nome) : [],
+          sezioni: sezioniDocumento("perStruttura"),
+          totali: totaliDocumento,
+          diete,
+          datiAziendali: st.datiAziendali,
+          avvisa: st.avvisa,
+        });
+      } else {
+        generaDistintaSettimanaPDF({
+          periodo: ETICHETTA_SETTIMANA,
+          perimetro,
+          giorni: GIORNI.map((g) => g.n + " " + g.breve),
+          sezioni: sezioniDocumento("perGiorno"),
+          totali: totaliDocumento,
+          diete,
+          datiAziendali: st.datiAziendali,
+          avvisa: st.avvisa,
+        });
+      }
+      st.logga("Cucina MAVI", "Fornitore", "Distinta di produzione generata",
+        etichettaVista + ", " + nomeFiltro + ", " + porzioni + " porzioni", "generico");
+    } catch (errore) {
+      st.avvisa("Non è stato possibile aprire la distinta: " + errore.message);
+    }
+  }
+
+  async function scaricaDistinta() {
+    try {
+      const { scaricaExcel } = await import("../excel.js");
+      const intestazioni = vista === "giorno"
+        ? (conColonne ? colonne.map((c) => c.nome) : [])
+        : GIORNI.map((g) => g.n);
+      const valori = (v) => (vista === "giorno"
+        ? (conColonne ? colonne.map((c) => v.per[c.id] || 0) : [])
+        : v.perGiorno);
+      const dati = righe.map((v) => {
+        const riga = {
+          portata: NOME_CATEGORIA[v.categoria] || v.categoria,
+          piatto: v.nome,
+          colore: v.colore ? COLORI[v.colore].nome : "fuori catalogo",
+          totale: v.totale,
+        };
+        valori(v).forEach((q, i) => { riga["c" + i] = q; });
+        return riga;
+      });
+      if (dati.length) {
+        const somma = { portata: "TOTALE", piatto: "", colore: "", totale: porzioni };
+        intestazioni.forEach((unused, i) => {
+          somma["c" + i] = righe.reduce((s, v) => s + (valori(v)[i] || 0), 0);
+        });
+        dati.push(somma);
+      }
+      await scaricaExcel(
+        "Distinta_" + (vista === "giorno" ? giornoCorrente.data : "settimana_" + GIORNI[0].data) + ".xlsx",
+        [
+          {
+            nome: "Quantità per piatto",
+            colonne: [
+              { header: "Portata", key: "portata", width: 18 },
+              { header: "Piatto", key: "piatto", width: 34 },
+              { header: "Colore WHP", key: "colore", width: 15 },
+              ...intestazioni.map((nome, i) => ({ header: nome, key: "c" + i, width: 18 })),
+              { header: "Porzioni", key: "totale", width: 12 },
+            ],
+            dati,
+          },
+          {
+            nome: "Diete particolari",
+            colonne: [
+              { header: "Nominativo", key: "nome", width: 24 },
+              { header: "Struttura o reparto", key: "reparto", width: 26 },
+              { header: "Tipo di dieta", key: "tipoDieta", width: 28 },
+              { header: "Note di preparazione", key: "note", width: 60 },
+            ],
+            dati: diete.map((d) => ({ nome: d.nome, reparto: d.reparto, tipoDieta: d.tipoDieta, note: d.note })),
+          },
+        ],
+        { datiAziendali: st.datiAziendali }
+      );
+      st.avvisa("Distinta esportata in Excel · " + etichettaVista);
+    } catch (errore) {
+      st.avvisa("Export Excel non riuscito: " + errore.message);
+    }
+  }
 
   return (
     <>
       <Intestazione
-        occhiello="Mercoledì 16 settembre 2026"
-        titolo="Distinta di produzione"
-        sotto="Documento unico, aggrega quello che arriva da tutte le strutture servite"
-        azioni={<>
-          <button className="btn linea piccolo" onClick={() => st.avvisa("Distinta esportata in Excel")}>Excel</button>
-          <button className="btn linea piccolo" onClick={() => st.avvisa("Distinta esportata in PDF")}>PDF</button>
-          <button className="btn linea piccolo" onClick={() => window.print()}><Icone.stampa size={16} /> Stampa</button>
+        occhiello={vista === "giorno" ? giornoDataIt(giornoCorrente.data) : ETICHETTA_SETTIMANA}
+        titolo={"Distinta di produzione · " + etichettaVista}
+        sotto="Quanto produrre, un giorno alla volta o sull'intera settimana, sommando quello che arriva dalle strutture servite"
+        azioni={st.puo("produzione.stampa") && <>
+          <button className="btn linea piccolo" onClick={scaricaDistinta}>
+            <Icone.scarica size={16} /> Excel
+          </button>
+          <button className="btn piccolo" onClick={stampaDistinta}>
+            <Icone.stampa size={16} /> Stampa / PDF
+          </button>
         </>}
       />
       <div className="tela">
+        <div className="dist-barra">
+          <div className="commuta">
+            <button className={vista === "giorno" ? "on" : ""} onClick={() => setVista("giorno")}>Giorno</button>
+            <button className={vista === "settimana" ? "on" : ""} onClick={() => setVista("settimana")}>Settimana</button>
+          </div>
+          {vista === "giorno" ? (
+            <div className="dist-nav">
+              <button type="button" title="Giorno precedente" disabled={giorno === 0}
+                onClick={() => setGiorno((g) => Math.max(0, g - 1))}>
+                <Icone.sx size={17} />
+              </button>
+              <div className="dist-nav-giorno">
+                {etichettaGiorno(giorno)}
+                <small>{copertiPerGiorno[giorno]} pasti · {dataIt(giornoCorrente.data)}</small>
+              </div>
+              <button type="button" title="Giorno successivo" disabled={giorno === GIORNI.length - 1}
+                onClick={() => setGiorno((g) => Math.min(GIORNI.length - 1, g + 1))}>
+                <Icone.dx size={17} />
+              </button>
+            </div>
+          ) : (
+            <div className="dist-nav">
+              <div className="dist-nav-giorno larga">
+                {ETICHETTA_SETTIMANA}
+                <small>{GIORNI.length} giornate, da {GIORNI[0].n.toLowerCase()} a {GIORNI[GIORNI.length - 1].n.toLowerCase()}</small>
+              </div>
+            </div>
+          )}
+          {vista === "giorno" && giornoCorrente.chiuso && (
+            <span className="pastiglia p-att">ordini chiusi</span>
+          )}
+          <div className="commuta">
+            <button className={filtro === "tutte" ? "on" : ""} onClick={() => setFiltro("tutte")}>Tutte</button>
+            <button className={filtro === "tipo:Azienda" ? "on" : ""} onClick={() => setFiltro("tipo:Azienda")}>Aziende</button>
+            <button className={filtro === "tipo:Comunità" ? "on" : ""} onClick={() => setFiltro("tipo:Comunità")}>Comunità</button>
+          </div>
+          <div className="commuta">
+            <button className={pasto === "pranzo" ? "on" : ""} onClick={() => setPasto("pranzo")}>Pranzo</button>
+            <button className={pasto === "cena" ? "on" : ""} onClick={() => setPasto("cena")}>Cena</button>
+            <button className={pasto === "entrambi" ? "on" : ""} onClick={() => setPasto("entrambi")}>Entrambi</button>
+          </div>
+          <span className="dist-nota-barra">Il pasto vale per le comunità: l'azienda serve solo il pranzo.</span>
+        </div>
+
         <div className="numeri">
           <div className="numero">
             <div className="n-lab">Pasti totali</div>
-            <div className="n-val">{complessivo}</div>
-            <div className="n-nota">{committenti.length} strutture servite</div>
+            <div className="n-val">{copertiTotali}</div>
+            <div className="n-nota">{copertiAzienda} azienda · {copertiComunita} comunità</div>
+          </div>
+          <div className="numero">
+            <div className="n-lab">Porzioni da produrre</div>
+            <div className="n-val">{porzioni}</div>
+            <div className="n-nota">{righe.length} {righe.length === 1 ? "piatto diverso" : "piatti diversi"}</div>
           </div>
           <div className="numero">
             <div className="n-lab">Diete particolari</div>
-            <div className="n-val">{dietePartic + 4}</div>
-            <div className="n-nota">terapeutiche, sanitarie e etiche</div>
+            <div className="n-val">{diete.length}</div>
+            <div className="n-nota">persone con prescrizione o dieta dichiarata</div>
           </div>
           <div className="numero">
-            <div className="n-lab">Consistenze modificate</div>
-            <div className="n-val">{consistenze}</div>
-            <div className="n-nota">tritato e frullato</div>
+            <div className="n-lab">Hanno trasmesso</div>
+            <div className="n-val">{trasmessi}<span className="n-su">su {dentro.length}</span></div>
+            <div className="n-nota">
+              {dentro.length - trasmessi === 0
+                ? "nessuna stima nel perimetro"
+                : (dentro.length - trasmessi) + " ancora da confermare"}
+            </div>
           </div>
-          <div className="numero">
-            <div className="n-lab">Ultima chiusura</div>
-            <div className="n-val" style={{ fontSize: 22 }}>mer 9:30</div>
-            <div className="n-nota">rilevazione scuole</div>
-          </div>
+        </div>
+
+        <div className={"dist-banner" + (filtro === "tutte" ? "" : " attivo")}>
+          <Icone.calendario size={16} />
+          <span>Stai guardando <b>{etichettaVista}</b> · {nomeFiltro} · pasto {etichettaPasto}</span>
+          {filtro !== "tutte" && (
+            <button className="btn linea piccolo" onClick={() => setFiltro("tutte")}>Mostra tutte</button>
+          )}
         </div>
 
         <div className="pannello">
@@ -160,28 +576,29 @@ function Produzione() {
           <div className="scorri">
             <table className="dati">
               <thead>
-                <tr><th>Struttura</th><th>Tipo</th><th>Chiusura</th><th>Pasti</th><th>Stato</th><th /></tr>
+                <tr><th>Struttura</th><th>Tipo</th><th>Chiusura</th><th>Pasti</th><th>Porzioni</th><th>Stato</th><th /></tr>
               </thead>
               <tbody>
-                {committenti.map((c) => {
-                  const pasti = c.id === "azienda"
-                    ? Object.values(aggAzienda).reduce((a, b) => a + b, 0)
-                    : c.id === "comunita" ? aggComunita : 0;
-                  const attivo = filtro === c.id;
+                {contributi.map((r) => {
+                  const attivo = filtro === r.c.id;
                   return (
-                    <tr key={c.id} style={{ opacity: c.attivo === false ? 0.5 : 1 }}>
-                      <td><b>{c.nome}</b></td>
-                      <td><span className="pastiglia p-neu">{c.tipo}</span></td>
-                      <td className="cifra">{c.cutoff}</td>
-                      <td className="quantita">{pasti}</td>
+                    <tr key={r.c.id} style={{ opacity: r.c.attivo === false ? 0.5 : 1 }}>
+                      <td><b>{r.c.nome}</b></td>
+                      <td><span className="pastiglia p-neu">{r.c.tipo}</span></td>
+                      <td className="cifra">{r.c.cutoff}</td>
+                      <td className="quantita">{r.coperti}</td>
+                      <td className="cifra">{r.porzioni}</td>
                       <td>
-                        {pasti > 0
+                        {r.trasmesso
                           ? <span className="pastiglia p-ok">trasmesso</span>
-                          : <span className="pastiglia p-att">in attesa</span>}
+                          : r.stima
+                            ? <span className="pastiglia p-att">stima</span>
+                            : <span className="pastiglia p-neu">in attesa</span>}
+                        {r.trasmesso && r.stima && <span className="dist-piu-stima">più stima</span>}
                       </td>
                       <td>
                         <button className={"btn piccolo" + (attivo ? "" : " linea")}
-                          onClick={() => setFiltro(attivo ? "tutte" : c.id)}>
+                          onClick={() => setFiltro(attivo ? "tutte" : r.c.id)}>
                           {attivo ? "Mostra tutte" : "Filtra questa"}
                         </button>
                       </td>
@@ -192,24 +609,17 @@ function Produzione() {
             </table>
           </div>
           <div className="pannello-piede">
-            La cucina lavora sulla somma. I contributi restano visibili per capire chi ha
-            trasmesso e chi no, e per ripartire dopo consegne e resi.
+            I numeri sono quelli del periodo scelto qui sopra. <b>Trasmesso</b> vuol dire che la
+            struttura ha davvero mandato ordini o presenze per quelle giornate; <b>stima</b> che il
+            portale sta proponendo un ordine di grandezza in attesa della conferma.
           </div>
         </div>
-
-        {filtro !== "tutte" && (
-          <div className="banner-dieta" style={{ background: "#eef3fa", borderColor: "#b8cce0", color: "#2c4a6c" }}>
-            <Icone.attenzione size={15} />
-            Stai vedendo solo i dati di <b>{committenti.find((c) => c.id === filtro)?.nome}</b>
-            <button className="btn linea piccolo" style={{ marginLeft: "auto" }} onClick={() => setFiltro("tutte")}>Mostra tutte</button>
-          </div>
-        )}
 
         <div className="pannello">
           <div className="pannello-testa">
             <h2>Quantità da produrre</h2>
             <span className="conta-piatti">
-              {filtro === "tutte" ? "somma di tutte le strutture" : "solo " + committenti.find((c) => c.id === filtro)?.nome}
+              {vista === "giorno" ? "porzioni della giornata" : "porzioni per giornata"}
             </span>
           </div>
           <div className="scorri">
@@ -217,34 +627,48 @@ function Produzione() {
               <thead>
                 <tr>
                   <th>Piatto</th>
+                  <th>Portata</th>
                   <th>Colore</th>
-                  {filtro === "tutte" && Object.keys(perStruttura).map((k) => (
-                    <th key={k}>{committenti.find((c) => c.id === k)?.nome || k}</th>
-                  ))}
+                  {vista === "giorno"
+                    ? conColonne && colonne.map((c) => <th key={c.id}>{c.nome}</th>)
+                    : GIORNI.map((g) => <th key={g.data}>{g.breve}</th>)}
                   <th>Totale</th>
                 </tr>
               </thead>
               <tbody>
-                {righe.map((id) => (
-                  <tr key={id}>
+                {righe.length === 0 ? (
+                  <tr>
+                    <td className="riga-vuota" colSpan={nColonne}>
+                      Nessuna porzione da produrre con il perimetro scelto.
+                    </td>
+                  </tr>
+                ) : righe.map((v) => (
+                  <tr key={v.chiave}>
                     <td>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <span className="voce-mini" style={{ cursor: "default" }}><Illustrazione id={id} /></span>
-                        <b>{PIATTI[id].n}</b>
+                      <div className="dist-piatto">
+                        {v.idPiatto ? (
+                          <span className="voce-mini" style={{ cursor: "default" }}><Illustrazione id={v.idPiatto} /></span>
+                        ) : (
+                          <span className="dist-senza-scheda" title="Piatto di dieta, non presente nel catalogo">—</span>
+                        )}
+                        <b>{v.nome}</b>
                       </div>
                     </td>
+                    <td><span className="pastiglia p-neu">{NOME_CATEGORIA[v.categoria] || v.categoria}</span></td>
                     <td>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
-                        <DiscoColore colore={PIATTI[id].col} size={11} />
-                        {COLORI[PIATTI[id].col].nome}
-                      </span>
+                      {v.colore ? (
+                        <span className="dist-colore">
+                          <DiscoColore colore={v.colore} size={11} />
+                          {COLORI[v.colore].nome}
+                        </span>
+                      ) : <span className="riservato">fuori catalogo</span>}
                     </td>
-                    {filtro === "tutte" && Object.keys(perStruttura).map((k) => (
-                      <td key={k} className="cifra">{perStruttura[k][id] || 0}</td>
-                    ))}
-                    <td style={{ minWidth: 180 }}>
-                      <span className="quantita">{totali[id]}</span>
-                      <div className="progresso"><i style={{ width: Math.round((totali[id] / massimo) * 100) + "%" }} /></div>
+                    {vista === "giorno"
+                      ? conColonne && colonne.map((c) => <td key={c.id} className="cifra">{v.per[c.id] || 0}</td>)
+                      : v.perGiorno.map((q, i) => <td key={GIORNI[i].data} className="cifra">{q}</td>)}
+                    <td className="dist-totale">
+                      <span className="quantita">{v.totale}</span>
+                      <div className="progresso"><i style={{ width: Math.round((v.totale / massimo) * 100) + "%" }} /></div>
                     </td>
                   </tr>
                 ))}
@@ -252,8 +676,46 @@ function Produzione() {
             </table>
           </div>
           <div className="pannello-piede">
-            Il dato dell'azienda cresce con le prenotazioni del prototipo. Gli altri contributi
-            sono di esempio, calcolati dai numeri dichiarati dalle strutture.
+            La cucina lavora sulla somma del perimetro scelto. Per l'azienda entrano le prenotazioni
+            confermate dai dipendenti su quella giornata più una stima sul menu del giorno; per la
+            comunità le presenze trasmesse per quel giorno e quel pasto, o in mancanza le diete dei
+            pazienti censiti. La colonna Stato della tabella qui sopra dice, struttura per struttura,
+            che cosa è già confermato e che cosa è ancora una stima.
+          </div>
+        </div>
+
+        <div className="pannello">
+          <div className="pannello-testa">
+            <h2>Diete particolari e consistenze</h2>
+            <span className="conta-piatti">{diete.length} {diete.length === 1 ? "persona" : "persone"}</span>
+          </div>
+          <div className="scorri">
+            <table className="dati">
+              <thead>
+                <tr><th>Nominativo</th><th>Struttura o reparto</th><th>Tipo di dieta</th><th>Note di preparazione</th></tr>
+              </thead>
+              <tbody>
+                {diete.length === 0 ? (
+                  <tr>
+                    <td className="riga-vuota" colSpan={4}>
+                      Nessuna dieta particolare fra le persone comprese nel perimetro.
+                    </td>
+                  </tr>
+                ) : diete.map((d) => (
+                  <tr key={d.committente + "|" + d.nome}>
+                    <td><b>{d.nome}</b></td>
+                    <td style={{ color: "var(--muto)" }}>{d.reparto}</td>
+                    <td><span className="pastiglia p-att dist-tag-dieta">{d.tipoDieta}</span></td>
+                    <td>{d.note || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="pannello-piede">
+            Le note arrivano dall'anagrafica dei pazienti della comunità e dalla dieta dichiarata in
+            anagrafica dipendenti. Le prescrizioni riservate restano tali: il portale segnala che
+            ci sono, non che cosa contengono. La stessa tabella finisce in fondo alla stampa.
           </div>
         </div>
       </div>
@@ -276,13 +738,21 @@ function Settimana() {
   ];
   const [settimanaIdx, setSettimanaIdx] = React.useState(SETTIMANE.length - 1); // settimana coperta da GIORNI/menu reale
 
+  const puoModificare = st.puo("menu.modifica");
+  const puoFissi = st.puo("menu.fissi");
   const fissi = st.menu.fissi[categoria] || [];
   const delGiorno = (st.menu.variabili[giorno] || {})[categoria] || [];
   const cat = CATEGORIE.find((c) => c.id === categoria);
 
   const catalogo = catalogoPerCategoria(categoria)
-    .filter((id) => !delGiorno.includes(id) && !fissi.includes(id))
     .filter((id) => PIATTI[id].n.toLowerCase().includes(cerca.toLowerCase()));
+
+  /* un piatto fisso vale per tutti i giorni: se era nel giorno corrente va
+     prima tolto, altrimenti resterebbe in elenco due volte */
+  const rendiFisso = (id) => {
+    if (delGiorno.includes(id)) st.cambiaMenu(giorno, categoria, id);
+    st.cambiaMenu("fissi", categoria, id);
+  };
 
   if (stampa) return <GrigliaStampa onIndietro={() => setStampa(false)} />;
 
@@ -293,13 +763,17 @@ function Settimana() {
         titolo="Composizione del menu"
         sotto="Scegli il giorno, poi la portata. I piatti si aggiungono dal catalogo a destra."
         azioni={<>
-          <button className="btn linea piccolo" onClick={st.ripristinaMenu}>Ripristina</button>
-          <button className="btn linea piccolo" onClick={() => setStampa(true)}>
-            <Icone.calendario size={16} /> Griglia settimana
-          </button>
-          <button className="btn piccolo" onClick={() => st.avvisa("Menu pubblicato, i dipendenti lo vedono da subito")}>
-            Pubblica
-          </button>
+          {puoModificare && <button className="btn linea piccolo" onClick={st.ripristinaMenu}>Ripristina</button>}
+          {st.puo("menu.griglia") && (
+            <button className="btn linea piccolo" onClick={() => setStampa(true)}>
+              <Icone.calendario size={16} /> Griglia settimana
+            </button>
+          )}
+          {puoModificare && (
+            <button className="btn piccolo" onClick={() => st.avvisa("Menu pubblicato, i dipendenti lo vedono da subito")}>
+              Pubblica
+            </button>
+          )}
         </>}
       />
       <div className="tela">
@@ -330,9 +804,11 @@ function Settimana() {
                       {lista.length + fis.length} piatti
                       {fis.length ? ", di cui " + fis.length + " fissi" : ""}
                     </span>
-                    <button className={"btn piccolo" + (attiva ? "" : " linea")} onClick={() => setCategoria(c.id)}>
-                      {attiva ? "In modifica" : "Modifica"}
-                    </button>
+                    {puoModificare && (
+                      <button className={"btn piccolo" + (attiva ? "" : " linea")} onClick={() => setCategoria(c.id)}>
+                        {attiva ? "In modifica" : "Modifica"}
+                      </button>
+                    )}
                   </div>
                   {lista.length + fis.length === 0 ? (
                     <div className="blocco-lista vuota">Nessun piatto previsto per questa portata.</div>
@@ -342,6 +818,8 @@ function Settimana() {
                       categoria={c.id}
                       variabili={lista}
                       fissi={fis}
+                      modificabile={puoModificare}
+                      puoFissi={puoFissi}
                     />
                   )}
                 </section>
@@ -349,11 +827,11 @@ function Settimana() {
             })}
           </div>
 
-          <aside className="catalogo-lato">
+          {puoModificare && <aside className="catalogo-lato">
             <div className="catalogo-testa">
               <div className="occhiello">{GIORNI[giorno].n} {GIORNI[giorno].d}</div>
               <h3>{cat.nome}</h3>
-              <p>Tocca un piatto per aggiungerlo alla portata.</p>
+              <p>Aggiungi il piatto solo a questo giorno, oppure rendilo fisso per tutta la settimana.</p>
             </div>
             <div className="catalogo-cerca">
               <input type="text" placeholder="Cerca nel catalogo" value={cerca} onChange={(e) => setCerca(e.target.value)} />
@@ -364,35 +842,58 @@ function Settimana() {
                   Nessun piatto disponibile con questo filtro.
                 </p>
               )}
-              {catalogo.map((id) => (
-                <button key={id} className="catalogo-voce" onClick={() => st.cambiaMenu(giorno, categoria, id)}>
-                  <span className="disco"><Illustrazione id={id} /></span>
-                  <span className="corpo">
-                    <b>{PIATTI[id].n}</b>
-                    <span>
-                      {COLORI[PIATTI[id].col].nome} · {PIATTI[id].kcal} kcal
-                      {PIATTI[id].a.length ? " · allergeni " + PIATTI[id].a.join(", ") : ""}
+              {catalogo.map((id) => {
+                const nelGiorno = delGiorno.includes(id);
+                const eFisso = fissi.includes(id);
+                return (
+                  <div key={id} className={"catalogo-voce" + (eFisso || nelGiorno ? " in-uso" : "")}>
+                    <span className="disco"><Illustrazione id={id} /></span>
+                    <span className="corpo">
+                      <b>{PIATTI[id].n}</b>
+                      <span>
+                        {COLORI[PIATTI[id].col].nome} · {PIATTI[id].kcal} kcal
+                        {PIATTI[id].a.length ? " · allergeni " + PIATTI[id].a.join(", ") : ""}
+                      </span>
                     </span>
-                  </span>
-                  <span className="piu">+</span>
-                </button>
-              ))}
+                    {eFisso && <span className="etichetta-fisso">fisso</span>}
+                    <span className="catalogo-azioni">
+                      <button
+                        className="cat-azione"
+                        onClick={() => st.cambiaMenu(giorno, categoria, id)}
+                        disabled={nelGiorno || eFisso}
+                      >
+                        {eFisso ? "In tutti i giorni" : nelGiorno ? "Già in questo giorno" : "Aggiungi al giorno"}
+                      </button>
+                      {puoFissi && (
+                        <button
+                          className="cat-azione forte"
+                          onClick={() => rendiFisso(id)}
+                          disabled={eFisso}
+                        >
+                          {eFisso ? "Già fisso" : "Rendi fisso"}
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
-            <div className="scelta-piede">
-              <button className="btn linea pieno" onClick={() => st.cambiaMenu("fissi", categoria, catalogo[0])} disabled={!catalogo.length}>
-                Aggiungi il primo come piatto fisso
-              </button>
+            <div className="scelta-piede catalogo-nota">
+              Un piatto fisso compare in tutti i giorni della settimana, su ogni portale.
             </div>
-          </aside>
+          </aside>}
         </div>
       </div>
     </>
   );
 }
 
-function ListaOrdinabile({ giorno, categoria, variabili, fissi }) {
+function ListaOrdinabile({ giorno, categoria, variabili, fissi, modificabile = true, puoFissi = true }) {
   const st = usaStato();
   const [trascinato, setTrascinato] = React.useState(null);
+  /* stessa deduplica di menuDelGiorno: un piatto presente in entrambi gli
+     elenchi si mostra una volta sola, come riga del giorno */
+  const soloFissi = fissi.filter((id) => !variabili.includes(id));
   return (
     <div className="blocco-lista">
       {variabili.map((id, i) => (
@@ -402,21 +903,26 @@ function ListaOrdinabile({ giorno, categoria, variabili, fissi }) {
           indice={i}
           trascinato={trascinato}
           setTrascinato={setTrascinato}
-          onSposta={(da, a) => {
+          onSposta={modificabile ? (da, a) => {
             if (a < 0 || a >= variabili.length) return;
             st.riordinaMenu(giorno, categoria, da, a);
-          }}
-          onTogli={() => st.cambiaMenu(giorno, categoria, id)}
+          } : undefined}
+          onTogli={modificabile ? () => st.cambiaMenu(giorno, categoria, id) : undefined}
+          onRendiFisso={modificabile && puoFissi ? () => {
+            st.cambiaMenu(giorno, categoria, id);
+            st.cambiaMenu("fissi", categoria, id);
+          } : undefined}
         />
       ))}
-      {fissi.map((id) => (
-        <RigaPiatto key={id} id={id} fisso indice={-1} onTogli={() => st.cambiaMenu("fissi", categoria, id)} />
+      {soloFissi.map((id) => (
+        <RigaPiatto key={id} id={id} fisso indice={-1}
+          onTogli={modificabile && puoFissi ? () => st.cambiaMenu("fissi", categoria, id) : undefined} />
       ))}
     </div>
   );
 }
 
-function RigaPiatto({ id, fisso, indice, onTogli, onSposta, trascinato, setTrascinato }) {
+function RigaPiatto({ id, fisso, indice, onTogli, onRendiFisso, onSposta, trascinato, setTrascinato }) {
   const p = PIATTI[id];
   const [sopra, setSopra] = React.useState(false);
   const mobile = typeof onSposta === "function";
@@ -469,7 +975,14 @@ function RigaPiatto({ id, fisso, indice, onTogli, onSposta, trascinato, setTrasc
         </span>
       )}
       {fisso && <span className="etichetta-fisso">fisso</span>}
-      <button className="tolgo" onClick={onTogli} aria-label="togli dal menu"><Icone.x size={15} /></button>
+      {typeof onRendiFisso === "function" && (
+        <button className="rendi-fisso" onClick={onRendiFisso} title="vale per tutti i giorni della settimana">
+          Rendi fisso
+        </button>
+      )}
+      {typeof onTogli === "function" && (
+        <button className="tolgo" onClick={onTogli} aria-label="togli dal menu"><Icone.x size={15} /></button>
+      )}
     </div>
   );
 }
@@ -599,7 +1112,7 @@ function Catalogo() {
         occhiello="Anagrafica"
         titolo="Catalogo piatti"
         sotto={ids.length + " piatti, " + conFoto + " con fotografia caricata in questa sessione"}
-        azioni={<>
+        azioni={st.puo("catalogo.modifica") && <>
           <button className="btn linea piccolo" onClick={() => inputBlocco.current.click()}>
             <Icone.scarica size={16} /> Carica foto in blocco
           </button>
@@ -663,15 +1176,17 @@ function Catalogo() {
                     </td>
                     <td>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <button className="btn linea piccolo"
-                          onClick={() => { setInCorso(id); setTimeout(() => inputSingolo.current.click(), 0); }}>
-                          Foto
-                        </button>
-                        {st.foto[id] && (
-                          <button className="btn linea piccolo" onClick={() => st.togliFoto(id)}>Togli</button>
-                        )}
-                        <button className="btn linea piccolo" onClick={() => setModulo({ id })}>Modifica</button>
-                        <button className="btn linea piccolo" onClick={() => schedaPdf(id)}>Scheda</button>
+                        {st.puo("catalogo.modifica") && <>
+                          <button className="btn linea piccolo"
+                            onClick={() => { setInCorso(id); setTimeout(() => inputSingolo.current.click(), 0); }}>
+                            Foto
+                          </button>
+                          {st.foto[id] && (
+                            <button className="btn linea piccolo" onClick={() => st.togliFoto(id)}>Togli</button>
+                          )}
+                          <button className="btn linea piccolo" onClick={() => setModulo({ id })}>Modifica</button>
+                        </>}
+                        <button className="btn linea piccolo" onClick={() => schedaPdf(id, { datiAziendali: st.datiAziendali, avvisa: st.avvisa })}>Scheda</button>
                       </div>
                     </td>
                   </tr>
@@ -691,77 +1206,131 @@ function Catalogo() {
   );
 }
 
-/* ==================== fatturazione — solo proforma ==================== */
+/* ==================== fatturazione — proforma create a mano ==================== */
+const MESI = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+  "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
+
+function eurIt(n) {
+  return (Number(n) || 0).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/* il periodo da fatturare è il mese appena chiuso */
+function meseChiuso() {
+  const oggi = new Date();
+  const prec = new Date(oggi.getFullYear(), oggi.getMonth() - 1, 1);
+  return { mese: MESI[prec.getMonth()], anno: prec.getFullYear() };
+}
+
 function Fatturazione() {
   const st = usaStato();
-  const MESE = "Agosto 2026";
   const [attivo, setAttivo] = React.useState(st.committenti[0]?.id);
+  const [nuova, setNuova] = React.useState(false);
 
-  function eur(n) { return n.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  const c = st.committenti.find((x) => x.id === attivo) || st.committenti[0];
 
-  /* listino, IVA e pasti del mese vengono dal committente stesso (Impostazioni
-     per committente): ogni struttura può avere un prezzo diverso, non più un
-     prezzo unico fisso per tutti. */
-  const righe = React.useMemo(() => st.committenti.map((c) => {
-    const pasti = c.pastiMeseDemo ?? Math.round((c.pasti || 0) * 22);
-    const imponibile = pasti * c.prezzoUnitario;
-    const iva = imponibile * (c.ivaPercentuale / 100);
-    return { c, pasti, imponibile, iva, totale: imponibile + iva };
-  }), [st.committenti]);
+  /* riepilogo per committente: quello che si è davvero emesso, non una stima */
+  const righe = React.useMemo(() => st.committenti.map((x) => {
+    const elenco = ordinaProforme(st.proforme.filter((p) => p.committenteId === x.id));
+    const valide = elenco.filter((p) => p.stato !== "annullata");
+    const somma = valide.reduce((s, p) => {
+      const t = totaliProforma(p);
+      return { imponibile: s.imponibile + t.imponibile, iva: s.iva + t.iva, totale: s.totale + t.totale };
+    }, { imponibile: 0, iva: 0, totale: 0 });
+    return { c: x, elenco, valide, somma, ultima: elenco[0] || null };
+  }), [st.committenti, st.proforme]);
 
   const r = righe.find((x) => x.c.id === attivo) || righe[0];
-  const totPasti = righe.reduce((s, x) => s + x.pasti, 0);
-  const totImponibile = righe.reduce((s, x) => s + x.imponibile, 0);
-  const totIva = righe.reduce((s, x) => s + x.iva, 0);
+  const totImponibile = righe.reduce((s, x) => s + x.somma.imponibile, 0);
+  const totIva = righe.reduce((s, x) => s + x.somma.iva, 0);
+  const totProforme = righe.reduce((s, x) => s + x.valide.length, 0);
 
-  const COLONNE_PROFORMA = [
-    { header: "Struttura", key: "struttura", width: 28 },
-    { header: "Tipo", key: "tipo", width: 14 },
-    { header: "Periodo", key: "mese", width: 16 },
-    { header: "Pasti", key: "pasti", width: 10 },
-    { header: "Prezzo unitario", key: "prezzo", width: 16 },
+  function apriPdf(p) {
+    const dest = st.committenti.find((x) => x.id === p.committenteId);
+    generaProformaPDF(p, { datiAziendali: st.datiAziendali, committente: dest, avvisa: st.avvisa });
+  }
+
+  /* emissione e apertura del PDF nello stesso gesto di click: nessun await in
+     mezzo, altrimenti il browser considera la scheda un popup e la blocca */
+  function emetti(dati) {
+    const p = st.emettiProforma({ ...dati, committenteId: c.id, nomeCommittente: c.nome });
+    generaProformaPDF(p, { datiAziendali: st.datiAziendali, committente: c, avvisa: st.avvisa });
+    st.avvisa("Proforma " + p.numero + " emessa per " + c.nome);
+    setNuova(false);
+  }
+
+  const COLONNE_ELENCO = [
+    { header: "Numero", key: "numero", width: 16 },
+    { header: "Periodo", key: "periodo", width: 16 },
+    { header: "Emissione", key: "emissione", width: 14 },
+    { header: "Scadenza", key: "scadenza", width: 14 },
     { header: "Imponibile", key: "imponibile", width: 16 },
     { header: "IVA", key: "iva", width: 14 },
     { header: "Totale", key: "totale", width: 16 },
+    { header: "Stato", key: "stato", width: 14 },
   ];
-  const rigaExcel = (x) => ({
-    struttura: x.c.nome, tipo: x.c.tipo, mese: MESE, pasti: x.pasti,
-    prezzo: "€ " + eur(x.c.prezzoUnitario), imponibile: "€ " + eur(x.imponibile),
-    iva: "€ " + eur(x.iva) + " (" + x.c.ivaPercentuale + "%)", totale: "€ " + eur(x.totale),
-  });
+  const COLONNE_RIEPILOGO = [
+    { header: "Struttura", key: "struttura", width: 28 },
+    { header: "Tipo", key: "tipo", width: 14 },
+    { header: "Termini", key: "termini", width: 18 },
+    { header: "Metodo", key: "metodo", width: 20 },
+    { header: "Regime IVA", key: "regime", width: 18 },
+    { header: "Proforma", key: "proforma", width: 12 },
+    { header: "Imponibile", key: "imponibile", width: 16 },
+    { header: "IVA", key: "iva", width: 14 },
+    { header: "Totale", key: "totale", width: 16 },
+    { header: "Ultima scadenza", key: "scadenza", width: 18 },
+  ];
 
   async function scaricaExcelStruttura(x) {
     try {
       const { scaricaExcel } = await import("../excel.js");
+      const dati = x.elenco.map((p) => {
+        const t = totaliProforma(p);
+        return {
+          numero: p.numero, periodo: p.periodo, emissione: dataIt(p.dataEmissione), scadenza: dataIt(p.scadenza),
+          imponibile: "€ " + eurIt(t.imponibile), iva: "€ " + eurIt(t.iva), totale: "€ " + eurIt(t.totale),
+          stato: p.stato,
+        };
+      });
+      dati.push({
+        numero: "", periodo: "", emissione: "", scadenza: "TOTALE",
+        imponibile: "€ " + eurIt(x.somma.imponibile), iva: "€ " + eurIt(x.somma.iva),
+        totale: "€ " + eurIt(x.somma.totale), stato: x.valide.length + " valide",
+      });
       await scaricaExcel("Proforma_" + x.c.nome.replace(/[^a-zA-Z0-9]+/g, "_") + ".xlsx",
-        [{ nome: "Proforma", dati: [rigaExcel(x)], colonne: COLONNE_PROFORMA }]);
+        [{ nome: "Proforma", dati, colonne: COLONNE_ELENCO }], { datiAziendali: st.datiAziendali });
       st.avvisa("Excel di " + x.c.nome + " scaricato");
     } catch (e) {
       console.error(e);
       st.avvisa("Errore nella generazione, riprova");
     }
   }
+
   async function scaricaExcelTutte() {
     try {
       const { scaricaExcel } = await import("../excel.js");
-      const dati = righe.map(rigaExcel);
-      dati.push({ struttura: "", tipo: "", mese: "TOTALE", pasti: totPasti, prezzo: "", imponibile: "€ " + eur(totImponibile), iva: "€ " + eur(totIva), totale: "€ " + eur(totImponibile + totIva) });
-      await scaricaExcel("Proforma_MAVI_" + MESE.replace(" ", "_") + ".xlsx", [{ nome: "Proforma", dati, colonne: COLONNE_PROFORMA }]);
+      const dati = righe.map((x) => ({
+        struttura: x.c.nome, tipo: x.c.tipo,
+        termini: terminiPagamento(x.c.termini).nome,
+        metodo: metodoPagamento(x.c.metodoPagamento).nome,
+        regime: regimeIva(x.c.regimeIva).conIva ? "IVA " + (x.c.ivaPercentuale || 0) + "%" : regimeIva(x.c.regimeIva).nome,
+        proforma: x.valide.length,
+        imponibile: "€ " + eurIt(x.somma.imponibile), iva: "€ " + eurIt(x.somma.iva),
+        totale: "€ " + eurIt(x.somma.totale),
+        scadenza: x.ultima ? dataIt(x.ultima.scadenza) : "—",
+      }));
+      dati.push({
+        struttura: "", tipo: "", termini: "", metodo: "", regime: "TOTALE", proforma: totProforme,
+        imponibile: "€ " + eurIt(totImponibile), iva: "€ " + eurIt(totIva),
+        totale: "€ " + eurIt(totImponibile + totIva), scadenza: "",
+      });
+      await scaricaExcel("Proforma_MAVI_riepilogo.xlsx",
+        [{ nome: "Riepilogo", dati, colonne: COLONNE_RIEPILOGO }], { datiAziendali: st.datiAziendali });
       st.avvisa("Excel scaricato, un rigo per committente più il totale");
     } catch (e) {
       console.error(e);
       st.avvisa("Errore nella generazione, riprova");
     }
-  }
-  async function generaProformaStruttura(x) {
-    const { generaProformaPDF } = await import("../proforma.js");
-    generaProformaPDF([{ nome: x.c.nome, tipo: x.c.tipo, pasti: x.pasti, mese: MESE, prezzo: x.c.prezzoUnitario, ivaPercentuale: x.c.ivaPercentuale }]);
-    st.logga("Cucina MAVI", "Operatore", "Proforma generata", x.c.nome, "generico");
-  }
-  async function generaProformaCombinata() {
-    const { generaProformaPDF } = await import("../proforma.js");
-    generaProformaPDF(righe.map((x) => ({ nome: x.c.nome, tipo: x.c.tipo, pasti: x.pasti, mese: MESE, prezzo: x.c.prezzoUnitario, ivaPercentuale: x.c.ivaPercentuale })));
-    st.logga("Cucina MAVI", "Operatore", "Proforma generata", righe.map((x) => x.c.nome).join(", ") + " (documento unico)", "generico");
   }
 
   if (!r) return null;
@@ -770,7 +1339,7 @@ function Fatturazione() {
     <>
       <Intestazione
         occhiello="Chiusura mensile" titolo="Proforma"
-        sotto="Scegli la struttura: la proforma si genera con il listino e le impostazioni di quella struttura"
+        sotto="Ogni proforma si compone a mano: righe, periodo e condizioni si decidono documento per documento"
       />
       <div className="tela">
         <div className="giorni-tab">
@@ -782,69 +1351,295 @@ function Fatturazione() {
         </div>
 
         <div className="numeri">
-          <div className="numero"><div className="n-lab">Pasti nel mese</div><div className="n-val">{r.pasti}</div><div className="n-nota">{MESE}</div></div>
-          <div className="numero"><div className="n-lab">Prezzo unitario</div><div className="n-val" style={{ fontSize: 22 }}>€ {eur(r.c.prezzoUnitario)}</div><div className="n-nota">da Impostazioni per committente</div></div>
-          <div className="numero"><div className="n-lab">Imponibile</div><div className="n-val" style={{ fontSize: 22 }}>€ {eur(r.imponibile)}</div><div className="n-nota">IVA {r.c.ivaPercentuale}%, € {eur(r.iva)}</div></div>
-          <div className="numero"><div className="n-lab">Totale documento</div><div className="n-val" style={{ fontSize: 22 }}>€ {eur(r.totale)}</div><div className="n-nota">{r.c.nome}</div></div>
+          <div className="numero"><div className="n-lab">Proforma emesse</div><div className="n-val">{r.valide.length}</div><div className="n-nota">{r.elenco.length - r.valide.length} annullate</div></div>
+          <div className="numero"><div className="n-lab">Imponibile</div><div className="n-val" style={{ fontSize: 22 }}>€ {eurIt(r.somma.imponibile)}</div><div className="n-nota">IVA € {eurIt(r.somma.iva)}</div></div>
+          <div className="numero"><div className="n-lab">Totale documenti</div><div className="n-val" style={{ fontSize: 22 }}>€ {eurIt(r.somma.totale)}</div><div className="n-nota">{r.c.nome}</div></div>
+          <div className="numero"><div className="n-lab">Prezzo unitario</div><div className="n-val" style={{ fontSize: 22 }}>€ {eurIt(r.c.prezzoUnitario)}</div><div className="n-nota">{testoCondizioni(r.c)}</div></div>
         </div>
 
         <div className="pannello">
           <div className="pannello-testa">
             <h2>Proforma di {r.c.nome}</h2>
-            <span className="conta-piatti">{MESE}</span>
+            <span className="conta-piatti">{r.elenco.length} documenti</span>
+            {st.puo("fatturazione.proforma") && (
+              <button className="btn piccolo" style={{ marginLeft: "auto" }} onClick={() => setNuova(true)}>
+                <Icone.piu size={14} /> Nuova proforma
+              </button>
+            )}
           </div>
-          <div style={{ padding: "18px 24px", display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button className="btn" onClick={() => generaProformaStruttura(r)}>Genera proforma PDF</button>
-            <button className="btn linea" onClick={() => scaricaExcelStruttura(r)}><Icone.scarica size={16} /> Scarica Excel</button>
+          <div className="scorri">
+            <table className="dati">
+              <thead><tr><th>Numero</th><th>Periodo</th><th>Emissione</th><th>Imponibile</th><th>IVA</th><th>Totale</th><th>Scadenza</th><th>Stato</th><th /></tr></thead>
+              <tbody>
+                {r.elenco.length === 0 && (
+                  <tr><td colSpan={9} style={{ textAlign: "center", color: "var(--muto)", padding: 22 }}>
+                    Nessuna proforma per questo committente. Creane una con "Nuova proforma".
+                  </td></tr>
+                )}
+                {r.elenco.map((p) => {
+                  const t = totaliProforma(p);
+                  const annullata = p.stato === "annullata";
+                  return (
+                    <tr key={p.id} className={annullata ? "riga-annullata" : undefined}>
+                      <td className="cifra"><b>{p.numero}</b></td>
+                      <td>{p.periodo}</td>
+                      <td className="cifra">{dataIt(p.dataEmissione)}</td>
+                      <td className="cifra">€ {eurIt(t.imponibile)}</td>
+                      <td className="cifra">€ {eurIt(t.iva)}{t.conIva && <span style={{ color: "var(--muto)", fontSize: 11 }}> ({t.aliquota}%)</span>}</td>
+                      <td className="cifra"><b>€ {eurIt(t.totale)}</b></td>
+                      <td className="cifra">{dataIt(p.scadenza)}</td>
+                      <td><PastigliaProforma stato={p.stato} /></td>
+                      <td>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <button className="btn linea piccolo" onClick={() => apriPdf(p)}>PDF</button>
+                          {!annullata && st.puo("fatturazione.annulla") && (
+                            <button className="btn linea piccolo" onClick={() => st.annullaProforma(p.id)}>Annulla</button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-          <div className="pannello-piede">
-            Prezzo unitario, IVA e pasti stimati al mese si impostano in <b>Impostazioni per committente</b> →
-            {" " + r.c.nome}. Non transita dal Sistema di Interscambio — la fattura elettronica si emette dal
-            gestionale contabile.
+          <div className="pannello-piede" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <span style={{ flex: 1 }}>
+              Le condizioni proposte arrivano da <b>Impostazioni per committente</b> e restano modificabili
+              per la singola proforma. Una proforma annullata resta in elenco, anche per il cliente.
+            </span>
+            {st.puo("fatturazione.excel") && (
+              <button className="btn linea piccolo" onClick={() => scaricaExcelStruttura(r)}><Icone.scarica size={16} /> Scarica Excel</button>
+            )}
           </div>
         </div>
 
         <div className="pannello">
           <div className="pannello-testa">
             <h2>Tutte le strutture</h2>
-            <span className="conta-piatti">{righe.length} committenti, {totPasti} pasti nel mese</span>
+            <span className="conta-piatti">{righe.length} committenti, {totProforme} proforma valide</span>
           </div>
           <div className="scorri">
             <table className="dati">
-              <thead><tr><th>Struttura</th><th>Tipo</th><th>Pasti</th><th>Prezzo unitario</th><th>Imponibile</th><th>IVA</th><th>Totale</th><th /></tr></thead>
+              <thead><tr><th>Struttura</th><th>Termini</th><th>Metodo</th><th>Regime IVA</th><th>Proforma</th><th>Imponibile</th><th>IVA</th><th>Totale</th><th>Ultima scadenza</th><th /></tr></thead>
               <tbody>
-                {righe.map((x) => (
-                  <tr key={x.c.id} style={x.c.id === attivo ? { background: "var(--carta)" } : undefined}>
-                    <td><b>{x.c.nome}</b></td>
-                    <td><span className="pastiglia p-neu">{x.c.tipo}</span></td>
-                    <td className="quantita">{x.pasti}</td>
-                    <td className="cifra">€ {eur(x.c.prezzoUnitario)}</td>
-                    <td className="cifra">€ {eur(x.imponibile)}</td>
-                    <td className="cifra">€ {eur(x.iva)} <span style={{ color: "var(--muto)", fontSize: 11 }}>({x.c.ivaPercentuale}%)</span></td>
-                    <td className="cifra"><b>€ {eur(x.totale)}</b></td>
-                    <td><button className="btn linea piccolo" onClick={() => setAttivo(x.c.id)}>Apri</button></td>
-                  </tr>
-                ))}
+                {righe.map((x) => {
+                  const regime = regimeIva(x.c.regimeIva);
+                  return (
+                    <tr key={x.c.id} style={x.c.id === attivo ? { background: "var(--carta)" } : undefined}>
+                      <td><b>{x.c.nome}</b><div style={{ fontSize: 11, color: "var(--muto)" }}>{x.c.tipo}</div></td>
+                      <td>{terminiPagamento(x.c.termini).nome}</td>
+                      <td>{metodoPagamento(x.c.metodoPagamento).nome}</td>
+                      <td>{regime.conIva ? "IVA " + (x.c.ivaPercentuale || 0) + "%" : <span className="pastiglia p-neu">senza IVA</span>}</td>
+                      <td className="quantita">{x.valide.length}</td>
+                      <td className="cifra">€ {eurIt(x.somma.imponibile)}</td>
+                      <td className="cifra">€ {eurIt(x.somma.iva)}</td>
+                      <td className="cifra"><b>€ {eurIt(x.somma.totale)}</b></td>
+                      <td className="cifra">{x.ultima ? dataIt(x.ultima.scadenza) : "—"}</td>
+                      <td><button className="btn linea piccolo" onClick={() => setAttivo(x.c.id)}>Apri</button></td>
+                    </tr>
+                  );
+                })}
                 <tr className="riga-totale">
-                  <td colSpan={2}><b>Totale</b></td>
-                  <td className="quantita">{totPasti}</td>
-                  <td />
-                  <td className="cifra">€ {eur(totImponibile)}</td>
-                  <td className="cifra">€ {eur(totIva)}</td>
-                  <td className="cifra"><b>€ {eur(totImponibile + totIva)}</b></td>
-                  <td />
+                  <td colSpan={4}><b>Totale</b></td>
+                  <td className="quantita">{totProforme}</td>
+                  <td className="cifra">€ {eurIt(totImponibile)}</td>
+                  <td className="cifra">€ {eurIt(totIva)}</td>
+                  <td className="cifra"><b>€ {eurIt(totImponibile + totIva)}</b></td>
+                  <td colSpan={2} />
                 </tr>
               </tbody>
             </table>
           </div>
           <div className="pannello-piede" style={{ display: "flex", gap: 10, justifyContent: "flex-end", alignItems: "center" }}>
-            <span style={{ flex: 1 }}>Un unico documento con tutte le strutture insieme, se serve.</span>
-            <button className="btn linea piccolo" onClick={scaricaExcelTutte}><Icone.scarica size={16} /> Excel di tutte</button>
-            <button className="btn piccolo" onClick={generaProformaCombinata}>Proforma unica PDF</button>
+            <span style={{ flex: 1 }}>Riepilogo di quello che è stato emesso, annullate escluse dai totali.</span>
+            {st.puo("fatturazione.excel") && (
+              <button className="btn linea piccolo" onClick={scaricaExcelTutte}><Icone.scarica size={16} /> Excel di tutte</button>
+            )}
           </div>
         </div>
       </div>
+
+      {nuova && <ModuloProforma committente={r.c} datiAziendali={st.datiAziendali} onChiudi={() => setNuova(false)} onEmetti={emetti} />}
     </>
+  );
+}
+
+/* ==================== nuova proforma, righe e condizioni a mano ==================== */
+function ModuloProforma({ committente, datiAziendali, onChiudi, onEmetti }) {
+  const iniziale = meseChiuso();
+  const periodoIniziale = iniziale.mese + " " + iniziale.anno;
+  const regimeCommittente = regimeIva(committente.regimeIva);
+
+  const [mese, setMese] = React.useState(iniziale.mese);
+  const [anno, setAnno] = React.useState(iniziale.anno);
+  /* un committente appena creato non ha uno storico: si parte dai pasti
+     stimati al giorno per ventidue giorni lavorativi, poi si corregge a mano */
+  const pastiProposti = committente.pastiMeseDemo != null
+    ? committente.pastiMeseDemo
+    : Math.round((committente.pasti || 0) * 22);
+  const [righe, setRighe] = React.useState(() => [{
+    descrizione: "Pasti " + periodoIniziale,
+    quantita: pastiProposti,
+    prezzo: committente.prezzoUnitario || 0,
+  }]);
+  const [termini, setTermini] = React.useState(committente.termini || datiAziendali.terminiDefault);
+  const [metodo, setMetodo] = React.useState(committente.metodoPagamento || datiAziendali.metodoDefault);
+  const [regime, setRegime] = React.useState(regimeCommittente.id);
+  const [aliquota, setAliquota] = React.useState(regimeCommittente.conIva ? (committente.ivaPercentuale || 0) : 10);
+  const [dicitura, setDicitura] = React.useState(committente.dicituraIva || regimeCommittente.dicitura);
+  const [note, setNote] = React.useState("");
+
+  const periodo = mese + " " + anno;
+  const conIva = regimeIva(regime).conIva;
+  const totali = totaliProforma({ righe, regimeIva: regime, aliquota });
+  const scadenza = scadenzaPagamento(new Date(), termini);
+  const valido = righe.some((r) => r.descrizione.trim() && (Number(r.quantita) || 0) > 0);
+
+  /* cambiando periodo si riscrive la descrizione solo delle righe rimaste
+     quelle proposte: una riga scritta a mano non va toccata */
+  function cambiaPeriodo(nuovoMese, nuovoAnno) {
+    const vecchia = "Pasti " + mese + " " + anno;
+    const nuovaDescrizione = "Pasti " + nuovoMese + " " + nuovoAnno;
+    setRighe((rs) => rs.map((r) => (r.descrizione === vecchia ? { ...r, descrizione: nuovaDescrizione } : r)));
+    setMese(nuovoMese);
+    setAnno(nuovoAnno);
+  }
+
+  const cambiaRiga = (i, campo, valore) =>
+    setRighe((rs) => rs.map((r, k) => (k === i ? { ...r, [campo]: valore } : r)));
+  const aggiungiRiga = () =>
+    setRighe((rs) => [...rs, { descrizione: "", quantita: 1, prezzo: committente.prezzoUnitario || 0 }]);
+  const togliRiga = (i) => setRighe((rs) => rs.filter((_, k) => k !== i));
+
+  function cambiaRegime(id) {
+    setRegime(id);
+    const r = regimeIva(id);
+    if (!r.conIva && !dicitura.trim()) setDicitura(r.dicitura);
+    if (r.conIva && !(Number(aliquota) > 0)) setAliquota(10);
+  }
+
+  function invia() {
+    if (!valido) return;
+    onEmetti({
+      periodo,
+      righe: righe.filter((r) => r.descrizione.trim()),
+      termini, metodoPagamento: metodo, regimeIva: regime,
+      aliquota: Number(aliquota) || 0,
+      dicituraIva: dicitura,
+      note: note.trim(),
+    });
+  }
+
+  return (
+    <Velo largo onChiudi={onChiudi}>
+      <div className="scelta-testa">
+        <div className="occhiello">Nuova proforma</div>
+        <h2>{committente.nome}</h2>
+        <p>Righe e condizioni valgono solo per questo documento: le impostazioni del committente restano come sono.</p>
+      </div>
+      <div className="modulo" style={{ padding: "0 26px 8px" }}>
+        <div className="modulo-riga due">
+          <label>
+            <span>Mese del periodo</span>
+            <select value={mese} onChange={(e) => cambiaPeriodo(e.target.value, anno)}>
+              {MESI.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Anno</span>
+            <input type="number" min="2020" max="2099" value={anno}
+              onChange={(e) => cambiaPeriodo(mese, Number(e.target.value) || anno)} />
+          </label>
+        </div>
+
+        <div className="pro-righe">
+          <div className="pro-righe-testa">
+            <span>Righe del documento</span>
+            <button type="button" className="btn linea piccolo" onClick={aggiungiRiga}>
+              <Icone.piu size={14} /> Aggiungi riga
+            </button>
+          </div>
+          {righe.map((r, i) => (
+            <div key={i} className="pro-riga">
+              <label>
+                <span>Descrizione</span>
+                <input type="text" value={r.descrizione} placeholder="Es. Pasti Agosto 2026"
+                  onChange={(e) => cambiaRiga(i, "descrizione", e.target.value)} />
+              </label>
+              <label>
+                <span>Quantità</span>
+                <input type="number" min="0" step="1" value={r.quantita}
+                  onChange={(e) => cambiaRiga(i, "quantita", e.target.value)} />
+              </label>
+              <label>
+                <span>Prezzo unit.</span>
+                <input type="number" min="0" step="0.10" value={r.prezzo}
+                  onChange={(e) => cambiaRiga(i, "prezzo", e.target.value)} />
+              </label>
+              <div className="pro-riga-importo">
+                <span>€ {eurIt((Number(r.quantita) || 0) * (Number(r.prezzo) || 0))}</span>
+                <button type="button" onClick={() => togliRiga(i)} disabled={righe.length === 1}
+                  aria-label="togli riga" title="Togli riga">
+                  <Icone.x size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="modulo-riga due">
+          <label>
+            <span>Termini di pagamento</span>
+            <select value={termini} onChange={(e) => setTermini(e.target.value)}>
+              {TERMINI_PAGAMENTO.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Metodo di pagamento</span>
+            <select value={metodo} onChange={(e) => setMetodo(e.target.value)}>
+              {METODI_PAGAMENTO.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
+            </select>
+          </label>
+        </div>
+        <div className="modulo-riga due">
+          <label>
+            <span>Regime IVA</span>
+            <select value={regime} onChange={(e) => cambiaRegime(e.target.value)}>
+              {REGIMI_IVA.map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Aliquota IVA %</span>
+            <input type="number" min="0" max="100" step="1" value={conIva ? aliquota : 0} disabled={!conIva}
+              onChange={(e) => setAliquota(e.target.value)} />
+          </label>
+        </div>
+        {!conIva && (
+          <label className="modulo-blocco">
+            <span>Dicitura di esenzione</span>
+            <input type="text" value={dicitura} onChange={(e) => setDicitura(e.target.value)}
+              placeholder="Operazione esente IVA ai sensi dell'art. 10 DPR 633/72" />
+          </label>
+        )}
+        <label className="modulo-blocco">
+          <span>Note sul documento</span>
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2}
+            placeholder="Facoltative, finiscono in fondo alla proforma" />
+        </label>
+
+        <div className="pro-anteprima">
+          <div><span>Imponibile</span><b>€ {eurIt(totali.imponibile)}</b></div>
+          <div><span>{conIva ? "IVA " + (Number(aliquota) || 0) + "%" : "IVA, operazione esente"}</span><b>€ {eurIt(totali.iva)}</b></div>
+          <div className="forte"><span>Totale documento</span><b>€ {eurIt(totali.totale)}</b></div>
+          <div><span>Scadenza</span><b>{dataIt(scadenza)}</b></div>
+        </div>
+      </div>
+      <div className="scelta-piede modulo-piede">
+        <button className="btn linea" onClick={onChiudi}>Annulla</button>
+        <button className="btn" disabled={!valido} onClick={invia}>Emetti e apri PDF</button>
+      </div>
+    </Velo>
   );
 }
 
@@ -1034,6 +1829,13 @@ function formattaQuando(iso) {
 
 function OrdiniAzienda({ pasti, giorniConfermati, nominativi, onManifesto }) {
   const righe = Object.entries(pasti).sort((a, b) => b[1] - a[1]);
+  /* il manifesto è di una consegna sola: si sceglie la giornata e l'elenco
+     nominativo mostra quella, così il foglio stampato è quello che si vede */
+  const primoConNominativi = nominativi.length
+    ? Math.min(...nominativi.map((n) => n.indiceGiorno))
+    : 0;
+  const [giorno, setGiorno] = React.useState(primoConNominativi);
+  const delGiorno = nominativi.filter((n) => n.indiceGiorno === giorno);
   if (!righe.length) return (
     <div className="avviso info">
       <Icone.attenzione size={16} />
@@ -1064,22 +1866,32 @@ function OrdiniAzienda({ pasti, giorniConfermati, nominativi, onManifesto }) {
         <span className="pastiglia p-att">riservato al fornitore</span>
       </div>
       <p style={{ fontSize: 12, color: "var(--muto)", margin: "0 0 10px" }}>
-        Chi ha ordinato cosa. Non è mai visibile al cliente né al dipendente: le etichette pasto
-        dell'azienda restano anonime, questo elenco serve solo al fornitore per il cassone termico.
+        Chi ha ordinato cosa, una giornata alla volta. Non è mai visibile al cliente né al
+        dipendente: le etichette pasto dell'azienda restano anonime, questo elenco serve solo al
+        fornitore per il cassone termico.
       </p>
-      {nominativi.length === 0 ? (
-        <div className="avviso info"><Icone.attenzione size={16} /><span>Nessun nominativo disponibile per oggi.</span></div>
+      <div className="giorni-tab">
+        {GIORNI.map((g, i) => {
+          const quanti = nominativi.filter((n) => n.indiceGiorno === i).length;
+          return (
+            <button key={g.n} className={i === giorno ? "on" : ""} onClick={() => setGiorno(i)}>
+              {g.n}<span>{quanti ? quanti + (quanti === 1 ? " nominativo" : " nominativi") : "nessuno"}</span>
+            </button>
+          );
+        })}
+      </div>
+      {delGiorno.length === 0 ? (
+        <div className="avviso info"><Icone.attenzione size={16} /><span>Nessun nominativo per {etichettaGiorno(giorno)}.</span></div>
       ) : (
         <div className="scorri">
           <table className="dati">
-            <thead><tr><th>Nominativo</th><th>Reparto</th><th>Per il giorno</th><th>Primo</th><th>Secondo</th><th>Contorno</th></tr></thead>
+            <thead><tr><th>Nominativo</th><th>Reparto</th><th>Primo</th><th>Secondo</th><th>Contorno</th></tr></thead>
             <tbody>
-              {nominativi.map((n) => (
+              {delGiorno.map((n) => (
                 <tr key={n.id}>
                   <td><b>{n.nome}</b></td>
                   <td style={{ color: "var(--muto)" }}>{n.reparto}</td>
-                  <td>{n.giorno}</td>
-                  <td>{n.primo}</td>
+                  <td>{n.unico ? "Piatto unico: " + n.unico : n.primo}</td>
                   <td>{n.secondo}</td>
                   <td>{n.contorno}</td>
                 </tr>
@@ -1088,11 +1900,13 @@ function OrdiniAzienda({ pasti, giorniConfermati, nominativi, onManifesto }) {
           </table>
         </div>
       )}
-      <div style={{ marginTop: 12 }}>
-        <button className="btn linea piccolo" onClick={onManifesto}>
-          <Icone.stampa size={16} /> Genera manifesto PDF per il cassone termico
-        </button>
-      </div>
+      {onManifesto && (
+        <div style={{ marginTop: 12 }}>
+          <button className="btn linea piccolo" onClick={() => onManifesto(giorno)}>
+            <Icone.stampa size={16} /> Manifesto PDF di {etichettaGiorno(giorno)} per il cassone termico
+          </button>
+        </div>
+      )}
     </>
   );
 }
@@ -1104,8 +1918,13 @@ function OrdiniComunita({ righe }) {
       <span>Nessuna presenza trasmessa ancora oggi. La lista si popola quando l'educatore o il responsabile trasmette a MAVI.</span>
     </div>
   );
+  const pazienti = new Set(righe.map((r) => r.id)).size;
   return (
     <div className="scorri">
+      <p style={{ fontSize: 12.5, color: "var(--muto)", margin: "0 0 10px" }}>
+        {righe.length} {righe.length === 1 ? "pasto" : "pasti"} da {pazienti} {pazienti === 1 ? "paziente" : "pazienti"}:
+        pranzo e cena sono righe distinte, trasmesse separatamente dalla struttura.
+      </p>
       <table className="dati">
         <thead><tr><th>Paziente</th><th>Reparto</th><th>Per il giorno</th><th>Pasto</th><th>Primo</th><th>Secondo</th><th>Contorno</th><th>Generato il</th></tr></thead>
         <tbody>
@@ -1167,6 +1986,8 @@ function FlussiOrdine() {
     return a;
   }, [st.ordini, st.confermati]);
   const totAzienda = Object.values(pastiAzienda).reduce((a, b) => a + b, 0);
+  /* una riga per paziente E pasto: pranzo e cena sono due pasti distinti,
+     quindi qui si contano pasti, non pazienti */
   const totComunita = st.presenzeTrasmesse.length;
   /* "generato il" e "per il giorno" sono due informazioni diverse: un ordine
      confermato oggi vale per un giorno della settimana in corso, non per oggi
@@ -1191,23 +2012,25 @@ function FlussiOrdine() {
   async function scaricaGlobale() {
     const { scaricaExcel } = await import("../excel.js");
     const fogli = dati.map((d) => ({ nome: d.c.nome.slice(0, 28), ...foglioPerCommittente(d.c.id, pastiAzienda, st.presenzeTrasmesse) }));
-    await scaricaExcel("Ordini_in_arrivo.xlsx", fogli);
+    await scaricaExcel("Ordini_in_arrivo.xlsx", fogli, { datiAziendali: st.datiAziendali });
     st.avvisa("Resoconto globale scaricato, un foglio per struttura");
   }
   async function scaricaStruttura(d) {
     const { scaricaExcel } = await import("../excel.js");
     await scaricaExcel("Ordini_" + d.c.nome.replace(/[^a-zA-Z0-9]+/g, "_") + ".xlsx",
-      [{ nome: "Ordini", ...foglioPerCommittente(d.c.id, pastiAzienda, st.presenzeTrasmesse) }]);
+      [{ nome: "Ordini", ...foglioPerCommittente(d.c.id, pastiAzienda, st.presenzeTrasmesse) }], { datiAziendali: st.datiAziendali });
     st.avvisa("Resoconto di " + d.c.nome + " scaricato");
   }
-  async function generaManifesto(struttura) {
-    const { generaManifestoConsegna } = await import("../manifesto.js");
+  function generaManifesto(struttura, indiceGiorno) {
+    const quanti = st.nominativiAzienda.filter((n) => n.indiceGiorno === indiceGiorno).length;
     generaManifestoConsegna({
-      struttura, pasto: "pranzo",
-      giorno: giorniConfermatiAzienda[0]?.giorno || "Mercoledì 16 settembre 2026",
+      struttura, pasto: "pranzo", indiceGiorno,
       righe: st.nominativiAzienda,
+      datiAziendali: st.datiAziendali,
+      avvisa: st.avvisa,
     });
-    st.logga("Cucina MAVI", "Operatore", "Manifesto di consegna generato", struttura + ", " + st.nominativiAzienda.length + " nominativi", "generico");
+    st.logga("Cucina MAVI", "Operatore", "Manifesto di consegna generato",
+      struttura + ", " + etichettaGiorno(indiceGiorno) + ", " + quanti + " nominativi", "generico");
   }
 
   return (
@@ -1220,9 +2043,11 @@ function FlussiOrdine() {
           <button className="btn linea piccolo" onClick={() => st.avvisa("Sollecito inviato alle strutture in attesa")}>
             Sollecita chi manca
           </button>
-          <button className="btn piccolo" onClick={scaricaGlobale}>
-            <Icone.scarica size={16} /> Resoconto globale
-          </button>
+          {st.puo("flussi.excel") && (
+            <button className="btn piccolo" onClick={scaricaGlobale}>
+              <Icone.scarica size={16} /> Resoconto globale
+            </button>
+          )}
         </>}
       />
       <div className="tela">
@@ -1268,14 +2093,17 @@ function FlussiOrdine() {
                       <tr>
                         <td colSpan={6} style={{ background: "var(--carta)", padding: "16px 18px" }}>
                           {d.c.id === "azienda"
-                            ? <OrdiniAzienda pasti={pastiAzienda} giorniConfermati={giorniConfermatiAzienda} nominativi={st.nominativiAzienda} onManifesto={() => generaManifesto(d.c.nome)} />
+                            ? <OrdiniAzienda pasti={pastiAzienda} giorniConfermati={giorniConfermatiAzienda} nominativi={st.nominativiAzienda}
+                                onManifesto={st.puo("flussi.manifesto") ? (i) => generaManifesto(d.c.nome, i) : null} />
                             : d.c.id === "comunita"
                               ? <OrdiniComunita righe={st.presenzeTrasmesse} />
                               : <div className="avviso info"><Icone.attenzione size={16} /><span>Nessuna fonte di ordini collegata ancora per questo committente.</span></div>}
                           <div style={{ marginTop: 14 }}>
-                            <button className="btn linea piccolo" onClick={() => scaricaStruttura(d)}>
-                              <Icone.scarica size={16} /> Scarica resoconto di {d.c.nome}
-                            </button>
+                            {st.puo("flussi.excel") && (
+                              <button className="btn linea piccolo" onClick={() => scaricaStruttura(d)}>
+                                <Icone.scarica size={16} /> Scarica resoconto di {d.c.nome}
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -1287,7 +2115,8 @@ function FlussiOrdine() {
           </div>
           <div className="pannello-piede">
             Per l'azienda il dettaglio somma i piatti confermati dai dipendenti. Per la comunità
-            elenca i pazienti trasmessi, con reparto e portate, perché il pasto è nominativo.
+            elenca i pazienti trasmessi, con reparto, pasto e portate, perché il pasto è nominativo:
+            pranzo e cena arrivano da due trasmissioni distinte e contano come due pasti.
           </div>
         </div>
       </div>
@@ -1541,6 +2370,7 @@ function EtichettePasto() {
      aperta: se il conteggio attuale è più alto, sono arrivate etichette
      nuove da quando nessuno guardava, e lo segnaliamo con il pallino. */
   const [visti, setVisti] = React.useState({});
+  const puoEliminare = st.puo("etichette.elimina");
 
   /* etichette azienda: solo da prenotazioni confermate nella sessione demo */
   const etichetteAzienda = React.useMemo(() => {
@@ -1583,7 +2413,7 @@ function EtichettePasto() {
         const nomeClean = splitPiatto(piatto).nome;
         const found = cercaPiatto(nomeClean);
         lista.push({
-          chiave: "com-" + t.id + "-" + portata,
+          chiave: "com-" + t.id + "-" + t.pasto + "-" + portata,
           nome: t.nome,
           stanza: t.stanza,
           tipoDieta: t.tipo_dieta,
@@ -1606,6 +2436,16 @@ function EtichettePasto() {
   const comFiltrate = etichetteComunita.filter((e) => !rimossi.includes(e.chiave));
   const totale = azFiltrate.length + comFiltrate.length;
   const vuoto = totale === 0;
+
+  /* i pasti realmente presenti fra le etichette comunità: pranzo e cena
+     arrivano da trasmissioni separate, la card non può essere fissa */
+  const pastiPresenti = React.useMemo(() => {
+    const presenti = new Set(comFiltrate.map((e) => e.pasto).filter(Boolean));
+    if (azFiltrate.length) presenti.add("pranzo");
+    return ["pranzo", "cena"].filter((p) => presenti.has(p));
+  }, [azFiltrate, comFiltrate]);
+  const etichettaPasto = pastiPresenti.length === 0 ? "—"
+    : pastiPresenti.map((p) => p[0].toUpperCase() + p.slice(1)).join(" + ");
 
   const righe = React.useMemo(() => committenti.map((c) => ({
     c,
@@ -1667,7 +2507,7 @@ function EtichettePasto() {
               <div className="numero"><div className="n-lab">Etichette totali</div><div className="n-val">{totale}</div><div className="n-nota">azienda + comunità</div></div>
               <div className="numero"><div className="n-lab">Azienda</div><div className="n-val">{azFiltrate.length}</div><div className="n-nota">anonime, solo piatto</div></div>
               <div className="numero"><div className="n-lab">Comunità</div><div className="n-val">{comFiltrate.length}</div><div className="n-nota">nominative, per paziente</div></div>
-              <div className="numero"><div className="n-lab">Pasto</div><div className="n-val" style={{ fontSize: 20 }}>Pranzo</div><div className="n-nota">mer 16 set 2026</div></div>
+              <div className="numero"><div className="n-lab">Pasto</div><div className="n-val" style={{ fontSize: 20 }}>{etichettaPasto}</div><div className="n-nota">mer 16 set 2026</div></div>
             </div>
 
             {[["Aziende", righeAzienda], ["Comunità", righeComunita], ["Altri committenti", righeAltro]].map(([titolo, sottoinsieme]) => sottoinsieme.length > 0 && (
@@ -1705,17 +2545,19 @@ function EtichettePasto() {
                                   <input type="text" value={cerca} onChange={(e) => setCerca(e.target.value)}
                                     placeholder={r.c.id === "azienda" ? "Cerca per piatto…" : "Cerca per nominativo…"}
                                     style={{ flex: 1, minWidth: 200, padding: "8px 12px", border: "1px solid var(--linea-forte)", borderRadius: "var(--r-s)", fontFamily: "var(--sans)", fontSize: 13 }} />
-                                  <button className="btn piccolo" onClick={() => setStampaStruttura(r.c.id)}>
-                                    <Icone.stampa size={16} /> Stampa etichette di {r.c.nome}
-                                  </button>
+                                  {st.puo("etichette.stampa") && (
+                                    <button className="btn piccolo" onClick={() => setStampaStruttura(r.c.id)}>
+                                      <Icone.stampa size={16} /> Stampa etichette di {r.c.nome}
+                                    </button>
+                                  )}
                                 </div>
                                 {r.c.id === "azienda" && (
                                   <SezioneAzienda gruppi={raggruppaAzienda(cercaAzienda(azFiltrate))}
-                                    onElimina={(chiave, nome, portata) => setConferma({ chiave, nome, portata })} />
+                                    onElimina={puoEliminare ? (chiave, nome, portata) => setConferma({ chiave, nome, portata }) : null} />
                                 )}
                                 {r.c.id === "comunita" && (
                                   <SezioneComunita gruppi={raggruppaComunita(cercaComunita(comFiltrate))}
-                                    onElimina={(chiave, nome, portata) => setConferma({ chiave, nome, portata })} />
+                                    onElimina={puoEliminare ? (chiave, nome, portata) => setConferma({ chiave, nome, portata }) : null} />
                                 )}
                                 {r.c.id !== "azienda" && r.c.id !== "comunita" && (
                                   <p style={{ fontSize: 13, color: "var(--muto)" }}>Nessuna fonte di etichette collegata ancora per questo committente.</p>
@@ -1765,17 +2607,62 @@ function EtichettePasto() {
 }
 
 /* ==================== modale creazione/modifica utente ==================== */
-function ModaleUtente({ utente, ruoli, strutture, repartiComunita, onSalva, onChiudi }) {
-  const [form, setForm] = React.useState(utente || { nome: "", username: "", ruolo: ruoli[0], struttura: strutture[0], email: "", telefono: "" });
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const PERMESSI_PER_RUOLO = {
-    "Dipendente": ["Visualizza menu", "Prenota pasti", "Vedi prenotazioni"],
-    "Referente aziendale": ["Visualizza menu", "Prenota per dipendenti", "Vedi resoconti", "Scarica Excel/PDF", "Gestisci dipendenti"],
-    "Educatore": ["Visualizza pazienti", "Segna presenze", "Trasmetti presenze"],
-    "Responsabile": ["Visualizza pazienti", "Segna presenze", "Trasmetti presenze", "Modifica diete", "Carica diete", "Gestisci anagrafica"],
-    "Operatore cucina": ["Visualizza produzione", "Gestisci etichette", "Gestisci menu", "Gestisci committenti", "Fatturazione"],
-    "Amministratore": ["Accesso completo", "Gestione utenti", "Gestione portale", "Backup", "Log operazioni"],
-  };
+/* il portale di una struttura: MAVI a parte, lo dice il tipo del committente.
+   Da qui si decide quali ruoli si possono assegnare a quell'utente. */
+function portaleDiStruttura(id, committenti) {
+  if (id === "mavi") return "mavi";
+  const c = committenti.find((x) => x.id === id);
+  if (!c) return "comunita";
+  return c.tipo === "Azienda" ? "azienda" : "comunita";
+}
+
+const stileEtichetta = {
+  display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em",
+  textTransform: "uppercase", color: "var(--muto)", marginBottom: 4,
+};
+const stileCampo = { width: "100%", fontSize: 13, padding: "8px 10px" };
+
+function ModaleUtente({ utente, ruoli, strutture, committenti, repartiComunita, onSalva, onChiudi }) {
+  const primaStruttura = strutture[0] ? strutture[0].id : "mavi";
+  const [form, setForm] = React.useState(() => utente || {
+    nome: "", u: "", ruolo: "", struttura: primaStruttura,
+    committente: strutture[0] ? strutture[0].nome : "",
+    mansione: "", email: "", telefono: "", attivo: true,
+  });
+  const [errore, setErrore] = React.useState("");
+  const set = (k, v) => { setForm((f) => ({ ...f, [k]: v })); setErrore(""); };
+
+  const portale = portaleDiStruttura(form.struttura, committenti);
+  const ruoliAmmessi = ruoli.filter((r) => r.portale === portale);
+  const ruolo = ruoliAmmessi.find((r) => r.id === form.ruolo) || ruoliAmmessi[0] || null;
+  /* in comunità chi non vede tutti i reparti ne ha per forza uno assegnato,
+     altrimenti entrerebbe in un portale senza nessun paziente */
+  const repartoObbligatorio = portale === "comunita" && !!ruolo && !ruolo.permessi.includes("pazienti.tuttiReparti");
+  const permessiRuolo = ruolo ? PERMESSI.filter((p) => p.portale === portale && ruolo.permessi.includes(p.k)) : [];
+
+  function cambiaStruttura(id) {
+    const c = committenti.find((x) => x.id === id);
+    const nuovoPortale = portaleDiStruttura(id, committenti);
+    const primo = ruoli.find((r) => r.portale === nuovoPortale);
+    setForm((f) => ({
+      ...f,
+      struttura: id,
+      committente: c ? c.nome : "MAVI Ristorazione",
+      ruolo: ruoli.some((r) => r.id === f.ruolo && r.portale === nuovoPortale) ? f.ruolo : (primo ? primo.id : ""),
+    }));
+    setErrore("");
+  }
+
+  function salva() {
+    if (!form.nome.trim()) { setErrore("Il nome completo è obbligatorio."); return; }
+    if (!String(form.u || "").trim()) { setErrore("Il nome utente è obbligatorio: senza, la persona non entra."); return; }
+    if (!ruolo) { setErrore("Non c'è nessun ruolo disponibile per questa struttura."); return; }
+    if (repartoObbligatorio && !String(form.reparto || "").trim()) {
+      setErrore("Questo ruolo vede solo il proprio reparto: assegnagliene uno.");
+      return;
+    }
+    onSalva({ ...form, ruolo: ruolo.id, reparto: repartoObbligatorio ? form.reparto : "" });
+  }
 
   return (
     <Velo onChiudi={onChiudi}>
@@ -1785,79 +2672,305 @@ function ModaleUtente({ utente, ruoli, strutture, repartiComunita, onSalva, onCh
       </div>
       <div style={{ padding: "16px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px" }}>
         <div style={{ marginBottom: 14 }}>
-          <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muto)", marginBottom: 4 }}>Nome completo</label>
-          <input type="text" value={form.nome} onChange={(e) => set("nome", e.target.value)} style={{ width: "100%", fontSize: 13, padding: "8px 10px" }} />
+          <label style={stileEtichetta}>Nome completo</label>
+          <input type="text" value={form.nome} onChange={(e) => set("nome", e.target.value)} style={stileCampo} />
         </div>
         <div style={{ marginBottom: 14 }}>
-          <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muto)", marginBottom: 4 }}>Username</label>
-          <input type="text" value={form.username || ""} onChange={(e) => set("username", e.target.value)} style={{ width: "100%", fontSize: 13, padding: "8px 10px" }} placeholder="nome.cognome" />
+          <label style={stileEtichetta}>Nome utente</label>
+          <input type="text" value={form.u || ""} onChange={(e) => set("u", e.target.value.toLowerCase())}
+            style={stileCampo} placeholder="nome.cognome" />
         </div>
         <div style={{ marginBottom: 14 }}>
-          <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muto)", marginBottom: 4 }}>Ruolo</label>
-          <select value={form.ruolo} onChange={(e) => set("ruolo", e.target.value)} style={{ width: "100%", fontSize: 13, padding: "8px 10px" }}>
-            {ruoli.map((r) => <option key={r} value={r}>{r}</option>)}
+          <label style={stileEtichetta}>Struttura</label>
+          <select value={form.struttura} onChange={(e) => cambiaStruttura(e.target.value)} style={stileCampo}>
+            {strutture.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
           </select>
         </div>
         <div style={{ marginBottom: 14 }}>
-          <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muto)", marginBottom: 4 }}>Struttura</label>
-          <select value={form.struttura} onChange={(e) => set("struttura", e.target.value)} style={{ width: "100%", fontSize: 13, padding: "8px 10px" }}>
-            {strutture.map((s) => <option key={s} value={s}>{s}</option>)}
+          <label style={stileEtichetta}>Ruolo</label>
+          <select value={ruolo ? ruolo.id : ""} onChange={(e) => set("ruolo", e.target.value)} style={stileCampo}
+            disabled={ruoliAmmessi.length === 0}>
+            {ruoliAmmessi.length === 0 && <option value="">Nessun ruolo per questo portale</option>}
+            {ruoliAmmessi.map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
           </select>
+          <p style={{ fontSize: 11, color: "var(--muto)", marginTop: 4 }}>
+            I ruoli disponibili sono quelli del portale {ETICHETTE_PORTALE[portale]}.
+          </p>
         </div>
-        {form.ruolo === "Educatore" && (
+        {repartoObbligatorio && (
           <div style={{ marginBottom: 14 }}>
-            <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muto)", marginBottom: 4 }}>Reparto assegnato</label>
+            <label style={stileEtichetta}>Reparto assegnato</label>
             {repartiComunita.length === 0 ? (
               <p style={{ fontSize: 12, color: "var(--muto)" }}>Nessun reparto censito. Aggiungine uno da Impostazioni per committente.</p>
             ) : (
-              <select value={form.reparto || repartiComunita[0]} onChange={(e) => set("reparto", e.target.value)} style={{ width: "100%", fontSize: 13, padding: "8px 10px" }}>
+              <select value={form.reparto || ""} onChange={(e) => set("reparto", e.target.value)} style={stileCampo}>
+                <option value="">Scegli un reparto</option>
+                {form.reparto && !repartiComunita.includes(form.reparto) && (
+                  <option value={form.reparto}>{form.reparto}, non più censito</option>
+                )}
                 {repartiComunita.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
             )}
-            <p style={{ fontSize: 11, color: "var(--muto)", marginTop: 4 }}>Determina quali pazienti l'educatore vede e può modificare nel portale comunità.</p>
+            <p style={{ fontSize: 11, color: "var(--muto)", marginTop: 4 }}>Determina quali pazienti vede e può modificare nel portale comunità.</p>
           </div>
         )}
         <div style={{ marginBottom: 14 }}>
-          <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muto)", marginBottom: 4 }}>Email</label>
-          <input type="email" value={form.email || ""} onChange={(e) => set("email", e.target.value)} style={{ width: "100%", fontSize: 13, padding: "8px 10px" }} />
+          <label style={stileEtichetta}>Mansione</label>
+          <input type="text" value={form.mansione || ""} onChange={(e) => set("mansione", e.target.value)} style={stileCampo} />
         </div>
         <div style={{ marginBottom: 14 }}>
-          <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muto)", marginBottom: 4 }}>Telefono</label>
-          <input type="tel" value={form.telefono || ""} onChange={(e) => set("telefono", e.target.value)} style={{ width: "100%", fontSize: 13, padding: "8px 10px" }} />
+          <label style={stileEtichetta}>Email</label>
+          <input type="email" value={form.email || ""} onChange={(e) => set("email", e.target.value)} style={stileCampo} />
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <label style={stileEtichetta}>Telefono</label>
+          <input type="tel" value={form.telefono || ""} onChange={(e) => set("telefono", e.target.value)} style={stileCampo} />
         </div>
       </div>
       <div style={{ padding: "0 24px 16px" }}>
-        <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muto)", marginBottom: 8 }}>Permessi per ruolo "{form.ruolo}"</label>
+        <label style={stileEtichetta}>Permessi del ruolo {ruolo ? ruolo.nome : "—"}</label>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {(PERMESSI_PER_RUOLO[form.ruolo] || []).map((p) => (
-            <span key={p} className="pastiglia p-ok" style={{ fontSize: 11 }}>{p}</span>
+          {permessiRuolo.length === 0 && <span style={{ fontSize: 12, color: "var(--muto)" }}>Nessun permesso assegnato.</span>}
+          {permessiRuolo.map((p) => (
+            <span key={p.k} className="pastiglia p-ok" style={{ fontSize: 11 }}>{p.n}</span>
           ))}
         </div>
-        <p style={{ fontSize: 11, color: "var(--muto)", marginTop: 8 }}>I permessi sono assegnati automaticamente in base al ruolo. In produzione saranno configurabili per singolo utente.</p>
+        <p style={{ fontSize: 11, color: "var(--muto)", marginTop: 8 }}>
+          I permessi arrivano dal ruolo. Per cambiarli si va in <b>Ruoli e permessi</b>, dove la
+          modifica vale per tutti gli utenti che hanno quel ruolo.
+        </p>
       </div>
+      {errore && (
+        <div className="avviso info" style={{ margin: "0 24px 12px", background: "#fdf0e6", border: "1px solid #e8c9a8" }}>
+          <Icone.attenzione size={16} /><span>{errore}</span>
+        </div>
+      )}
       <div className="scelta-piede" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
         <button className="btn linea" onClick={onChiudi}>Annulla</button>
-        <button className="btn" disabled={!form.nome.trim()} onClick={() => onSalva(form)}>
-          {utente ? "Salva modifiche" : "Crea utente"}
-        </button>
+        <button className="btn" onClick={salva}>{utente ? "Salva modifiche" : "Crea utente"}</button>
       </div>
     </Velo>
   );
 }
 
+/* ==================== matrice ruoli e permessi ==================== */
+function RuoliPermessi() {
+  const st = usaStato();
+  const [portale, setPortale] = React.useState("mavi");
+  const [nuovo, setNuovo] = React.useState(null); // null | { nome, portale, copiaDa, vista }
+  const [daEliminare, setDaEliminare] = React.useState(null);
+
+  /* i permessi del portale, già raggruppati per pagina nell'ordine di PERMESSI */
+  const gruppi = [];
+  permessiDelPortale(portale).forEach((p) => {
+    const ultimo = gruppi[gruppi.length - 1];
+    if (ultimo && ultimo.nome === p.gruppo) ultimo.voci.push(p);
+    else gruppi.push({ nome: p.gruppo, voci: [p] });
+  });
+  const ruoliPortale = st.ruoli.filter((r) => r.portale === portale);
+  const contaUtenti = (id) => st.utenti.filter((u) => u.ruolo === id).length;
+
+  function creaRuolo() {
+    const copiato = st.ruoli.find((r) => r.id === nuovo.copiaDa);
+    const chiaviValide = permessiDelPortale(nuovo.portale).map((x) => x.k);
+    const fatto = st.salvaRuolo({
+      nome: nuovo.nome,
+      portale: nuovo.portale,
+      vista: nuovo.portale === "azienda"
+        ? (nuovo.vista || (copiato && copiato.vista) || "dipendente")
+        : undefined,
+      permessi: copiato ? copiato.permessi.filter((k) => chiaviValide.includes(k)) : [],
+    });
+    if (fatto) {
+      st.avvisa("Ruolo " + nuovo.nome.trim() + " creato");
+      setPortale(nuovo.portale);
+      setNuovo(null);
+    }
+  }
+
+  return (
+    <div className="pannello">
+      <div className="pannello-testa">
+        <h2>Ruoli e permessi</h2>
+        <span className="conta-piatti">{ruoliPortale.length} ruoli in {ETICHETTE_PORTALE[portale]}</span>
+        <button className="btn piccolo" style={{ marginLeft: "auto" }}
+          onClick={() => setNuovo({ nome: "", portale, copiaDa: "", vista: "dipendente" })}>
+          <Icone.piu size={14} /> Nuovo ruolo
+        </button>
+      </div>
+      <div style={{ padding: "18px 24px 0" }}>
+        <div className="commuta" style={{ marginBottom: 18 }}>
+          {Object.keys(ETICHETTE_PORTALE).map((k) => (
+            <button key={k} className={portale === k ? "on" : ""} onClick={() => setPortale(k)}>{ETICHETTE_PORTALE[k]}</button>
+          ))}
+        </div>
+      </div>
+      <div className="scorri">
+        <table className="dati matrice-permessi">
+          <thead>
+            <tr>
+              <th style={{ minWidth: 250 }}>Permesso</th>
+              {ruoliPortale.map((r) => (
+                <th key={r.id} className="mp-ruolo">
+                  <span className="mp-nome">{r.nome}</span>
+                  <span className="mp-nota">
+                    {r.bloccato ? "ruolo di sistema" : contaUtenti(r.id) + (contaUtenti(r.id) === 1 ? " utente" : " utenti")}
+                  </span>
+                  {!r.bloccato && <button className="mp-elimina" onClick={() => setDaEliminare(r)}>Elimina</button>}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {ruoliPortale.length === 0 && (
+              <tr><td colSpan={2} style={{ textAlign: "center", color: "var(--muto)", padding: 22 }}>
+                Nessun ruolo su questo portale. Creane uno con "Nuovo ruolo".
+              </td></tr>
+            )}
+            {ruoliPortale.length > 0 && gruppi.map((g) => (
+              <React.Fragment key={g.nome}>
+                <tr className="mp-gruppo">
+                  <td colSpan={ruoliPortale.length + 1}>{g.nome}</td>
+                </tr>
+                {g.voci.map((p) => (
+                  <tr key={p.k}>
+                    <td>
+                      <b>{p.n}</b>
+                      <div className="mp-chiave">{p.k}</div>
+                    </td>
+                    {ruoliPortale.map((r) => (
+                      <td key={r.id} style={{ textAlign: "center" }}>
+                        <input type="checkbox" className="mp-casella"
+                          checked={r.permessi.includes(p.k)}
+                          disabled={!!r.bloccato}
+                          onChange={() => st.commutaPermesso(r.id, p.k)}
+                          aria-label={p.n + ", " + r.nome} />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="pannello-piede">
+        Le modifiche valgono subito, anche per chi è già dentro il portale: la voce di menu sparisce
+        e la pagina corrente torna alla prima disponibile, senza rifare l'accesso. Il ruolo di
+        sistema non si modifica, altrimenti MAVI potrebbe chiudersi fuori dal proprio portale.
+      </div>
+
+      {nuovo && (
+        <Velo onChiudi={() => setNuovo(null)}>
+          <div className="scelta-testa">
+            <div className="occhiello">Ruoli e permessi</div>
+            <h2>Nuovo ruolo</h2>
+            <p>Un ruolo vive dentro un solo portale. I permessi si spuntano dopo, nella matrice.</p>
+          </div>
+          <div style={{ padding: "16px 24px" }}>
+            <div style={{ marginBottom: 14 }}>
+              <label style={stileEtichetta}>Nome del ruolo</label>
+              <input type="text" value={nuovo.nome} autoFocus style={stileCampo}
+                onChange={(e) => setNuovo((n) => ({ ...n, nome: e.target.value }))} placeholder="per esempio Cuoco" />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={stileEtichetta}>Portale</label>
+              <select value={nuovo.portale} style={stileCampo}
+                onChange={(e) => setNuovo((n) => ({ ...n, portale: e.target.value, copiaDa: "" }))}>
+                {Object.keys(ETICHETTE_PORTALE).map((k) => <option key={k} value={k}>{ETICHETTE_PORTALE[k]}</option>)}
+              </select>
+            </div>
+            {nuovo.portale === "azienda" && (
+              <div style={{ marginBottom: 14 }}>
+                <label style={stileEtichetta}>Telaio</label>
+                <select value={nuovo.vista} style={stileCampo}
+                  onChange={(e) => setNuovo((n) => ({ ...n, vista: e.target.value }))}>
+                  <option value="dipendente">Vista dipendente</option>
+                  <option value="referente">Vista referente</option>
+                </select>
+                <p style={{ fontSize: 11, color: "var(--muto)", marginTop: 4 }}>
+                  Il portale azienda ha due telai: quello del commensale e quello di chi gestisce il servizio.
+                </p>
+              </div>
+            )}
+            <div style={{ marginBottom: 14 }}>
+              <label style={stileEtichetta}>Copia i permessi da</label>
+              <select value={nuovo.copiaDa} style={stileCampo}
+                onChange={(e) => setNuovo((n) => ({ ...n, copiaDa: e.target.value }))}>
+                <option value="">Nessuno, parti da zero</option>
+                {st.ruoli.filter((r) => r.portale === nuovo.portale).map((r) => (
+                  <option key={r.id} value={r.id}>{r.nome}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="scelta-piede" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+            <button className="btn linea" onClick={() => setNuovo(null)}>Annulla</button>
+            <button className="btn" disabled={!nuovo.nome.trim()} onClick={creaRuolo}>Crea ruolo</button>
+          </div>
+        </Velo>
+      )}
+
+      {daEliminare && (
+        <Velo onChiudi={() => setDaEliminare(null)}>
+          <div className="scelta-testa">
+            <div className="occhiello">Conferma eliminazione</div>
+            <h2>Eliminare il ruolo {daEliminare.nome}?</h2>
+            <p>
+              {contaUtenti(daEliminare.id) > 0
+                ? "Ci sono ancora utenti con questo ruolo: vanno spostati su un altro ruolo prima di eliminarlo."
+                : "Il ruolo sparisce dalla matrice e non sarà più assegnabile."}
+            </p>
+          </div>
+          <div className="scelta-piede modulo-piede">
+            <button className="btn linea" onClick={() => setDaEliminare(null)}>Annulla</button>
+            <button className="btn" style={{ background: "#d9534f", color: "#fff" }}
+              onClick={() => { if (st.eliminaRuolo(daEliminare.id)) st.avvisa("Ruolo eliminato"); setDaEliminare(null); }}>
+              Elimina
+            </button>
+          </div>
+        </Velo>
+      )}
+    </div>
+  );
+}
+
 /* ==================== gestione portale ==================== */
+const TAB_GESTIONE = [
+  ["azienda", "Dati aziendali", "gestione.azienda"],
+  ["fatturazione", "Fatturazione", "gestione.fatturazione"],
+  ["tema", "Aspetto", "gestione.tema"],
+  ["utenti", "Utenti", "gestione.utenti"],
+  ["ruoli", "Ruoli e permessi", "gestione.ruoli"],
+  ["notifiche", "Notifiche", "gestione.notifiche"],
+  ["backup", "Backup", "gestione.backup"],
+];
+
 function GestionePortale() {
   const st = usaStato();
-  const [tab, setTab] = React.useState("azienda");
+  const tabPermessi = React.useMemo(
+    () => TAB_GESTIONE.filter(([, , permesso]) => st.puo(permesso)), [st.puo]
+  );
+  const [tab, setTab] = React.useState(() => (tabPermessi[0] ? tabPermessi[0][0] : ""));
+  /* togliere un permesso mentre la scheda è aperta la fa sparire subito */
+  React.useEffect(() => {
+    if (tabPermessi.length && !tabPermessi.some(([k]) => k === tab)) setTab(tabPermessi[0][0]);
+  }, [tabPermessi, tab]);
   const [dati, setDati] = React.useState({ ...st.datiAziendali });
   const [editUtente, setEditUtente] = React.useState(null); // null | "nuovo" | utente obj
-  const RUOLI = ["Dipendente", "Referente aziendale", "Educatore", "Responsabile", "Operatore cucina", "Amministratore"];
-  const STRUTTURE = ["Rossi Manifatture Spa", "Comunità Il Ponte", "MAVI Ristorazione"];
+  /* le strutture assegnabili a un utente sono i committenti censiti più MAVI:
+     un committente creato in demo compare subito anche qui */
+  const STRUTTURE = [...st.committenti.map((c) => ({ id: c.id, nome: c.nome })),
+    { id: "mavi", nome: "MAVI Ristorazione" }];
+  const nomeRuolo = (id) => {
+    const r = st.ruoli.find((x) => x.id === id);
+    return r ? r.nome : "ruolo non assegnato";
+  };
 
   function salvaDati() {
     st.setDatiAziendali(dati);
     st.avvisa("Dati aziendali salvati");
-    st.logga("Cucina MAVI", "Admin", "Dati aziendali aggiornati", "Ragione sociale, indirizzo, P.IVA", "modifica");
+    st.loggaSessione("Dati aziendali aggiornati", "Ragione sociale, indirizzo, P.IVA", "modifica");
   }
 
   function campo(label, chiave, tipo) {
@@ -1871,6 +2984,19 @@ function GestionePortale() {
           <input type="text" value={dati[chiave] || ""} onChange={(e) => setDati((d) => ({ ...d, [chiave]: e.target.value }))}
             style={{ width: "100%", fontSize: 13, padding: "8px 10px" }} placeholder={"Inserisci " + label.toLowerCase()} />
         )}
+      </div>
+    );
+  }
+
+  function campoScelta(label, chiave, opzioni, nota) {
+    return (
+      <div style={{ marginBottom: 14 }}>
+        <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muto)", marginBottom: 4 }}>{label}</label>
+        <select value={dati[chiave] || opzioni[0].id} onChange={(e) => setDati((d) => ({ ...d, [chiave]: e.target.value }))}
+          style={{ width: "100%", fontSize: 13, padding: "8px 10px" }}>
+          {opzioni.map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}
+        </select>
+        {nota && <div style={{ fontSize: 11.5, color: "var(--muto)", marginTop: 4 }}>{nota}</div>}
       </div>
     );
   }
@@ -1893,7 +3019,7 @@ function GestionePortale() {
       <Intestazione occhiello="Amministrazione" titolo="Gestione portale" sotto="Dati aziendali, utenti, tema e notifiche del portale MAVI" />
       <div className="tela">
         <div className="commuta" style={{ marginBottom: 20 }}>
-          {[["azienda", "Dati aziendali"], ["fatturazione", "Fatturazione"], ["tema", "Aspetto"], ["utenti", "Utenti"], ["notifiche", "Notifiche"], ["backup", "Backup"]].map(([k, l]) => (
+          {tabPermessi.map(([k, l]) => (
             <button key={k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l}</button>
           ))}
         </div>
@@ -1917,24 +3043,37 @@ function GestionePortale() {
               </div>
             </div>
             <div className="pannello-piede">
-              Questi dati vengono usati nella generazione delle proforma e nei documenti del portale.
-              I campi vuoti appariranno come placeholder nelle proforma.
+              Ragione sociale, indirizzo, dati fiscali e contatti compaiono nella testata di ogni
+              documento stampabile del portale: proforma, manifesto di consegna e scheda piatto.
+              Quello che resta vuoto esce nel documento come segnaposto in corsivo terracotta.
             </div>
           </div>
         )}
 
         {tab === "fatturazione" && (
           <div className="pannello">
-            <div className="pannello-testa"><h2>Impostazioni fatturazione</h2></div>
+            <div className="pannello-testa"><h2>Condizioni predefinite per i nuovi committenti</h2></div>
             <div style={{ padding: "20px 24px" }}>
-              {campo("Condizioni di pagamento", "condizioniPagamento")}
+              <p style={{ fontSize: 12.5, color: "var(--muto)", margin: "0 0 16px" }}>
+                Sono la proposta di partenza quando si crea un committente. Ogni committente poi le
+                cambia in <b>Impostazioni per committente</b>, e ogni singola proforma può scostarsene
+                al momento dell'emissione. Cambiare qui non tocca i committenti già censiti.
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px" }}>
+                {campoScelta("Termini di pagamento", "terminiDefault", TERMINI_PAGAMENTO)}
+                {campoScelta("Metodo di pagamento", "metodoDefault", METODI_PAGAMENTO)}
+                {campoScelta("Regime IVA", "regimeIvaDefault", REGIMI_IVA)}
+                {campo("Dicitura di esenzione IVA", "dicituraIvaDefault")}
+              </div>
               {campo("Note standard proforma", "noteProforma", "area")}
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
                 <button className="btn" onClick={salvaDati}>Salva</button>
               </div>
             </div>
             <div className="pannello-piede">
-              Condizioni e note vengono inserite automaticamente in ogni proforma generata.
+              L'<b>IBAN</b> della scheda Dati aziendali finisce nel blocco "Condizioni di pagamento"
+              della proforma, quando il metodo è bonifico o SDD. Le <b>note standard</b> finiscono in
+              fondo a ogni proforma, sopra le note scritte per il singolo documento.
             </div>
           </div>
         )}
@@ -1964,32 +3103,30 @@ function GestionePortale() {
           <div className="pannello">
             <div className="pannello-testa">
               <h2>Utenti del portale</h2>
-              <span className="conta-piatti">{st.utenti.filter((u) => u.attivo).length} attivi su {st.utenti.length}</span>
+              <span className="conta-piatti">{st.utenti.filter((u) => u.attivo !== false).length} attivi su {st.utenti.length}</span>
               <button className="btn piccolo" style={{ marginLeft: "auto" }} onClick={() => setEditUtente("nuovo")}>
                 <Icone.piu size={14} /> Nuovo utente
               </button>
             </div>
             <div className="scorri">
               <table className="dati">
-                <thead><tr><th>Nome</th><th>Username</th><th>Ruolo</th><th>Struttura</th><th>Stato</th><th /></tr></thead>
+                <thead><tr><th>Nome</th><th>Nome utente</th><th>Ruolo</th><th>Struttura</th><th>Reparto</th><th>Stato</th><th /></tr></thead>
                 <tbody>
                   {st.utenti.map((u) => (
-                    <tr key={u.id} style={{ opacity: u.attivo ? 1 : 0.5 }}>
+                    <tr key={u.id} style={{ opacity: u.attivo !== false ? 1 : 0.5 }}>
                       <td><b>{u.nome}</b></td>
-                      <td className="cifra">{u.username || "—"}</td>
-                      <td>{u.ruolo}</td>
-                      <td style={{ color: "var(--muto)" }}>{u.struttura}</td>
-                      <td>{u.attivo ? <span className="pastiglia p-ok">attivo</span> : <span className="pastiglia p-neu">disattivato</span>}</td>
+                      <td className="cifra">{u.u || "—"}</td>
+                      <td>{nomeRuolo(u.ruolo)}</td>
+                      <td style={{ color: "var(--muto)" }}>{u.committente || u.struttura}</td>
+                      <td style={{ color: "var(--muto)" }}>{u.reparto || "—"}</td>
+                      <td>{u.attivo !== false ? <span className="pastiglia p-ok">attivo</span> : <span className="pastiglia p-neu">disattivato</span>}</td>
                       <td>
                         <div style={{ display: "flex", gap: 6 }}>
                           <button className="btn linea piccolo" onClick={() => setEditUtente({ ...u })}>Modifica</button>
-                          <button className={"btn piccolo" + (u.attivo ? " linea" : "")}
-                            style={u.attivo ? { color: "#d9534f" } : { background: "#5cb85c", color: "#fff" }}
-                            onClick={() => {
-                              st.setUtenti((p) => p.map((x) => x.id === u.id ? { ...x, attivo: !x.attivo } : x));
-                              st.avvisa(u.nome + (u.attivo ? " disattivato" : " riattivato"));
-                            }}>
-                            {u.attivo ? "Disattiva" : "Riattiva"}
+                          <button className={"btn piccolo" + (u.attivo !== false ? " linea" : "")}
+                            style={u.attivo !== false ? { color: "#d9534f" } : { background: "#5cb85c", color: "#fff" }}
+                            onClick={() => st.commutaAttivoUtente(u.id)}>
+                            {u.attivo !== false ? "Disattiva" : "Riattiva"}
                           </button>
                         </div>
                       </td>
@@ -1999,32 +3136,26 @@ function GestionePortale() {
               </table>
             </div>
             <div className="pannello-piede">
-              In produzione gli utenti avranno autenticazione con password individuale, reset via email e log degli accessi.
+              Il nome utente di questa tabella è quello con cui si entra: creare un utente qui
+              significa poter fare l'accesso con lui subito dopo. La password resta dimostrazione
+              per tutti; in produzione ogni utente avrà la propria, con reset via email e log degli accessi.
             </div>
 
             {editUtente && (
               <ModaleUtente
                 utente={editUtente === "nuovo" ? null : editUtente}
-                ruoli={RUOLI}
+                ruoli={st.ruoli}
                 strutture={STRUTTURE}
+                committenti={st.committenti}
                 repartiComunita={st.committenti.find((c) => c.id === "comunita")?.unita || []}
-                onSalva={(u) => {
-                  if (u.id) {
-                    st.setUtenti((p) => p.map((x) => x.id === u.id ? u : x));
-                    st.avvisa("Utente " + u.nome + " aggiornato");
-                  } else {
-                    const nuovo = { ...u, id: "u" + Date.now(), attivo: true };
-                    st.setUtenti((p) => [...p, nuovo]);
-                    st.avvisa("Utente " + u.nome + " creato");
-                  }
-                  st.logga("Cucina MAVI", "Admin", u.id ? "Utente modificato" : "Utente creato", u.nome + " — " + u.ruolo, "modifica");
-                  setEditUtente(null);
-                }}
+                onSalva={(u) => { if (st.salvaUtente(u)) setEditUtente(null); }}
                 onChiudi={() => setEditUtente(null)}
               />
             )}
           </div>
         )}
+
+        {tab === "ruoli" && <RuoliPermessi />}
 
         {tab === "notifiche" && (
           <div className="pannello">
@@ -2086,17 +3217,40 @@ function LogOperazioni() {
     return map[t] || "p-neu";
   };
 
+  /* esporta quello che è a schermo, filtro compreso */
+  async function esportaLog() {
+    try {
+      const { scaricaExcel } = await import("../excel.js");
+      await scaricaExcel("Log_operazioni.xlsx", [
+        { nome: "Log operazioni", dati: lista.map((l) => ({
+          ora: l.ora, utente: l.utente, ruolo: l.ruolo, azione: l.azione, dettaglio: l.dettaglio, tipo: l.tipo,
+        })), colonne: [
+          { header: "Ora", key: "ora", width: 10 },
+          { header: "Utente", key: "utente", width: 22 },
+          { header: "Ruolo", key: "ruolo", width: 20 },
+          { header: "Azione", key: "azione", width: 34 },
+          { header: "Dettaglio", key: "dettaglio", width: 48 },
+          { header: "Tipo", key: "tipo", width: 16 },
+        ] },
+      ], { datiAziendali: st.datiAziendali });
+      st.avvisa("Log esportato in Excel, " + lista.length + " operazioni");
+    } catch (e) {
+      console.error(e);
+      st.avvisa("Errore nell'export Excel, riprova");
+    }
+  }
+
   return (
     <>
       <Intestazione
         occhiello="Audit trail"
         titolo="Log operazioni"
         sotto="Cronologia di tutte le azioni eseguite nel portale, filtrabile per tipo"
-        azioni={
-          <button className="btn linea piccolo" onClick={() => st.avvisa("Log esportato, funzione dimostrativa")}>
+        azioni={st.puo("log.excel") && (
+          <button className="btn linea piccolo" onClick={esportaLog}>
             <Icone.scarica size={16} /> Esporta
           </button>
-        }
+        )}
       />
       <div className="tela">
         <div className="commuta" style={{ marginBottom: 20 }}>
@@ -2150,7 +3304,24 @@ function ImpostazioniServizio() {
   const [attivo, setAttivo] = React.useState(strutture[0]?.id);
   const [nuovoReparto, setNuovoReparto] = React.useState("");
   const c = strutture.find((s) => s.id === attivo) || strutture[0];
+  const modificabile = st.puo("impostazioni.modifica");
   const cambia = (campo, val) => st.aggiornaCommittente(attivo, { [campo]: val });
+  const conIva = regimeIva(c.regimeIva).conIva;
+
+  /* passando a "senza IVA" l'aliquota si azzera e si propone la dicitura di
+     esenzione; tornando a ordinaria si riparte dal 10%, che è l'aliquota
+     della ristorazione collettiva */
+  function cambiaRegime(id) {
+    const r = regimeIva(id);
+    const patch = { regimeIva: id };
+    if (!r.conIva) {
+      patch.ivaPercentuale = 0;
+      if (!(c.dicituraIva || "").trim()) patch.dicituraIva = r.dicitura;
+    } else if (!(Number(c.ivaPercentuale) > 0)) {
+      patch.ivaPercentuale = 10;
+    }
+    st.aggiornaCommittente(c.id, patch);
+  }
 
   function aggiungiReparto(e) {
     e.preventDefault();
@@ -2170,8 +3341,10 @@ function ImpostazioniServizio() {
       <Intestazione
         occhiello="Configurazione servizio"
         titolo="Impostazioni per committente"
-        sotto="Ogni struttura ha le sue regole. Qui si definiscono orari limite, listino, composizione del pasto"
-        azioni={<button className="btn piccolo" onClick={() => st.avvisa("Impostazioni salvate per " + c.nome)}>Salva</button>}
+        sotto="Ogni struttura ha le sue regole. Qui si definiscono orari limite, listino, composizione del pasto e condizioni di fatturazione"
+        azioni={modificabile && (
+          <button className="btn piccolo" onClick={() => st.avvisa("Impostazioni salvate per " + c.nome)}>Salva</button>
+        )}
       />
       <div className="tela">
         <div className="giorni-tab">
@@ -2182,6 +3355,9 @@ function ImpostazioniServizio() {
           ))}
         </div>
 
+        {/* un solo fieldset disattiva tutti i controlli della pagina in sola
+            lettura: i tab dei committenti restano fuori e navigabili */}
+        <fieldset disabled={!modificabile} style={{ border: "none", padding: 0, margin: 0, minWidth: 0 }}>
         <div className="impostazioni">
           <div className="impo-riga">
             <label>
@@ -2200,21 +3376,84 @@ function ImpostazioniServizio() {
               <span className="so-lab">Prezzo unitario a pasto</span>
               <input type="number" min="0" step="0.10" value={c.prezzoUnitario}
                 onChange={(e) => cambia("prezzoUnitario", Number(e.target.value) || 0)} />
-              <em>Usato per calcolare imponibile e proforma di questo committente.</em>
+              <em>Precompila le righe di ogni nuova proforma di questo committente.</em>
             </label>
-            <label>
-              <span className="so-lab">IVA</span>
-              <input type="number" min="0" max="100" step="1" value={c.ivaPercentuale}
-                onChange={(e) => cambia("ivaPercentuale", Number(e.target.value) || 0)} />
-              <em>Percentuale applicata sull'imponibile in fattura e proforma.</em>
-            </label>
-          </div>
-          <div className="impo-riga">
             <label>
               <span className="so-lab">Regola di composizione del pasto</span>
               <input type="text" value={c.regolaPasto} onChange={(e) => cambia("regolaPasto", e.target.value)} />
               <em>Base per l'indicatore di equilibrio nel vassoio del commensale.</em>
             </label>
+          </div>
+        </div>
+
+        <div className="pannello">
+          <div className="pannello-testa">
+            <h2>Condizioni di fatturazione</h2>
+            <span className="conta-piatti">{testoCondizioni(c)}</span>
+          </div>
+          <div style={{ padding: "18px 24px" }}>
+            <div className="impo-riga">
+              <label>
+                <span className="so-lab">Termini di pagamento</span>
+                <select value={c.termini || "30gg"} onChange={(e) => cambia("termini", e.target.value)}>
+                  {TERMINI_PAGAMENTO.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
+                </select>
+                <em>I termini "fine mese" contano i giorni dall'ultimo giorno del mese di emissione.</em>
+              </label>
+              <label>
+                <span className="so-lab">Metodo di pagamento</span>
+                <select value={c.metodoPagamento || "bonifico"} onChange={(e) => cambia("metodoPagamento", e.target.value)}>
+                  {METODI_PAGAMENTO.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
+                </select>
+                <em>Con bonifico e SDD la proforma riporta l'IBAN dei Dati aziendali.</em>
+              </label>
+            </div>
+            <div className="impo-riga">
+              <label>
+                <span className="so-lab">Regime IVA</span>
+                <select value={c.regimeIva || "ordinaria"} onChange={(e) => cambiaRegime(e.target.value)}>
+                  {REGIMI_IVA.map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
+                </select>
+                <em>Senza IVA la proforma espone comunque la riga IVA a zero, con la dicitura.</em>
+              </label>
+              <label>
+                <span className="so-lab">Aliquota IVA %</span>
+                <input type="number" min="0" max="100" step="1" value={c.ivaPercentuale} disabled={!conIva}
+                  onChange={(e) => cambia("ivaPercentuale", Number(e.target.value) || 0)} />
+                <em>{conIva ? "Applicata sull'imponibile di ogni proforma." : "Disattivata: il regime scelto è senza IVA."}</em>
+              </label>
+            </div>
+            {!conIva && (
+              <div className="impo-riga">
+                <label style={{ gridColumn: "1 / -1" }}>
+                  <span className="so-lab">Dicitura di esenzione</span>
+                  <input type="text" value={c.dicituraIva || ""} onChange={(e) => cambia("dicituraIva", e.target.value)}
+                    placeholder="Operazione esente IVA ai sensi dell'art. 10 DPR 633/72" />
+                  <em>Stampata nel blocco Condizioni della proforma.</em>
+                </label>
+              </div>
+            )}
+            <div className="impo-riga tre">
+              <label>
+                <span className="so-lab">Codice fiscale</span>
+                <input type="text" value={c.cf || ""} onChange={(e) => cambia("cf", e.target.value)} />
+                <em>Se diverso dalla P.IVA.</em>
+              </label>
+              <label>
+                <span className="so-lab">PEC</span>
+                <input type="text" value={c.pec || ""} onChange={(e) => cambia("pec", e.target.value)} />
+                <em>Recapito per la fattura elettronica.</em>
+              </label>
+              <label>
+                <span className="so-lab">Codice destinatario SDI</span>
+                <input type="text" value={c.codiceSdi || ""} onChange={(e) => cambia("codiceSdi", e.target.value)} />
+                <em>Sette caratteri, in alternativa alla PEC.</em>
+              </label>
+            </div>
+          </div>
+          <div className="pannello-piede">
+            Queste condizioni precompilano ogni nuova proforma di {c.nome} in <b>Fatturazione</b>, dove
+            restano modificabili per il singolo documento. Le proforma già emesse non cambiano.
           </div>
         </div>
 
@@ -2255,6 +3494,7 @@ function ImpostazioniServizio() {
             il campo Reparto per l'Educatore in Gestione portale → Utenti.
           </div>
         </div>
+        </fieldset>
       </div>
     </>
   );

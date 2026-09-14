@@ -1,168 +1,163 @@
-# Export Excel, template diete, proforma, manifesto, documenti
+# Export Excel, documenti stampabili, template diete
 
-Quattro moduli senza JSX, importati sempre in modo dinamico dove servono.
+Sei moduli senza JSX. `excel.js` e `diete.js` si importano con `await import(...)`
+perché portano ExcelJS; `documento.js`, `proforma.js`, `manifesto.js` e
+`resoconto.js` si importano **staticamente**, perché la scheda del documento va
+aperta dentro il gesto di click (vedi sotto).
+
+## `src/documento.js` — impaginazione condivisa (dal 14 settembre 2026)
+
+Un solo CSS A4 per tutti i documenti stampabili: palette terracotta / scuro /
+avorio (la stessa di `excel.js`), font Segoe UI / Calibri, `@page A4 14mm`,
+`thead` ripetuto su ogni pagina, righe che non si spezzano, numero di pagina
+nei browser che supportano le margin box di `@page`, barra "Stampa / Salva PDF"
+esclusa dalla stampa. Testata con marchio MAVI, mittente (`intestazioneMavi`) e
+badge.
+
+| Funzione | Cosa |
+|---|---|
+| `testoHtml(v)` | escape HTML, **unica copia** nel progetto |
+| `dataIt(d)` | `15/09/2026`; accetta `Date` o ISO `2026-09-15` |
+| `giornoDataIt(d)` | `MARTEDÌ - 15/09/2026` |
+| `eur(n)` | `1.234,56`, senza simbolo |
+| `campo(valore, segnaposto)` | valore escapato, oppure `<span class="ph">[segnaposto]</span>` |
+| `intestazioneMavi(datiAziendali)` | blocco mittente, già nella testata di `paginaDocumento` |
+| `paginaDocumento({ titolo, badge, sottotitolo, meta, blocchi, note, piede, datiAziendali })` | HTML completo; `meta` è `[{ etichetta, valore }]`, `blocchi` HTML già pronto |
+| `tabellaHtml({ colonne, righe, totale, vuota })` | `colonne: [{ titolo, allinea: "sx"\|"centro"\|"dx" }]`, `righe: [[cella, …]]`, `totale` ultima riga evidenziata |
+| `cellaConNota(principale, nota)` | cella su due righe, nota in grigio |
+| `riepilogoTotali([{ etichetta, valore, forte }])` | riquadro totali a destra |
+| `blocco(titolo, html)`, `paragrafo(testo, { piccolo })`, `elenco(righe)`, `etichette(lista)` | sezioni di testo |
+| `generaElencoNominativo({ titolo, badge, sottotitolo, meta, colonne, righe, totale, vuota, blocchiPrima, blocchiDopo, note, piede, nomeFile, datiAziendali, avvisa })` | pagina + tabella + apertura, usata dal manifesto e dal riepilogo del referente |
+| `apriDocumento(html, { nomeFile, avvisa })` | apre la scheda; ritorna `true` se aperta |
+
+Una **cella** è un valore qualsiasi, che passa da `testoHtml`, oppure
+`{ html: "…" }` già composto. La forma `{ html }` è riservata ai moduli
+documento: è l'unico modo per mettere un segnaposto `.ph` o una nota dentro
+una cella.
+
+Due regole:
+
+1. **Ogni valore passa da `testoHtml`**: i dati arrivano da anagrafiche e
+   catalogo modificabili dal portale. Fanno eccezione solo `blocchi` e le
+   celle `{ html }`.
+2. **`apriDocumento` si chiama dentro il gestore di click**, senza `await`
+   prima: un `await import(...)` fa perdere il gesto e il browser blocca la
+   scheda. Se la scheda è bloccata comunque, chiama
+   `avvisa("Il browser ha bloccato la finestra: consenti i popup per stampare")`
+   e scarica il file `.html`. Nessun `alert()`.
+
+Per questo i chiamanti passano sempre `st.datiAziendali` (mittente) e
+`st.avvisa`.
+
+## `src/proforma.js` — proforma stampabile
+
+```js
+generaProformaPDF(proforma, { datiAziendali, committente, avvisa })
+```
+
+`proforma` è un documento di `st.proforme` (vedi `03-store.md`): righe e
+condizioni sono già congelate al momento dell'emissione. Il documento mostra
+mittente (testata), destinatario dall'anagrafica del committente (nome,
+indirizzo, P.IVA/CF, PEC, codice SDI, referente), periodo, righe con quantità e
+prezzo, totali (`totaliProforma` di `data.js`), scadenza calcolata
+(`scadenzaPagamento`), termini e metodo di pagamento, IBAN solo se il metodo lo
+prevede, note del documento e `noteProforma` dei dati aziendali. Se il regime è
+`senza_iva` compare la riga `IVA € 0,00` con la dicitura di esenzione. Le
+proforma annullate hanno badge e nota dedicati.
+
+La chiamano Fatturazione (portale MAVI, "Emetti e apri PDF" e "PDF" in elenco),
+`Fatture` in `Cliente.jsx` e `FattureStruttura` in `Struttura.jsx`. Non esiste
+più la "proforma unica" con tutte le strutture insieme.
+
+## `src/manifesto.js` — manifesto di consegna nominativo
+
+```js
+generaManifestoConsegna({ struttura, indiceGiorno, pasto, righe, datiAziendali, avvisa })
+```
+
+`righe` è `st.nominativiAzienda` completo: la funzione **filtra per
+`indiceGiorno`** e intesta con `giornoDataIt(GIORNI[i].data)`. Le etichette
+pasto dell'azienda sono anonime; questo è l'unico documento nominativo, marcato
+"Riservato al fornitore — non esporre al cliente", raggiungibile solo dal
+drill-down azienda di "Ordini in arrivo" nel portale MAVI, dopo aver scelto la
+giornata. Il piatto unico compare come `Piatto unico: …` nella colonna Primo.
+
+## `src/resoconto.js` — resoconti e riepiloghi
+
+Ogni funzione compone `paginaDocumento` e chiude con `apriDocumento`.
+
+| Funzione | Chi la usa |
+|---|---|
+| `generaResocontoPDF({ committente, periodo, riepilogo, dettaglio, datiAziendali, avvisa })` | Referente › Resoconti › PDF. `riepilogo` è **lo stesso array** passato a `scaricaExcel`, riga `TOTALE` inclusa (`calcolaResoconto` in `Cliente.jsx`): Excel e PDF non possono divergere |
+| `generaResocontoComunitaPDF({ struttura, reparto, giorno, pasti, datiAziendali, avvisa })` | Comunità › Resoconti › PDF; `pasti` è `[{ pasto, righe }]`, ogni portata `{ nome, nota }` da `splitPiatto` |
+| `generaResocontoUnitaPDF({ struttura, modello, periodo, etichettaUnita, etichettaDiete, numeri, righe, nota, datiAziendali, avvisa })` | "Resoconto mensile" del cruscotto struttura: riporta la situazione corrente del cruscotto, lo dichiara in nota |
+| `generaDistintaPDF({ giorno, perimetro, strutture, sezioni, totali, diete, datiAziendali, avvisa })` | Produzione, vista Giorno: `sezioni: [{ categoria, righe: [{ piatto, colore, nota?, perStruttura, totale }] }]`, `diete: [{ nome, reparto, tipoDieta, note }]`; chiude con "Diete particolari e consistenze" e "Note di lavorazione e firma" |
+| `generaDistintaSettimanaPDF({ periodo, perimetro, giorni, sezioni, totali, diete, datiAziendali, avvisa })` | Produzione, vista Settimana: `giorni` sono le colonne lun–ven, righe con `perGiorno` |
+| `generaRiepilogoPrenotazioniPDF({ dipendente, committente, settimana, righe, datiAziendali, avvisa })` | Dipendente › Le mie prenotazioni › "Scarica riepilogo" |
+
+Il riepilogo del giorno del referente (`Cliente.jsx`, Cruscotto) usa invece
+`generaElencoNominativo` di `documento.js`: titolo `giornoDataIt`, tabella
+Dipendente / Reparto / Primo / Secondo / Contorno, "Non hanno ordinato" e
+totale pasti. Nessuna dieta sanitaria nel documento.
+
+Ogni bottone PDF del progetto ha `try/catch` con avviso: nessun export mostra
+più un messaggio di successo senza produrre un documento. Anche il "Log
+operazioni" del portale MAVI esporta un Excel vero, con il filtro attivo.
 
 ## `src/excel.js` — export xlsx
-
-Un'unica funzione:
 
 ```js
 await scaricaExcel("resoconto-agosto.xlsx", [
   { nome: "Riepilogo", dati: [{ ... }], colonne: [{ header, key, width }] },
-  { nome: "Dettaglio", dati: [...],     colonne: [...] },
-]);
+], { datiAziendali: st.datiAziendali });
 ```
 
 `ExcelJS` e `file-saver` sono importati con `await import(...)` dentro la
-funzione, così non entrano nel bundle iniziale.
+funzione. Ogni foglio è impaginato con l'identità MAVI:
 
-Ogni foglio viene impaginato con l'identità MAVI:
-
-1. Riga 1, titolo "MAVI Ristorazione" in terracotta 20 pt, celle unite su tutte
-   le colonne.
-2. Riga 2, indirizzo e P.IVA in grigio.
-3. Riga 3, nome del foglio più la data di generazione in italiano.
-4. Riga vuota.
-5. Intestazione colonne: fondo scuro, testo bianco in grassetto.
-6. Righe dati con fondo alternato bianco / avorio e bordo sottile.
-7. **Riga totale**: se in una cella dell'ultima riga compare la parola `TOTALE`
-   (confronto in maiuscolo), quella riga viene evidenziata in terracotta con
-   testo bianco. È il modo per ottenere il totale: non serve un flag.
-8. Piè di pagina con data e ora di generazione.
-
-Imposta anche `pageSetup` in orizzontale adattato alla larghezza e un footer di
-stampa con numerazione pagine.
+1. Riga 1, ragione sociale da `datiAziendali` (o "MAVI Ristorazione") in
+   terracotta 20 pt, celle unite.
+2. Riga 2, indirizzo e P.IVA da `datiAziendali`; se vuoti, i testi fissi di
+   esempio.
+3. Riga 3, nome del foglio più la data di generazione.
+4. Intestazione colonne su fondo scuro, righe alternate bianco / avorio.
+5. **Riga totale**: se in una cella dell'ultima riga compare `TOTALE`, la riga
+   è evidenziata in terracotta. Non serve un flag.
+6. Piè di pagina con data e ora; `pageSetup` orizzontale e footer di stampa.
 
 > Il progetto è migrato da SheetJS a ExcelJS per azzerare le CVE. Non
 > reintrodurre SheetJS.
 
 ## `src/diete.js` — template e import delle diete
 
-Costanti locali: cinque giorni (lunedì–venerdì), due pasti, tre portate.
+Costanti locali: cinque giorni, due pasti, tre portate. Invariato dal 14
+settembre 2026: l'import non tocca il campo `pasti` del paziente.
 
 ### `generaTemplateDieta(pazienti)`
 
-Genera e scarica un xlsx con **un foglio per paziente**. Il nome del foglio è
-il nome del paziente troncato a 31 caratteri, limite di Excel.
-
-Struttura del foglio:
-
-| Riga | Contenuto |
-|---|---|
-| 1 | "Dieta settimanale — Nome Paziente", terracotta 16 pt |
-| 2 | stanza · tipo dieta · note |
-| 3 | vuota |
-| 4 | celle unite: `B4:D4` PRANZO, `E4:G4` CENA |
-| 5 | Giorno, Primo, Secondo, Contorno, Primo, Secondo, Contorno |
-| 6+ | una riga per giorno, da compilare |
-
-In fondo c'è la nota su come usare il separatore ` || ` per le note di
-preparazione (`Risotto agli asparagi || NO MANTECATO`).
-
-È il file che il responsabile manda al dietista.
+Xlsx con **un foglio per paziente** (nome troncato a 31 caratteri). Riga 1
+titolo "Dieta settimanale — Nome", riga 2 stanza · tipo dieta · note, riga 4
+celle unite PRANZO / CENA, riga 5 intestazioni, dalla 6 un giorno per riga. In
+fondo la nota sul separatore ` || ` per le note di preparazione.
 
 ### `parsaDietaExcel(file)`
 
-Legge il primo foglio del file caricato e ritorna
-`{ dieta, titolo, nomeFoglio }`.
-
-Per trovare l'inizio dei dati cerca la riga in cui la colonna A vale `giorno`,
-senza distinzione di maiuscole, e parte da quella successiva. Se non la trova,
-parte dalla riga 6.
-
-Poi legge cinque righe, mappando le colonne 2–4 sul pranzo e 5–7 sulla cena.
-Le celle vuote diventano `—`.
-
-Il titolo si ricava dalla cella A1 togliendo il prefisso "Dieta settimanale —",
-oppure dal nome del foglio.
-
-Errori: se il file non contiene fogli lancia `Il file non contiene fogli`.
-La scheda paziente cattura l'eccezione e mostra il messaggio in un avviso, senza
-applicare nulla.
-
-**Il risultato non viene mai applicato direttamente**: passa dal modale di
-anteprima. Vedi `08-portale-comunita.md`.
-
-## `src/proforma.js` — proforma stampabile
-
-```js
-generaProformaPDF(strutture, prezzoUnitarioDefault)
-```
-
-`strutture` è un array di `{ nome, tipo, mese, pasti, prezzo, ivaPercentuale }`.
-Dal 12 settembre 2026 **prezzo e IVA sono per riga**, non un unico valore per
-tutto il documento: ogni committente ha il proprio listino (`st.committenti`).
-`prezzoUnitarioDefault` (secondo parametro) resta come ripiego per una riga
-senza `prezzo` proprio — usato da `FattureStruttura` in `Struttura.jsx`
-quando il committente non ha un listino strutturato. L'IVA in cima al
-documento mostra la percentuale media effettiva se le righe hanno aliquote
-diverse.
-
-Costruisce una stringa HTML completa e la scrive in una nuova scheda; la stampa
-parte dal pulsante in cima al documento. Non è un PDF generato lato server: è
-HTML impaginato per la stampa, che il browser salva in PDF. Se il browser blocca
-la nuova scheda, il documento viene scaricato come `Proforma_MAVI.html`.
-
-Nome, tipo, periodo e pasti delle strutture passano da `testoHtml`, che li
-inserisce come testo e non come HTML: vedi «HTML composto come stringa» in
-`11-convenzioni.md`.
-
-Calcoli: imponibile = Σ (pasti × prezzo di riga), IVA = Σ (imponibile di riga ×
-percentuale di riga), totale. Il numero documento è `PRO-2026/` più tre cifre
-casuali; la data è quella odierna in italiano.
-
-La pagina Fatturazione (`Fornitore.jsx`) chiama questa funzione in due modi:
-"Genera proforma unica PDF" con tutte le righe insieme, il bottone PDF di ogni
-riga della tabella con un array di una sola struttura, per un documento
-separato.
-
-## `src/manifesto.js` — manifesto di consegna nominativo
-
-```js
-generaManifestoConsegna({ struttura, giorno, pasto, righe })
-```
-
-Aggiunto il 12 settembre 2026, su richiesta di Filippo: le etichette pasto
-dell'azienda sono deliberatamente anonime (vedi `09-portale-mavi.md`), ma il
-fornitore ha comunque bisogno di sapere chi ha ordinato cosa per il foglio da
-mettere nel cassone termico in consegna. `righe` è `st.nominativiAzienda`
-(nome, reparto, primo, secondo, contorno). Stessa tecnica di `proforma.js`
-(stringa HTML in una nuova scheda, pulsante "Stampa", `testoHtml` su ogni
-valore), ma senza calcoli di prezzo: è un elenco, non un documento fiscale.
-Il documento è marcato "Riservato al fornitore — non esporre al cliente" ed è
-raggiungibile solo dal drill-down azienda di "Ordini in arrivo", nel portale
-MAVI.
-
-Il layout è ispirato a WHMCS: intestazione con logo testuale e badge PROFORMA,
-info-box con numero, data, periodo e scadenza, box Da / A, tabella degli item,
-riepilogo totali, note. Il CSS è inline nella stringa, con `@page { size: A4 }`.
-
-I dati del mittente che non sono ancora stati compilati nella Gestione portale
-compaiono come **placeholder in corsivo terracotta** (classe `.ph`), così in
-demo si vede subito cosa manca.
-
-In cima al documento c'è una barra con il pulsante "Stampa / Salva PDF", che
-non finisce in stampa.
+Legge il primo foglio e ritorna `{ dieta, titolo, nomeFoglio }`. Cerca la riga
+con `giorno` in colonna A (altrimenti parte dalla 6), legge cinque righe,
+colonne 2–4 pranzo e 5–7 cena, celle vuote → `—`. Errore `Il file non contiene
+fogli` se vuoto. **Il risultato passa sempre dal modale di anteprima**, mai
+applicato direttamente (`08-portale-comunita.md`).
 
 ## Documenti del portale
 
-L'elenco è nello store (`st.documenti`), inizializzato da `DOCUMENTI_INIZIALI`
-in `store.jsx`. Ogni voce:
+L'elenco è nello store (`st.documenti`, seed `DOCUMENTI_INIZIALI`). Ogni voce:
+`{ id, nome, tipo, descrizione, file, peso, data, perDipendenti }`. `file`
+vuoto significa "da caricare"; `perDipendenti: true` rende la voce pubblica.
 
-```js
-{ id, nome, tipo, descrizione, file, peso, data, perDipendenti }
-```
-
-- `file` vuoto significa "da caricare": la voce si vede ma non è scaricabile.
-- `perDipendenti: true` rende la voce pubblica.
-
-Il componente `Documenti` di `ui.jsx` accetta due flag:
-
-| Uso | Effetto |
+| Uso di `Documenti` (`ui.jsx`) | Effetto |
 |---|---|
-| `<Documenti soloPubblici />` | solo le voci con `perDipendenti: true` |
+| `<Documenti soloPubblici />` | solo le voci pubbliche |
 | `<Documenti />` | tutte le voci, sola consultazione |
 | `<Documenti gestibile />` | tutte le voci, con caricamento e rimozione |
 
-I file veri stanno in `public/documenti/`. Al momento c'è solo
-`codice-colori-whp.pdf`.
+I file veri stanno in `public/documenti/`; oggi solo `codice-colori-whp.pdf`.

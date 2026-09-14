@@ -18,12 +18,18 @@ prenota, il portale MAVI vede la distinta aggiornata.
 | `ordini` | `{ [indiceGiorno]: { [categoria]: idPiatto } }` |
 | `confermati` | `{ [indiceGiorno]: true }` |
 | `scegli(giorno, categoria, id)` | seleziona o deseleziona un piatto |
-| `conferma(giorno)` | conferma la prenotazione del giorno, logga, timbra `oraConferma[giorno]` e aggiunge/aggiorna la riga in `nominativiAzienda` |
+| `conferma(giorno, chi, piatti?)` | conferma la prenotazione del giorno, logga, timbra `oraConferma[giorno]` e aggiunge/aggiorna la riga in `nominativiAzienda`. Con `piatti` (`{ categoria: idPiatto }`) è la prenotazione **per conto di un altro**: non tocca `ordini`, `confermati` né `oraConferma`, produce solo la riga nominativa. `chi` è `{ nome, matricola?, ruolo, inseritaDa? }`; con `inseritaDa` il log attribuisce l'azione a chi prenota |
 | `disdici(giorno)` | annulla la conferma |
 | `coperte(giorno)` | portate già coperte dal piatto unico scelto |
 | `mancanti(giorno)` | array leggibile delle portate mancanti |
 | `oraConferma` | `{ [giorno]: isoString }`, quando è stata confermata la prenotazione — diverso da "per quale giorno", che è `giorno` stesso |
-| `nominativiAzienda` | elenco nominativo (chi ha preso cosa) per il portale MAVI, parte da `ETICHETTE_AZIENDA_DEMO` e cresce con `conferma()`. Riservato a "Ordini in arrivo", mai esposto al portale cliente/dipendente |
+| `nominativiAzienda` | elenco nominativo (chi ha preso cosa), parte da `ETICHETTE_AZIENDA_DEMO` e cresce con `conferma()`. Riga: `{ id, nome, matricola, reparto, committente: "azienda", committenteNome, indiceGiorno, giorno, pasto, primo, secondo, contorno, unico }`. Alimenta "Ordini in arrivo" e il manifesto del portale MAVI e, dal 14 settembre 2026, il riepilogo del giorno del referente (solo la propria azienda) |
+
+`conferma` legge gli ordini da una ref (`ordiniRef`), non dalla closure: senza,
+una conferma passata ai figli vedeva gli ordini del render precedente. La
+deduplica è per **nome + `indiceGiorno`**, così la riga del seme viene
+sostituita e non raddoppiata; matricola e reparto arrivano da
+`anagraficaAzienda` di `data.js`.
 
 ### Regole di esclusione dentro `scegli`
 
@@ -75,7 +81,7 @@ ricalcolare. È un compromesso deliberato del prototipo, non copiarlo altrove.
 | `committente` | id del committente attivo, parte da `COMMITTENTI[0].id` |
 | `setCommittente(id)` | lo cambia; lo chiamano i portali al montaggio |
 | `committenti` | l'elenco vero e proprio, parte da `COMMITTENTI` ma è stato React (12 settembre 2026): anagrafica, configurazione servizio e listino sono lo stesso record, non più tre dizionari separati |
-| `aggiungiCommittente(dati)` | crea un committente (dal modulo "Nuovo committente" in `Modelli.jsx`), ritorna l'id |
+| `aggiungiCommittente(dati)` | crea un committente (dal modulo "Nuovo committente" in `Modelli.jsx`), ritorna l'id; termini, metodo, regime IVA e dicitura partono dalle condizioni predefinite di `datiAziendali` |
 | `aggiornaCommittente(id, patch)` | modifica un campo qualsiasi: usato da Impostazioni per committente e da "Sospendi/Riattiva" |
 | `unita` | quantità dichiarate per unità, oggi solo `comunita` |
 | `cambiaUnita(tipo, riga, campo, valore)` | modifica una cella, mai sotto zero |
@@ -89,15 +95,39 @@ inizializzato: la funzione esce subito. Resta per quando il modulo RSA tornerà.
 
 | Nome | Cosa |
 |---|---|
-| `presenzeComunita` | `{ [idPaziente]: true | false | null }`, tutti a `null` all'avvio |
+| `presenzeComunita` | `{ [idPaziente]: { pranzo: true \| false \| null, cena: true \| false \| null } }`, tutto a `null` all'avvio (dal 14 settembre 2026 la presenza è **per pasto**) |
 | `setPresenzeComunita(v)` | aggiorna la mappa |
-| `presenzeTrasmesse` | lista trasmessa a MAVI, ogni riga timbrata con `generatoIl` |
-| `trasmettiPresenze(lista)` | timbra `generatoIl` e **aggiorna per id** (non sovrascrive): reparti trasmessi in momenti diversi si sommano, scrive nel log |
+| `presenzeTrasmesse` | lista trasmessa a MAVI, **una riga per paziente e pasto**, ogni riga timbrata con `generatoIl` |
+| `trasmettiPresenze(lista)` | timbra `generatoIl` e **aggiorna per `id` + `pasto`** (non sovrascrive): reparti e pasti trasmessi in momenti diversi si sommano, la cena non cancella il pranzo; il log riporta anche il pasto |
 | `assenti`, `commutaAssente(id)` | assenze, modello a lista |
 | `ospitiExtra`, `aggiungiOspite(ospite)` | ospiti aggiunti in demo, ritorna l'id |
 
-`null` significa "non ancora segnato": è quello che tiene disattivato il bottone
-"Trasmetti a MAVI" finché non sono stati segnati tutti.
+`null` significa "non ancora segnato": tiene disattivato il bottone "Trasmetti"
+**solo per il pasto corrente**, finché non sono stati segnati tutti i pazienti
+che prevedono quel pasto (`pastiDi(p)` in `data.js`).
+
+## Proforma (dal 14 settembre 2026)
+
+| Nome | Cosa |
+|---|---|
+| `proforme` | elenco delle proforma emesse, seed da `PROFORME_INIZIALI` espanso con listino e condizioni del committente |
+| `emettiProforma(dati)` | numera `PRO-2026/NNN` proseguendo dal seed, timbra `dataEmissione` e `scadenza` (`scadenzaPagamento`), logga e **ritorna il documento**, così il chiamante apre il PDF nello stesso gesto di click |
+| `annullaProforma(id)` | `stato: "annullata"`, logga e avvisa; la riga resta in elenco |
+
+Forma del documento:
+
+```js
+{ id, numero, committenteId, periodo, dataEmissione,      // ISO giorno
+  righe: [{ descrizione, quantita, prezzo }],
+  termini, metodoPagamento, regimeIva, aliquota, dicituraIva,
+  note, stato: "emessa" | "pagata" | "annullata", scadenza } // ISO giorno
+```
+
+Le condizioni si copiano dentro il documento al momento dell'emissione e da lì
+restano ferme: cambiare le condizioni del committente non riscrive le proforma
+già emesse. I totali si calcolano sempre con `totaliProforma` di `data.js`,
+unico punto usato da portale MAVI, portali cliente e PDF. I portali cliente
+leggono `proforme` filtrate per il proprio committente.
 
 ## Flusso ordini fra strutture e cucina
 
@@ -143,10 +173,26 @@ ascolta `prefers-color-scheme` e si aggiorna al volo.
 
 | Nome | Cosa |
 |---|---|
-| `datiAziendali`, `setDatiAziendali` | ragione sociale, P.IVA, CF, indirizzo, contatti, IBAN, condizioni di pagamento, note proforma. Tutti vuoti all'avvio, si compilano nella Gestione portale e finiscono nella proforma |
-| `utenti`, `setUtenti` | tabella utenti con CRUD dalla Gestione portale |
+| `datiAziendali`, `setDatiAziendali` | ragione sociale, P.IVA, CF, indirizzo, contatti, PEC, IBAN, note proforma, più le **condizioni predefinite** per i nuovi committenti (`terminiDefault`, `metodoDefault`, `regimeIvaDefault`, `dicituraIvaDefault`). Si compilano nella Gestione portale e finiscono in testata di ogni documento stampabile, nell'intestazione Excel e nella proforma (IBAN, note) |
 | `notifiche`, `setNotifiche` | sei flag booleani |
 | `profili`, `aggiornaProfilo(chiave, patch)` | override del profilo personale per username (`chiave`), letti da `Telaio`/`ModificaProfilo` in `ui.jsx`. Si sommano a `UTENTI`, non lo sostituiscono mai |
+
+## Sessione, ruoli e permessi (dal 14 settembre 2026)
+
+| Nome | Cosa |
+|---|---|
+| `sessione` | l'utente collegato, riletto da `utenti` a ogni render: cambi di ruolo e disattivazioni si applicano subito |
+| `ruoloSessione` | il ruolo di `ruoli` con `portale` e `permessi`; `null` se il ruolo non esiste più |
+| `entra(utente)`, `esci()` | apertura e chiusura della sessione (prima erano in `App.jsx`) |
+| `puo(chiave)` | `true` se il ruolo della sessione ha quel permesso; ricalcolato a ogni modifica della matrice, senza rifare il login |
+| `trovaUtente(u)` | risolve lo username su `utenti`, scarta i disattivati (usata dal login) |
+| `loggaSessione(azione, dettaglio, tipo)` | `logga` con l'utente reale della sessione: lo usano store e portali al posto dei nomi cablati |
+| `ruoli`, `salvaRuolo(ruolo)`, `eliminaRuolo(id)`, `commutaPermesso(ruoloId, k)` | seed `RUOLI_INIZIALI`; un ruolo `bloccato` (Cucina MAVI) non si modifica né elimina; un ruolo assegnato a qualcuno non si elimina; nome univoco |
+| `utenti`, `salvaUtente(utente)`, `commutaAttivoUtente(id)` | seed `UTENTI`; username obbligatorio e univoco |
+
+Guardia anti chiusura: l'ultimo utente attivo con `gestione.ruoli` non si
+disattiva né cambia ruolo, e `gestione.ruoli` non si toglie all'ultimo ruolo
+che ce l'ha. Le chiavi dei permessi sono in `PERMESSI` (`04-dati.md`).
 
 ## Messaggi a schermo
 

@@ -1,5 +1,9 @@
 import React from "react";
-import { PIATTI, GIORNI, MENU_INIZIALE, COMMITTENTI, ORDINI_UNITA, PAZIENTI_COMUNITA, ETICHETTE_AZIENDA_DEMO } from "./data.js";
+import {
+  PIATTI, GIORNI, MENU_INIZIALE, COMMITTENTI, ORDINI_UNITA, PAZIENTI_COMUNITA,
+  ETICHETTE_AZIENDA_DEMO, PROFORME_INIZIALI, RUOLI_INIZIALI, UTENTI,
+  anagraficaAzienda, etichettaGiorno, regimeIva, scadenzaPagamento,
+} from "./data.js";
 
 const Ctx = React.createContext(null);
 export const usaStato = () => React.useContext(Ctx);
@@ -54,6 +58,48 @@ const DOCUMENTI_INIZIALI = [
   },
 ];
 
+/* le proforma si timbrano al giorno, non al millisecondo: la data resta
+   confrontabile, stampabile e leggibile così com'è */
+function isoGiorno(d) {
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+const PREFISSO_PROFORMA = "PRO-2026/";
+
+function prossimoNumero(elenco) {
+  const ultimo = elenco.reduce((max, p) => {
+    const m = /^PRO-2026\/(\d+)$/.exec(p.numero || "");
+    return m ? Math.max(max, Number(m[1])) : max;
+  }, 0);
+  return PREFISSO_PROFORMA + String(ultimo + 1).padStart(3, "0");
+}
+
+/* espande il seed di data.js nella forma completa della proforma, prendendo
+   listino e condizioni dal committente: l'importo che il cliente vede in
+   elenco è lo stesso che esce nel PDF */
+function proformeIniziali() {
+  return PROFORME_INIZIALI.map((p, i) => {
+    const c = COMMITTENTI.find((x) => x.id === p.committenteId) || {};
+    const regime = regimeIva(c.regimeIva);
+    return {
+      id: "pro" + (i + 1),
+      numero: p.numero,
+      committenteId: p.committenteId,
+      periodo: p.periodo,
+      dataEmissione: p.dataEmissione,
+      righe: [{ descrizione: "Pasti " + p.periodo, quantita: p.pasti, prezzo: c.prezzoUnitario || 0 }],
+      termini: c.termini || "30gg",
+      metodoPagamento: c.metodoPagamento || "bonifico",
+      regimeIva: regime.id,
+      aliquota: regime.conIva ? (c.ivaPercentuale || 0) : 0,
+      dicituraIva: regime.conIva ? "" : (c.dicituraIva || regime.dicitura),
+      note: "",
+      stato: p.stato,
+      scadenza: isoGiorno(scadenzaPagamento(p.dataEmissione, c.termini)),
+    };
+  });
+}
+
 export function Provider({ children }) {
   const [ordini, setOrdini] = React.useState({}); // giorno -> { categoria: idPiatto }
   const [confermati, setConfermati] = React.useState({});
@@ -64,6 +110,9 @@ export function Provider({ children }) {
   const [documenti, setDocumenti] = React.useState(DOCUMENTI_INIZIALI);
   const [committente, setCommittente] = React.useState(COMMITTENTI[0].id);
   const [committenti, setCommittenti] = React.useState(COMMITTENTI);
+  /* proforma emesse, una per committente e per periodo: MAVI le compone a mano
+     in Fatturazione, i portali cliente vedono solo le proprie */
+  const [proforme, setProforme] = React.useState(proformeIniziali);
   const [profili, setProfili] = React.useState({}); // username -> { nome, email, telefono, password, foto }
   const [unita, setUnita] = React.useState(() => ({
     comunita: (ORDINI_UNITA.comunita || []).map((r) => ({ ...r })),
@@ -88,17 +137,24 @@ export function Provider({ children }) {
   const [tema, setTemaRaw] = React.useState(() => {
     try { return localStorage.getItem("mavi-tema") || "auto"; } catch { return "auto"; }
   });
+  /* dati del mittente più le condizioni di fatturazione predefinite: sono la
+     proposta di partenza per ogni nuovo committente e per ogni nuova proforma,
+     si modificano in Gestione portale › Fatturazione */
   const [datiAziendali, setDatiAziendali] = React.useState({
     ragioneSociale: "", indirizzo: "", piva: "", cf: "", telefono: "", email: "", pec: "",
-    iban: "", condizioniPagamento: "30 giorni data fattura", noteProforma: "",
+    iban: "", noteProforma: "",
+    terminiDefault: "30gg", metodoDefault: "bonifico",
+    regimeIvaDefault: "ordinaria", dicituraIvaDefault: "",
   });
-  const [utenti, setUtenti] = React.useState([
-    { id: "u1", nome: "Antonella Rossi", ruolo: "Dipendente", struttura: "Rossi Manifatture Spa", attivo: true },
-    { id: "u2", nome: "Roberto Manzi", ruolo: "Referente aziendale", struttura: "Rossi Manifatture Spa", attivo: true },
-    { id: "u3", nome: "Samuele Ferri", ruolo: "Educatore", struttura: "Comunità Il Ponte", reparto: "Spazio Giovani SGA", attivo: true },
-    { id: "u4", nome: "Ilaria Gatti", ruolo: "Responsabile", struttura: "Comunità Il Ponte", attivo: true },
-    { id: "u5", nome: "Cucina MAVI", ruolo: "Operatore cucina", struttura: "MAVI Ristorazione", attivo: true },
-  ]);
+  /* utenti gestiti: stessa anagrafica che alimenta il login (UTENTI è solo il
+     seed) e la tabella di Gestione portale › Utenti. `ruolo` è l'id di un
+     record di `ruoli`, da cui dipendono voci di menu e azioni visibili. */
+  const [utenti, setUtenti] = React.useState(UTENTI);
+  const [ruoli, setRuoli] = React.useState(RUOLI_INIZIALI);
+  /* la sessione tiene il solo nome utente: l'oggetto si rilegge da `utenti` a
+     ogni render, così cambiare ruolo o disattivare qualcuno mentre è dentro
+     si applica subito, senza rifare il login */
+  const [sessioneU, setSessioneU] = React.useState(null);
   const [notifiche, setNotifiche] = React.useState({
     promemoria: true, cutoff: true, ordineRicevuto: true,
     presenzeMancanti: true, reportMensile: true, emailDigest: false,
@@ -119,8 +175,10 @@ export function Provider({ children }) {
     mq.addEventListener("change", applica);
     return () => mq.removeEventListener("change", applica);
   }, [tema]);
+  /* presenza per paziente E per pasto: pranzo e cena sono indipendenti, si
+     segnano e si trasmettono separatamente */
   const [presenzeComunita, setPresenzeComunita] = React.useState(() =>
-    Object.fromEntries((PAZIENTI_COMUNITA || []).map((p) => [p.id, null]))
+    Object.fromEntries((PAZIENTI_COMUNITA || []).map((p) => [p.id, { pranzo: null, cena: null }]))
   );
   const [logOperazioni, setLogOperazioni] = React.useState([
     { id: "s1", ora: "06:00", utente: "Sistema", ruolo: "Automatico", azione: "Backup giornaliero completato", dettaglio: "Database e file multimediali", tipo: "sistema" },
@@ -144,18 +202,49 @@ export function Provider({ children }) {
     setLogOperazioni((p) => [{ id, ora: nowHM(), utente, ruolo, azione, dettaglio, tipo }, ...p]);
   }, []);
 
-  /* aggiorna per id invece di sovrascrivere: un educatore trasmette solo il
-     proprio reparto, il responsabile può trasmettere il resto più tardi, e la
-     seconda chiamata non deve far perdere la prima */
+  /* ---------- sessione e permessi ---------- */
+  const sessione = React.useMemo(
+    () => (sessioneU ? utenti.find((x) => x.u === sessioneU && x.attivo !== false) || null : null),
+    [sessioneU, utenti]
+  );
+  const ruoloSessione = React.useMemo(
+    () => (sessione ? ruoli.find((r) => r.id === sessione.ruolo) || null : null),
+    [sessione, ruoli]
+  );
+  const permessiSessione = React.useMemo(
+    () => new Set(ruoloSessione ? ruoloSessione.permessi : []),
+    [ruoloSessione]
+  );
+  const puo = React.useCallback((chiave) => !!chiave && permessiSessione.has(chiave), [permessiSessione]);
+
+  const entra = React.useCallback((utente) => {
+    setSessioneU(utente.u);
+    if (utente.struttura !== "mavi") setCommittente(utente.struttura);
+  }, []);
+  const esci = React.useCallback(() => setSessioneU(null), []);
+
+  /* riga di log attribuita a chi sta davvero usando il portale, invece del
+     nome cablato che c'era prima in ogni chiamata */
+  const loggaSessione = React.useCallback((azione, dettaglio, tipo = "generico") => {
+    const nome = sessione ? sessione.nome : "Sistema";
+    const ruolo = ruoloSessione ? ruoloSessione.nome : (sessione ? sessione.mansione || "—" : "Automatico");
+    logga(nome, ruolo, azione, dettaglio, tipo);
+  }, [sessione, ruoloSessione, logga]);
+
+  /* aggiorna per id E pasto invece di sovrascrivere: un educatore trasmette
+     solo il proprio reparto, il responsabile può trasmettere il resto più
+     tardi, e la cena non deve far perdere il pranzo già trasmesso */
   const trasmettiPresenze = React.useCallback((lista) => {
     const generatoIl = new Date().toISOString();
     const listaTimbrata = lista.map((r) => ({ ...r, generatoIl }));
     setPresenzeTrasmesse((prec) => {
-      const restanti = prec.filter((r) => !lista.some((n) => n.id === r.id));
+      const restanti = prec.filter((r) => !lista.some((n) => n.id === r.id && n.pasto === r.pasto));
       return [...restanti, ...listaTimbrata];
     });
-    logga("Comunità", "Operatore", "Presenze trasmesse", lista.length + " pazienti presenti", "presenze");
-  }, [logga]);
+    const pasti = [...new Set(lista.map((r) => r.pasto).filter(Boolean))];
+    const dettaglio = lista.length + " pazienti presenti" + (pasti.length ? ", " + pasti.join(" e ") : "");
+    loggaSessione("Presenze trasmesse", dettaglio, "presenze");
+  }, [loggaSessione]);
 
   const commutaAssente = React.useCallback((id) => {
     setAssenti((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
@@ -171,10 +260,18 @@ export function Provider({ children }) {
      committente nuovo compare ovunque senza bisogno di elenchi paralleli. */
   const aggiungiCommittente = React.useCallback((dati) => {
     const id = (dati.tipo === "Comunità" ? "com" : "az") + Date.now();
-    setCommittenti((p) => [...p, { attivo: true, unita: [], frutta: false, monoporzione: false, ...dati, id }]);
-    logga("Cucina MAVI", "Admin", "Nuovo committente creato", dati.nome + " (" + dati.tipo + ")", "modifica");
+    const base = {
+      attivo: true, unita: [], frutta: false, monoporzione: false,
+      cf: "", pec: "", codiceSdi: "",
+      termini: datiAziendali.terminiDefault,
+      metodoPagamento: datiAziendali.metodoDefault,
+      regimeIva: datiAziendali.regimeIvaDefault,
+      dicituraIva: datiAziendali.dicituraIvaDefault,
+    };
+    setCommittenti((p) => [...p, { ...base, ...dati, id }]);
+    loggaSessione("Nuovo committente creato", dati.nome + " (" + dati.tipo + ")", "modifica");
     return id;
-  }, [logga]);
+  }, [loggaSessione, datiAziendali]);
   const aggiornaCommittente = React.useCallback((id, patch) => {
     setCommittenti((p) => p.map((c) => (c.id === id ? { ...c, ...patch } : c)));
   }, []);
@@ -191,6 +288,126 @@ export function Provider({ children }) {
     setMessaggi((m) => [...m, { id, testo }]);
     setTimeout(() => setMessaggi((m) => m.filter((x) => x.id !== id)), 3200);
   }, []);
+
+  /* ---------- ruoli, permessi e utenti gestiti ---------- */
+
+  /* chi può ancora aprire "Ruoli e permessi": se resta uno solo, il portale
+     non deve permettergli di chiudersi fuori da sé stesso */
+  const amministratori = React.useCallback((elencoUtenti, elencoRuoli) =>
+    elencoUtenti.filter((u) => {
+      if (u.attivo === false) return false;
+      const r = elencoRuoli.find((x) => x.id === u.ruolo);
+      return !!r && r.permessi.includes("gestione.ruoli");
+    }), []);
+
+  const trovaUtente = React.useCallback((nomeUtente) => {
+    const pulito = String(nomeUtente || "").trim().toLowerCase();
+    return utenti.find((x) => x.u === pulito && x.attivo !== false) || null;
+  }, [utenti]);
+
+  const salvaRuolo = React.useCallback((ruolo) => {
+    const esistente = ruoli.find((r) => r.id === ruolo.id);
+    if (esistente && esistente.bloccato) {
+      avvisa("Il ruolo " + esistente.nome + " è di sistema e non si modifica");
+      return false;
+    }
+    const nome = String(ruolo.nome || "").trim();
+    if (!nome) {
+      avvisa("Il ruolo ha bisogno di un nome");
+      return false;
+    }
+    if (ruoli.some((r) => r.id !== ruolo.id && r.nome.toLowerCase() === nome.toLowerCase())) {
+      avvisa("Esiste già un ruolo con questo nome");
+      return false;
+    }
+    const id = ruolo.id || "r" + Date.now();
+    const record = { ...ruolo, id, nome, permessi: [...new Set(ruolo.permessi || [])] };
+    setRuoli((p) => (esistente ? p.map((r) => (r.id === id ? { ...r, ...record } : r)) : [...p, record]));
+    loggaSessione(esistente ? "Ruolo modificato" : "Ruolo creato", nome + ", " + record.permessi.length + " permessi", "modifica");
+    return true;
+  }, [ruoli, avvisa, loggaSessione]);
+
+  const eliminaRuolo = React.useCallback((id) => {
+    const r = ruoli.find((x) => x.id === id);
+    if (!r) return false;
+    if (r.bloccato) {
+      avvisa("Il ruolo " + r.nome + " è di sistema e non si elimina");
+      return false;
+    }
+    const assegnati = utenti.filter((u) => u.ruolo === id);
+    if (assegnati.length) {
+      avvisa("Ci sono ancora " + assegnati.length + (assegnati.length === 1 ? " utente" : " utenti") + " con il ruolo " + r.nome);
+      return false;
+    }
+    setRuoli((p) => p.filter((x) => x.id !== id));
+    loggaSessione("Ruolo eliminato", r.nome, "eliminazione");
+    return true;
+  }, [ruoli, utenti, avvisa, loggaSessione]);
+
+  const commutaPermesso = React.useCallback((ruoloId, chiave) => {
+    const r = ruoli.find((x) => x.id === ruoloId);
+    if (!r) return false;
+    if (r.bloccato) {
+      avvisa("Il ruolo " + r.nome + " è di sistema, i suoi permessi non si toccano");
+      return false;
+    }
+    const aveva = r.permessi.includes(chiave);
+    if (aveva && chiave === "gestione.ruoli") {
+      const dopo = ruoli.map((x) => (x.id === ruoloId ? { ...x, permessi: x.permessi.filter((k) => k !== chiave) } : x));
+      if (amministratori(utenti, dopo).length === 0) {
+        avvisa("Non resterebbe nessuno a gestire ruoli e permessi");
+        return false;
+      }
+    }
+    setRuoli((p) => p.map((x) => (x.id === ruoloId
+      ? { ...x, permessi: aveva ? x.permessi.filter((k) => k !== chiave) : [...x.permessi, chiave] }
+      : x)));
+    return true;
+  }, [ruoli, utenti, avvisa, amministratori]);
+
+  const salvaUtente = React.useCallback((dati) => {
+    const nome = String(dati.nome || "").trim();
+    const username = String(dati.u || "").trim().toLowerCase();
+    if (!nome) { avvisa("Il nome è obbligatorio"); return false; }
+    if (!username) { avvisa("Il nome utente è obbligatorio: senza, la persona non entra"); return false; }
+    if (utenti.some((x) => x.u === username && x.id !== dati.id)) {
+      avvisa("Il nome utente " + username + " è già assegnato");
+      return false;
+    }
+    const esistente = utenti.find((x) => x.id === dati.id);
+    if (esistente && esistente.ruolo !== dati.ruolo) {
+      const dopo = utenti.map((x) => (x.id === dati.id ? { ...x, ruolo: dati.ruolo } : x));
+      if (amministratori(utenti, ruoli).length > 0 && amministratori(dopo, ruoli).length === 0) {
+        avvisa("È l'ultimo utente che può gestire ruoli e permessi: il ruolo non si cambia");
+        return false;
+      }
+    }
+    const iniziali = nome.split(" ").filter(Boolean).map((x) => x[0]).join("").slice(0, 2).toUpperCase();
+    const record = { ...dati, nome, u: username, iniziali: dati.iniziali || iniziali };
+    if (esistente) {
+      setUtenti((p) => p.map((x) => (x.id === dati.id ? { ...x, ...record } : x)));
+    } else {
+      setUtenti((p) => [...p, { attivo: true, ...record, id: "u" + Date.now() }]);
+    }
+    loggaSessione(esistente ? "Utente modificato" : "Utente creato", nome + " — " + username, "modifica");
+    return true;
+  }, [utenti, ruoli, avvisa, loggaSessione, amministratori]);
+
+  const commutaAttivoUtente = React.useCallback((id) => {
+    const u = utenti.find((x) => x.id === id);
+    if (!u) return false;
+    if (u.attivo !== false) {
+      const dopo = utenti.map((x) => (x.id === id ? { ...x, attivo: false } : x));
+      if (amministratori(dopo, ruoli).length === 0) {
+        avvisa("È l'ultimo utente che può gestire ruoli e permessi: non si disattiva");
+        return false;
+      }
+    }
+    setUtenti((p) => p.map((x) => (x.id === id ? { ...x, attivo: x.attivo === false } : x)));
+    avvisa(u.nome + (u.attivo !== false ? " disattivato" : " riattivato"));
+    loggaSessione(u.attivo !== false ? "Utente disattivato" : "Utente riattivato", u.nome, "modifica");
+    return true;
+  }, [utenti, ruoli, avvisa, loggaSessione, amministratori]);
 
   const coperte = React.useCallback(
     (giorno) => {
@@ -253,30 +470,62 @@ export function Provider({ children }) {
     [ordini, coperte]
   );
 
+  /* `conferma` viene passata ai figli e memorizzata: senza questa ref
+     leggerebbe gli `ordini` catturati dalla closure al momento della
+     creazione, non quelli aggiornati un istante prima dal clic. */
+  const ordiniRef = React.useRef(ordini);
+  ordiniRef.current = ordini;
+
+  /* `chi` è la persona per cui vale il pasto: `{ nome, matricola, ruolo }`.
+     Se porta anche `inseritaDa: { nome, ruolo }` la prenotazione è fatta da
+     qualcun altro (il referente per un dipendente) e il log lo attribuisce a
+     lui, non al commensale.
+     `piatti` è la prenotazione per conto di un altro, nella forma
+     `{ categoria: idPiatto }`: in quel caso non si toccano né `ordini` né
+     `confermati`, che sono il carrello del dipendente collegato, e si produce
+     solo la riga nominativa. */
   const conferma = React.useCallback(
-    (giorno, chi = { nome: "Antonella Rossi", ruolo: "Dipendente" }) => {
-      setConfermati((c) => ({ ...c, [giorno]: true }));
-      setOraConferma((o) => ({ ...o, [giorno]: new Date().toISOString() }));
-      avvisa("Prenotazione confermata, entra nella distinta di MAVI");
-      logga(chi.nome, chi.ruolo, "Prenotazione confermata", GIORNI[giorno]?.n + " " + GIORNI[giorno]?.breve + ", portale dipendente", "ordine");
-      /* entra anche nel manifesto nominativo del fornitore: quali portate,
-         non solo quante. Sostituisce l'eventuale riga precedente della stessa
-         persona per lo stesso giorno, non la somma. */
-      setNominativiAzienda((prec) => {
-        const o = ordini[giorno] || {};
-        const nomePortata = (id) => (id && PIATTI[id] ? PIATTI[id].n : "—");
-        const riga = {
-          id: "conf-" + giorno + "-" + chi.nome.replace(/\s+/g, "_"),
-          nome: chi.nome, matricola: "", reparto: chi.ruolo, committente: "Rossi Manifatture Spa",
-          giorno: (GIORNI[giorno]?.n || "") + " " + (GIORNI[giorno]?.d || ""), pasto: "pranzo",
-          primo: nomePortata(o.primo || o.sost_primo || o.unico),
-          secondo: nomePortata(o.secondo || o.sost_secondo),
-          contorno: nomePortata(o.contorno),
-        };
-        return [...prec.filter((r) => r.id !== riga.id), riga];
-      });
+    (giorno, chi = { nome: "Antonella Rossi", ruolo: "Dipendente" }, piatti) => {
+      const perConto = !!piatti;
+      const scelte = piatti || ordiniRef.current[giorno] || {};
+      if (!perConto) {
+        setConfermati((c) => ({ ...c, [giorno]: true }));
+        setOraConferma((o) => ({ ...o, [giorno]: new Date().toISOString() }));
+        avvisa("Prenotazione confermata, entra nella distinta di MAVI");
+      }
+      const autore = chi.inseritaDa || chi;
+      logga(
+        autore.nome, autore.ruolo,
+        chi.inseritaDa ? "Prenotazione per conto di " + chi.nome : "Prenotazione confermata",
+        etichettaGiorno(giorno) + ", " + (chi.inseritaDa ? "cruscotto referente" : "portale dipendente"),
+        "ordine"
+      );
+      /* entra nell'elenco nominativo, che alimenta il riepilogo del giorno del
+         referente e il manifesto di consegna del fornitore: quali portate, non
+         solo quante. Sostituisce l'eventuale riga precedente della stessa
+         persona per lo stesso giorno, seme compreso, non la somma. */
+      const nomePortata = (id) => (id && PIATTI[id] ? PIATTI[id].n : "—");
+      const anagrafica = anagraficaAzienda(chi.nome);
+      const riga = {
+        id: "conf-" + giorno + "-" + chi.nome.replace(/\s+/g, "_"),
+        nome: chi.nome,
+        matricola: chi.matricola || anagrafica.matricola,
+        reparto: anagrafica.reparto || chi.ruolo,
+        committente: "azienda",
+        committenteNome: "Rossi Manifatture Spa",
+        indiceGiorno: giorno,
+        giorno: etichettaGiorno(giorno),
+        pasto: "pranzo",
+        primo: nomePortata(scelte.primo || scelte.sost_primo),
+        secondo: nomePortata(scelte.secondo || scelte.sost_secondo),
+        contorno: nomePortata(scelte.contorno),
+        unico: scelte.unico && PIATTI[scelte.unico] ? PIATTI[scelte.unico].n : "",
+      };
+      setNominativiAzienda((prec) =>
+        [...prec.filter((r) => !(r.nome === riga.nome && r.indiceGiorno === giorno)), riga]
+      );
     },
-    [avvisa, logga, ordini]
+    [avvisa, logga]
   );
 
   const disdici = React.useCallback(
@@ -429,6 +678,47 @@ export function Provider({ children }) {
     avvisa("Ordine respinto, notificato al mittente");
   }, [avvisa]);
 
+  /* proforma: MAVI le compone a mano in Fatturazione. Le condizioni si
+     copiano dentro il documento al momento dell'emissione e da lì restano
+     ferme: cambiare le condizioni del committente non riscrive le proforma
+     già emesse. Ritorna il documento creato, così il chiamante può aprire il
+     PDF nello stesso gesto di click senza aspettare il ridisegno. */
+  const emettiProforma = React.useCallback((dati) => {
+    const regime = regimeIva(dati.regimeIva);
+    const dataEmissione = dati.dataEmissione || isoGiorno(new Date());
+    const proforma = {
+      id: "pro" + Date.now(),
+      numero: prossimoNumero(proforme),
+      committenteId: dati.committenteId,
+      periodo: dati.periodo || "",
+      dataEmissione,
+      righe: (dati.righe || []).map((r) => ({
+        descrizione: String(r.descrizione || "").trim(),
+        quantita: Number(r.quantita) || 0,
+        prezzo: Number(r.prezzo) || 0,
+      })),
+      termini: dati.termini || "30gg",
+      metodoPagamento: dati.metodoPagamento || "bonifico",
+      regimeIva: regime.id,
+      aliquota: regime.conIva ? Number(dati.aliquota) || 0 : 0,
+      dicituraIva: regime.conIva ? "" : (dati.dicituraIva || regime.dicitura),
+      note: dati.note || "",
+      stato: "emessa",
+      scadenza: isoGiorno(scadenzaPagamento(dataEmissione, dati.termini)),
+    };
+    setProforme((p) => [proforma, ...p]);
+    loggaSessione("Proforma emessa",
+      proforma.numero + ", " + (dati.nomeCommittente || proforma.committenteId) + ", " + (proforma.periodo || "periodo non indicato"), "generico");
+    return proforma;
+  }, [proforme, loggaSessione]);
+
+  const annullaProforma = React.useCallback((id) => {
+    const p = proforme.find((x) => x.id === id);
+    setProforme((prec) => prec.map((x) => (x.id === id ? { ...x, stato: "annullata" } : x)));
+    loggaSessione("Proforma annullata", p ? p.numero : id, "generico");
+    avvisa("Proforma annullata, resta in elenco per tracciabilità");
+  }, [proforme, loggaSessione, avvisa]);
+
   /* documenti condivisi, caricati da MAVI */
   const aggiungiDocumento = React.useCallback((doc) => {
     setDocumenti((d) => [{ ...doc, id: "doc" + Date.now() }, ...d]);
@@ -441,10 +731,14 @@ export function Provider({ children }) {
     ordini, confermati, messaggi, menu, foto, caricaFoto, togliFoto,
     versione, riordinaMenu, salvaPiatto, eliminaPiatto,
     documenti, aggiungiDocumento, rimuoviDocumento,
+    proforme, emettiProforma, annullaProforma,
     committente, setCommittente, committenti, aggiungiCommittente, aggiornaCommittente, unita, cambiaUnita, aggiungiOspitePresente, presenze, cambiaPresenze, assenti, commutaAssente, ospitiExtra, aggiungiOspite, presenzeTrasmesse, trasmettiPresenze,
     oraConferma, nominativiAzienda,
     presenzeComunita, setPresenzeComunita, logOperazioni, logga,
-    tema, setTema, datiAziendali, setDatiAziendali, utenti, setUtenti, notifiche, setNotifiche, profili, aggiornaProfilo,
+    tema, setTema, datiAziendali, setDatiAziendali, notifiche, setNotifiche, profili, aggiornaProfilo,
+    sessione, ruoloSessione, entra, esci, puo, loggaSessione, trovaUtente,
+    utenti, salvaUtente, commutaAttivoUtente,
+    ruoli, salvaRuolo, eliminaRuolo, commutaPermesso,
     ordiniTrasmessi, trasmettiOrdine, approvaOrdine, respingiOrdine, allergeniUtente, dietaUtente, setDietaUtente, avvisa, scegli, conferma,
     disdici, coperte, mancanti, cambiaMenu, ripristinaMenu, commutaAllergene,
   };

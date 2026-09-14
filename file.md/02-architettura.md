@@ -22,55 +22,65 @@ sia presente. L'instradamento è a stato, dentro `src/App.jsx`:
 App
  └─ Provider (store.jsx)
      └─ Instradamento
-         ├─ sessione === null      →  AccessoUnico
-         ├─ struttura === "mavi"   →  Fornitore
-         ├─ struttura === "azienda"→  Azienda
-         └─ altrimenti             →  PortaleStruttura (tipo = struttura)
+         ├─ sessione === null (o ruolo non valido) →  AccessoUnico
+         ├─ ruoloSessione.portale === "mavi"       →  Fornitore
+         ├─ ruoloSessione.portale === "azienda"    →  Azienda
+         └─ altrimenti                              →  PortaleStruttura
 ```
 
-`Instradamento` tiene un solo pezzo di stato, `sessione`, che è l'oggetto
-utente restituito dal login. Quando si entra, se la struttura non è `mavi`
-viene anche impostato il committente attivo nello store con
-`st.setCommittente(utente.struttura)`. `esci` riporta `sessione` a `null` e
-si torna alla schermata di accesso.
+Dal 14 settembre 2026 la sessione **vive nello store** (`st.sessione`,
+`st.ruoloSessione`, `st.entra`, `st.esci`, vedi `03-store.md`), non più in
+`App.jsx`. `Instradamento` sceglie il portale dal campo `portale` del ruolo
+dell'utente, letto da `st.ruoli`, non da `utente.struttura`. Se il ruolo di un
+utente collegato viene eliminato, si torna al login con un avviso. Un utente di
+un committente creato in demo, senza configurazione in `STRUTTURE`, entra nel
+telaio comunità, che è il portale base del tipo. Quando si entra, se la
+struttura non è `mavi` viene anche impostato il committente attivo con
+`st.setCommittente`.
 
 ## Accesso
 
 `src/Accesso.jsx` esporta `AccessoUnico`. Un solo modulo di login per tutti:
 non si sceglie il portale, lo decide il profilo.
 
-- Il nome utente viene risolto con `trovaUtente()` di `data.js`, che confronta
-  in minuscolo e senza spazi contro l'array `UTENTI`.
+- Il nome utente viene risolto con `st.trovaUtente()` dello store, che
+  confronta in minuscolo e senza spazi contro `st.utenti` e **scarta gli
+  utenti disattivati** ("Utenza disattivata" invece di "non riconosciuto").
 - **La password non viene verificata.** Il campo è precompilato con
   `dimostrazione` per comodità di demo.
-- Il pulsante "Mostra i profili di prova" espande l'elenco completo di `UTENTI`:
-  un clic su una riga fa il login diretto. È il modo più rapido in riunione.
+- Il pulsante "Mostra i profili di prova" espande l'elenco degli utenti
+  attivi di `st.utenti`, quindi anche quelli creati in Gestione portale: un
+  clic su una riga fa il login diretto. È il modo più rapido in riunione.
 - Il pannello di sinistra ha un'illustrazione SVG del piatto con posate,
   disegnata inline nel file.
 
-L'oggetto utente ha questa forma:
+L'oggetto utente ha questa forma (seed `UTENTI` in `data.js`, stato
+`st.utenti`):
 
 ```js
-{ u, nome, iniziali, struttura, ruolo, committente, mansione, reparto }
+{ id, u, nome, iniziali, struttura, ruolo, committente, mansione, reparto, email, telefono, attivo }
 ```
 
-`struttura` vale `azienda`, `comunita` o `mavi`. `ruolo` vale `dipendente`,
-`referente`, `operatore`, `responsabile` o `fornitore`. `reparto` (aggiunto il
-12 settembre 2026) esiste solo per `ruolo: "operatore"` in comunità: decide
-quali pazienti l'educatore vede, vedi `08-portale-comunita.md`.
+`struttura` vale `azienda`, `comunita` o `mavi`. `ruolo` è l'id di un ruolo
+di `st.ruoli` (`dipendente`, `referente`, `operatore`, `responsabile`,
+`fornitore` all'avvio, più quelli creati da interfaccia). `reparto` conta per
+chi non ha il permesso `pazienti.tuttiReparti`: decide quali pazienti vede,
+vedi `08-portale-comunita.md`.
 
 ## I portali
 
 ### Azienda — `aree/Azienda.jsx`
 
-Non è un portale vero, è uno smistatore. Contiene la configurazione `CFG` con
-i due ruoli e, se `ruoloIniziale` non è passato, mostra `SceltaRuolo`. Poi
-delega:
+Non è un portale vero, è uno smistatore. Il portale `azienda` ha due telai
+ma un solo portale, quindi il ruolo dichiara quale usare con il campo
+`vista`:
 
-- ruolo `dipendente` → `aree/Dipendente.jsx`
-- ruolo `referente` → `aree/Cliente.jsx`
+- `vista: "dipendente"` → `aree/Dipendente.jsx`
+- `vista: "referente"` → `aree/Cliente.jsx`
 
-All'ingresso forza `st.setCommittente("azienda")`.
+Se il telaio dichiarato non ha nessuna pagina permessa e l'altro sì, usa
+l'altro. `SceltaRuolo` non è più nel flusso. All'ingresso forza
+`st.setCommittente("azienda")`.
 
 ### Struttura — `aree/Struttura.jsx`
 
@@ -83,14 +93,17 @@ nome utente, icona e pagina di partenza (`home`).
 restano nel file ma non sono raggiungibili dal login, perché nessun utente in
 `UTENTI` ha quelle strutture. Vedi `12-stato-e-todo.md`.
 
-Il componente `PortaleStruttura` costruisce l'elenco voci in base a `tipo` e
-al fatto che il ruolo sia `operatore` o no, poi rende `Telaio` e sceglie la
-pagina. Per `comunita` delega tutto a `aree/Comunita.jsx`, passando anche
-`reparto` (da `utente.reparto`, solo per l'operatore) alle pagine Pazienti,
-Presenze e Resoconti. `Telaio` riceve il nome e le iniziali reali di chi ha
-fatto login (`utente?.nome`), non più l'etichetta generica del ruolo.
+Il componente `PortaleStruttura` costruisce l'elenco voci con
+`usaVociPermesse` (`ui.jsx`), che filtra sulla mappa `PERMESSO_PAGINA` con
+`st.puo` e sceglie la prima voce permessa come pagina iniziale. Per `comunita`
+delega tutto a `aree/Comunita.jsx`, passando `reparto` (`null` per chi ha
+`pazienti.tuttiReparti`, altrimenti `utente.reparto`, o stringa vuota se
+manca: nessun paziente, con banner) e i flag derivati da `pazienti.anagrafica`
+e `pazienti.dieta`. `Telaio` riceve il nome e le iniziali reali di chi ha
+fatto login.
 
-Esporta anche `SceltaRuolo`, riusato da `Azienda.jsx`.
+Esporta ancora `SceltaRuolo`, non più usata nel flusso attivo, come
+`Landing.jsx`.
 
 ### Fornitore — `aree/Fornitore.jsx`
 
@@ -136,8 +149,9 @@ main.jsx  Avvio
 
 | Serve toccare | File |
 |---|---|
-| Chi può entrare e con che ruolo | `data.js` → `UTENTI` |
-| Cosa si vede dopo il login | `App.jsx` → `Instradamento` |
-| Voci di menu di un portale | il file del portale, costante `VOCI` |
+| Chi può entrare e con che ruolo | `st.utenti` e `st.ruoli` (seed `UTENTI`, `RUOLI_INIZIALI` in `data.js`), modificabili da Gestione portale |
+| Cosa può fare ogni ruolo | `data.js` → `PERMESSI`, matrice "Ruoli e permessi" in Gestione portale |
+| Cosa si vede dopo il login | `App.jsx` → `Instradamento`, `ruoloSessione.portale` |
+| Voci di menu di un portale | il file del portale, costanti `VOCI` e `PERMESSO_PAGINA` |
 | Stato condiviso fra portali | `store.jsx` |
 | Aspetto della barra laterale | `ui.jsx` → `Telaio`, `styles.css` → `.telaio` |

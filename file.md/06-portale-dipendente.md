@@ -112,8 +112,10 @@ si aggiunge un piatto a un giorno, qui compare.
 
 Tabella dei cinque giorni con le portate scelte e lo stato in pastiglia:
 `chiuso`, `prenotato`, `non confermato`, `vuoto`. In fondo la nota sul cutoff
-delle 14:00 del giorno precedente. Il pulsante "Scarica riepilogo" è
-dimostrativo, mostra solo un toast.
+delle 14:00 del giorno precedente. Il pulsante "Scarica riepilogo" apre un
+documento stampabile con la settimana giorno per giorno
+(`generaRiepilogoPrenotazioniPDF` di `resoconto.js`, dal 14 settembre 2026);
+`Prenotazioni` riceve la prop `utente` per intestarlo.
 
 ## Diete speciali — `Diete`
 

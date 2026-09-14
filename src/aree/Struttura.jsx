@@ -1,7 +1,15 @@
 import React from "react";
-import { DIETE_TERAPEUTICHE, FATTURE, MODELLI } from "../data.js";
-import { Accesso, Documenti, Icone, Intestazione, Messaggi, Telaio } from "../ui.jsx";
+import {
+  DIETE_TERAPEUTICHE, MODELLI, ordinaProforme, testoCondizioni, totaliProforma,
+} from "../data.js";
+import {
+  Documenti, Icone, Intestazione, Messaggi, NessunPermesso,
+  PastigliaProforma, Telaio, usaVociPermesse,
+} from "../ui.jsx";
 import { usaStato } from "../store.jsx";
+import { dataIt } from "../documento.js";
+import { generaProformaPDF } from "../proforma.js";
+import { generaResocontoUnitaPDF } from "../resoconto.js";
 import { OrdiniUnita } from "./Modelli.jsx";
 import Comunita from "./Comunita.jsx";
 
@@ -139,99 +147,101 @@ export function SceltaRuolo({ cfg, onScegli, onIndietro }) {
 }
 
 /* ==================== portale della struttura ==================== */
-export default function PortaleStruttura({ tipo, ruoloIniziale, onEsci, utente }) {
-  const cfg = STRUTTURE[tipo];
+const VOCI_COMUNITA = [
+  ["cruscotto", "Cruscotto", Icone.grafico],
+  ["pazienti", "Pazienti", Icone.gente],
+  ["presenze", "Presenze del giorno", Icone.calendario],
+  ["resoconti", "Resoconti", Icone.lista],
+  ["fatture", "Fatture", Icone.fattura],
+  ["documenti", "Documenti", Icone.lista],
+];
+
+/* RSA e scuola restano fuori dal flusso attivo: nessun utente ha quelle
+   strutture. "Ordine del giorno" e "Menu della settimana" non hanno un
+   permesso dedicato, quindi restano sempre visibili per quei due modelli. */
+const VOCI_ALTRE = [
+  ["cruscotto", "Cruscotto", Icone.grafico],
+  ["ordine", "Ordine del giorno", Icone.gente],
+  ["settimana", "Menu della settimana", Icone.calendario],
+  ["fatture", "Fatture", Icone.fattura],
+  ["documenti", "Documenti", Icone.lista],
+];
+
+const PERMESSO_PAGINA = {
+  cruscotto: "cruscotto.vedi",
+  pazienti: "pazienti.vedi",
+  presenze: "presenze.vedi",
+  resoconti: "resoconti.vedi",
+  fatture: "fatture.vedi",
+  documenti: "documenti.vedi",
+};
+
+export default function PortaleStruttura({ tipo, onEsci, utente }) {
+  const cfg = STRUTTURE[tipo] || STRUTTURE.comunita;
   const st = usaStato();
-  const iniziale = ruoloIniziale ? cfg.ruoli.find((r) => r.id === ruoloIniziale) : null;
-  const [ruolo, setRuolo] = React.useState(iniziale);
-  const [dentro, setDentro] = React.useState(!!iniziale);
-  const [pagina, setPagina] = React.useState(iniziale ? iniziale.home : "");
+  const [voci, pagina, setPagina] = usaVociPermesse(
+    tipo === "comunita" ? VOCI_COMUNITA : VOCI_ALTRE, PERMESSO_PAGINA
+  );
+
+  /* un utente di un committente creato in demo non ha una configurazione in
+     STRUTTURE: si usa il telaio del tipo, con il suo committente vero */
+  const record = st.committenti.find((c) => c.id === (utente && utente.struttura));
+  const cfgAttiva = React.useMemo(
+    () => (record ? { ...cfg, committente: record.id, nome: record.nome } : cfg),
+    [cfg, record]
+  );
 
   React.useEffect(() => {
-    st.setCommittente(cfg.committente);
+    st.setCommittente(cfgAttiva.committente);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tipo]);
+  }, [cfgAttiva.committente]);
 
-  if (!ruolo)
-    return <SceltaRuolo cfg={cfg} onIndietro={() => (onEsci ? onEsci() : null)} onScegli={(r) => { setRuolo(r); setPagina(r.home); }} />;
-
-  if (!dentro)
-    return (
-      <Accesso
-        area={cfg.tema}
-        titolo={ruolo.nome}
-        claim={cfg.claim}
-        punti={cfg.punti}
-        utente={ruolo.utente}
-        password="dimostrazione"
-        onEntra={() => setDentro(true)}
-        onIndietro={() => (ruoloIniziale ? onEsci && onEsci() : setRuolo(null))}
-      />
-    );
-
-  const operatore = ruolo.id === "operatore";
-  /* il reparto/casa dell'educatore arriva dall'anagrafica di accesso (UTENTI,
-     campo reparto): scoping delle pagine paziente per chi non è responsabile.
-     Assente per il responsabile e per il flusso di prova senza login reale. */
-  const reparto = tipo === "comunita" && operatore ? (utente?.reparto || null) : null;
-  const voci = tipo === "comunita"
-    ? (operatore
-      ? [
-          ["pazienti", "Pazienti", Icone.gente],
-          ["presenze", "Presenze del giorno", Icone.calendario],
-          ["resoconti", "Resoconti", Icone.lista],
-          ["documenti", "Documenti", Icone.lista],
-        ]
-      : [
-          ["cruscotto", "Cruscotto", Icone.grafico],
-          ["pazienti", "Pazienti", Icone.gente],
-          ["presenze", "Presenze del giorno", Icone.calendario],
-          ["resoconti", "Resoconti", Icone.lista],
-          ["fatture", "Fatture", Icone.fattura],
-          ["documenti", "Documenti", Icone.lista],
-        ])
-    : (operatore
-      ? [
-          ["ordine", "Ordine del giorno", Icone.gente],
-          ["settimana", "Menu della settimana", Icone.calendario],
-          ["documenti", "Documenti", Icone.lista],
-        ]
-      : [
-          ["cruscotto", "Cruscotto", Icone.grafico],
-          ["ordine", "Ordine del giorno", Icone.gente],
-          ["fatture", "Fatture", Icone.fattura],
-          ["documenti", "Documenti", Icone.lista],
-        ]);
-
-  const nomeVisto = utente?.nome || ruolo.nome;
-  const iniziali = utente?.iniziali || nomeVisto.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase();
+  /* null = tutti i reparti; stringa = solo quel reparto; stringa vuota =
+     l'utente è limitato al proprio reparto ma non gliene è stato assegnato
+     nessuno, quindi non vede niente e lo dice a schermo */
+  const reparto = st.puo("pazienti.tuttiReparti") ? null : ((utente && utente.reparto) || "");
+  const puoAnagrafica = st.puo("pazienti.anagrafica");
+  const puoDieta = st.puo("pazienti.dieta");
+  const nomeVisto = (utente && utente.nome) || cfgAttiva.nome;
+  const iniziali = (utente && utente.iniziali)
+    || nomeVisto.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase();
+  const nomeRuolo = (st.ruoloSessione && st.ruoloSessione.nome) || cfgAttiva.titolo;
+  /* rimonta le pagine che tengono l'elenco in stato locale quando cambiano
+     reparto o permessi: senza, la lista resterebbe quella del primo montaggio */
+  const chiaveScope = (reparto === null ? "tutti" : reparto || "senza-reparto")
+    + (puoAnagrafica ? "-crud" : "") + (puoDieta ? "-dieta" : "");
 
   return (
     <Telaio
-      area={cfg.tema}
-      marchio={cfg.titolo}
-      ruolo={ruolo.nome}
-      utente={{ iniziali, nome: nomeVisto, sotto: cfg.nome }}
-      chiaveUtente={utente?.u}
+      area={cfgAttiva.tema}
+      marchio={cfgAttiva.titolo}
+      ruolo={nomeRuolo}
+      utente={{ iniziali, nome: nomeVisto, sotto: cfgAttiva.nome }}
+      chiaveUtente={utente && utente.u}
       voci={voci}
       pagina={pagina}
       setPagina={setPagina}
-      onEsci={() => (onEsci ? onEsci() : setRuolo(null))}
+      onEsci={() => (onEsci ? onEsci() : null)}
     >
+      {voci.length === 0 && <NessunPermesso onEsci={onEsci} />}
       {pagina === "ordine" && tipo !== "comunita" && <OrdiniUnita tipo={tipo} utente={utente} />}
-      {tipo === "comunita" && pagina === "pazienti" && <Comunita.Pazienti soloLettura={operatore} reparto={reparto} />}
-      {tipo === "comunita" && pagina === "presenze" && <Comunita.Presenze reparto={reparto} />}
-      {tipo === "comunita" && pagina === "resoconti" && <Comunita.Resoconti reparto={reparto} />}
-      {pagina === "cruscotto" && <CruscottoStruttura tipo={tipo} cfg={cfg} />}
-      {pagina === "settimana" && <MenuStruttura cfg={cfg} />}
-      {pagina === "fatture" && <FattureStruttura cfg={cfg} />}
-      {pagina === "documenti" && <Documenti soloPubblici={operatore} />}
+      {tipo === "comunita" && pagina === "pazienti" && (
+        <Comunita.Pazienti key={"paz-" + chiaveScope} soloLettura={!puoAnagrafica} puoDieta={puoDieta} reparto={reparto} />
+      )}
+      {tipo === "comunita" && pagina === "presenze" && <Comunita.Presenze key={"pre-" + chiaveScope} reparto={reparto} />}
+      {tipo === "comunita" && pagina === "resoconti" && <Comunita.Resoconti key={"res-" + chiaveScope} reparto={reparto} />}
+      {pagina === "cruscotto" && <CruscottoStruttura tipo={tipo} cfg={cfgAttiva} />}
+      {pagina === "settimana" && <MenuStruttura cfg={cfgAttiva} />}
+      {pagina === "fatture" && <FattureStruttura cfg={cfgAttiva} />}
+      {pagina === "documenti" && <Documenti soloPubblici={!st.puo("documenti.riservati")} />}
       <Messaggi lista={st.messaggi} />
     </Telaio>
   );
 }
 
 /* ==================== cruscotto della struttura ==================== */
+const VOCI_PASTO = ["normale", "tritato", "frullato", "iposodica", "diabetica", "senza_glutine"];
+
 function CruscottoStruttura({ tipo, cfg }) {
   const st = usaStato();
   const c = st.committenti.find((x) => x.id === cfg.committente);
@@ -248,12 +258,50 @@ function CruscottoStruttura({ tipo, cfg }) {
         const righe = st.unita[tipo] || [];
         const somma = (k) => righe.reduce((s, r) => s + (r[k] || 0), 0);
         return {
-          pasti: ["normale", "tritato", "frullato", "iposodica", "diabetica", "senza_glutine"].reduce((s, k) => s + somma(k), 0),
+          pasti: VOCI_PASTO.reduce((s, k) => s + somma(k), 0),
           unita: righe.length,
           speciali: somma("iposodica") + somma("diabetica") + somma("senza_glutine"),
           consistenze: somma("tritato") + somma("frullato"),
         };
       })();
+
+  const etichettaDiete = scuola ? "Diete certificate" : "Diete su prescrizione";
+
+  /* stesse righe e stessi numeri della tabella qui sotto */
+  function esportaResoconto() {
+    try {
+      const righe = scuola
+        ? st.presenze.map((r) => ({ unita: r.unita, pasti: r.presenti, diete: r.diete, stato: "trasmesso" }))
+        : (st.unita[tipo] || []).map((r) => ({
+            unita: r.unita,
+            pasti: VOCI_PASTO.reduce((s, k) => s + (r[k] || 0), 0),
+            diete: (r.iposodica || 0) + (r.diabetica || 0) + (r.senza_glutine || 0),
+            stato: "trasmesso",
+          }));
+      generaResocontoUnitaPDF({
+        struttura: c.nome,
+        modello: MODELLI[c.modello].nome,
+        periodo: "Settembre 2026",
+        etichettaUnita: c.etichettaUnita,
+        etichettaDiete,
+        numeri: [
+          { etichetta: "Pasti di oggi", valore: totali.pasti },
+          { etichetta: "Diete speciali", valore: totali.speciali },
+          scuola
+            ? { etichetta: "Assenti", valore: totali.assenti }
+            : { etichetta: "Consistenze modificate", valore: totali.consistenze },
+          { etichetta: "Chiusura ordine", valore: scuola ? "ore 9:30" : "ore 16:00" },
+        ],
+        righe,
+        nota: c.nota,
+        datiAziendali: st.datiAziendali,
+        avvisa: st.avvisa,
+      });
+    } catch (e) {
+      console.error(e);
+      st.avvisa("Errore nella generazione del PDF, riprova");
+    }
+  }
 
   return (
     <>
@@ -278,7 +326,7 @@ function CruscottoStruttura({ tipo, cfg }) {
           <div className="pannello-testa">
             <h2>Situazione per {c.etichettaUnita.toLowerCase()}</h2>
             <div className="az">
-              <button className="btn linea piccolo" onClick={() => st.avvisa("Resoconto mensile generato")}>Resoconto mensile</button>
+              <button className="btn linea piccolo" onClick={esportaResoconto}>Resoconto mensile</button>
               <button className="btn piccolo" onClick={() => st.avvisa("Sollecito inviato ai " + c.etichettaUnita.toLowerCase() + " scoperti")}>Sollecita</button>
             </div>
           </div>
@@ -288,7 +336,7 @@ function CruscottoStruttura({ tipo, cfg }) {
                 <tr>
                   <th>{c.etichettaUnita}</th>
                   <th>Pasti dichiarati</th>
-                  <th>{scuola ? "Diete certificate" : "Diete su prescrizione"}</th>
+                  <th>{etichettaDiete}</th>
                   <th>Stato</th>
                 </tr>
               </thead>
@@ -303,7 +351,7 @@ function CruscottoStruttura({ tipo, cfg }) {
                       </tr>
                     ))
                   : (st.unita[tipo] || []).map((r) => {
-                      const tot = ["normale", "tritato", "frullato", "iposodica", "diabetica", "senza_glutine"].reduce((s, k) => s + (r[k] || 0), 0);
+                      const tot = VOCI_PASTO.reduce((s, k) => s + (r[k] || 0), 0);
                       return (
                         <tr key={r.unita}>
                           <td><b>{r.unita}</b></td>
@@ -377,46 +425,63 @@ function MenuStruttura({ cfg }) {
 }
 
 /* ==================== fatture della struttura ==================== */
-const ETICHETTA_TIPO = { rsa: "RSA", comunita: "Comunità", scuola: "Scuola" };
-
 function FattureStruttura({ cfg }) {
   const st = usaStato();
+  const eur = (n) => "€ " + (Number(n) || 0).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const committente = st.committenti.find((x) => x.id === cfg.committente);
+  /* solo le proforma di questa struttura: il portale non deve mai mostrare gli
+     importi di un altro committente */
+  const elenco = ordinaProforme(st.proforme.filter((p) => p.committenteId === cfg.committente));
+  const dovuto = elenco
+    .filter((p) => p.stato === "emessa")
+    .reduce((s, p) => s + totaliProforma(p).totale, 0);
+
   return (
     <>
-      <Intestazione occhiello={cfg.nome} titolo="Fatture" sotto="Documenti ricevuti e stato dei pagamenti" />
+      <Intestazione occhiello={cfg.nome} titolo="Fatture" sotto="Proforma ricevute da MAVI e scadenze di pagamento" />
       <div className="tela">
         <div className="pannello">
+          <div className="pannello-testa">
+            <h2>Proforma ricevute</h2>
+            <span className="conta-piatti">{elenco.length} documenti, {eur(dovuto)} ancora da saldare</span>
+          </div>
           <div className="scorri">
             <table className="dati">
-              <thead><tr><th>Documento</th><th>Periodo</th><th>Pasti</th><th>Importo</th><th>Stato</th><th /></tr></thead>
+              <thead><tr><th>Documento</th><th>Periodo</th><th>Imponibile</th><th>IVA</th><th>Totale</th><th>Scadenza</th><th>Condizioni</th><th>Stato</th><th /></tr></thead>
               <tbody>
-                {FATTURE.map((f) => (
-                  <tr key={f.num}>
-                    <td className="cifra">{f.num}</td>
-                    <td>{f.periodo}</td>
-                    <td className="quantita">{f.pasti}</td>
-                    <td className="cifra">€ {f.imp}</td>
-                    <td>
-                      {f.stato === "pagata" ? <span className="pastiglia p-ok">pagata</span>
-                        : f.stato === "da pagare" ? <span className="pastiglia p-att">da pagare</span>
-                          : <span className="pastiglia p-neu">in maturazione</span>}
-                    </td>
-                    <td>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <button className="btn linea piccolo" onClick={async () => {
-                          const { generaProformaPDF } = await import("../proforma.js");
-                          const c = st.committenti.find((x) => x.id === cfg.committente);
-                          generaProformaPDF([{ nome: cfg.nome, tipo: ETICHETTA_TIPO[cfg.committente] || "Struttura", pasti: f.pasti, mese: f.periodo, prezzo: c?.prezzoUnitario, ivaPercentuale: c?.ivaPercentuale }], 7.50);
-                        }}>PDF</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {elenco.length === 0 && (
+                  <tr><td colSpan={9} style={{ textAlign: "center", color: "var(--muto)", padding: 22 }}>
+                    Nessuna proforma ricevuta.
+                  </td></tr>
+                )}
+                {elenco.map((p) => {
+                  const t = totaliProforma(p);
+                  return (
+                    <tr key={p.id} className={p.stato === "annullata" ? "riga-annullata" : undefined}>
+                      <td className="cifra"><b>{p.numero}</b></td>
+                      <td>{p.periodo}</td>
+                      <td className="cifra">{eur(t.imponibile)}</td>
+                      <td className="cifra">{eur(t.iva)}</td>
+                      <td className="cifra"><b>{eur(t.totale)}</b></td>
+                      <td className="cifra">{dataIt(p.scadenza)}</td>
+                      <td style={{ fontSize: 12, color: "var(--muto)" }}>{testoCondizioni(p)}</td>
+                      <td><PastigliaProforma stato={p.stato} /></td>
+                      <td>
+                        {st.puo("fatture.pdf") && (
+                          <button className="btn linea piccolo" onClick={() => {
+                            generaProformaPDF(p, { datiAziendali: st.datiAziendali, committente, avvisa: st.avvisa });
+                          }}>PDF</button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
           <div className="pannello-piede">
-            Importi di esempio. Il ciclo di fatturazione va definito con MAVI.
+            Le proforma le emette MAVI, con le condizioni concordate per {cfg.nome}. Non transitano
+            dal Sistema di Interscambio: la fattura elettronica arriva dal gestionale contabile.
           </div>
         </div>
       </div>

@@ -1,7 +1,16 @@
 import React from "react";
-import { CATEGORIE, DIPENDENTI, FATTURE, PIATTI, PREZZO_PASTO, QUOTA_DIPENDENTE, RESOCONTO_MENSILE, menuDelGiorno } from "../data.js";
-import { Accesso, DiscoColore, Documenti, Icone, Intestazione, Messaggi, Telaio, Velo } from "../ui.jsx";
+import {
+  CATEGORIE, DIPENDENTI, GIORNI, PIATTI, PREZZO_PASTO, QUOTA_DIPENDENTE, RESOCONTO_MENSILE,
+  etichettaGiorno, menuDelGiorno, ordinaProforme, testoCondizioni, totaliProforma,
+} from "../data.js";
+import {
+  Accesso, DiscoColore, Documenti, Icone, Intestazione, Messaggi, NessunPermesso,
+  PastigliaProforma, Telaio, Velo, usaVociPermesse,
+} from "../ui.jsx";
 import { usaStato } from "../store.jsx";
+import { generaProformaPDF } from "../proforma.js";
+import { generaResocontoPDF } from "../resoconto.js";
+import { blocco, dataIt, elenco, generaElencoNominativo, giornoDataIt, paragrafo } from "../documento.js";
 
 const VOCI = [
   ["cruscotto", "Cruscotto", Icone.grafico],
@@ -13,12 +22,20 @@ const VOCI = [
 
 
 
+const PERMESSO_PAGINA = {
+  cruscotto: "cruscotto.vedi",
+  dipendenti: "dipendenti.vedi",
+  resoconti: "resoconti.vedi",
+  fatture: "fatture.vedi",
+  documenti: "documenti.vedi",
+};
+
 const eur = (n) => "€ " + n.toFixed(2).replace(".", ",");
 
 export default function Cliente({ onEsci, utente }) {
   const [dentro, setDentro] = React.useState(!!utente);
-  const [pagina, setPagina] = React.useState("cruscotto");
   const st = usaStato();
+  const [voci, pagina, setPagina] = usaVociPermesse(VOCI, PERMESSO_PAGINA);
 
   if (!dentro)
     return (
@@ -45,41 +62,89 @@ export default function Cliente({ onEsci, utente }) {
       ruolo="Admin cliente"
       utente={{ iniziali: utente ? utente.iniziali : "RM", nome: utente ? utente.nome : "Roberto Manzi", sotto: utente ? utente.committente : "Rossi Manifatture Spa" }}
       chiaveUtente={utente ? utente.u : "admin.rossi"}
-      voci={VOCI}
+      voci={voci}
       pagina={pagina}
       setPagina={setPagina}
       onEsci={() => (onEsci ? onEsci() : null)}
     >
-      {pagina === "cruscotto" && <Cruscotto />}
+      {voci.length === 0 && <NessunPermesso onEsci={onEsci} />}
+      {pagina === "cruscotto" && <Cruscotto utente={utente} />}
       {pagina === "dipendenti" && <Dipendenti />}
       {pagina === "resoconti" && <Resoconti />}
       {pagina === "fatture" && <Fatture />}
-      {pagina === "documenti" && <Documenti />}
+      {pagina === "documenti" && <Documenti soloPubblici={!st.puo("documenti.riservati")} />}
       <Messaggi lista={st.messaggi} />
     </Telaio>
   );
 }
 
-function Cruscotto() {
+function Cruscotto({ utente }) {
   const st = usaStato();
+  const [giorno, setGiorno] = React.useState(2); // mercoledì, la giornata di partenza della demo
   const [prenota, setPrenota] = React.useState(null); // dipendente selezionato
   const [scelte, setScelte] = React.useState({});
+  const referente = utente ? utente.nome : "Roberto Manzi";
+  const azienda = (st.committenti.find((c) => c.id === "azienda") || {}).nome || "Rossi Manifatture Spa";
+
+  /* il referente vede il nominativo della sua azienda e basta: le righe degli
+     altri committenti non entrano mai in questa pagina */
+  const ordinati = st.nominativiAzienda.filter((n) => n.committente === "azienda" && n.indiceGiorno === giorno);
+  const attivi = DIPENDENTI.filter((d) => d.stato === "attivo");
+  const senzaOrdine = attivi.filter((d) => !ordinati.some((n) => n.nome === d.n));
+  const primoPortata = (n) => (n.unico ? "Piatto unico: " + n.unico : n.primo);
 
   function confermaPrenotazione() {
     const nPortate = Object.keys(scelte).length;
-    Object.entries(scelte).forEach(([categoria, id]) => st.scegli(2, categoria, id));
-    st.conferma(2, { nome: prenota.n, ruolo: "Referente (per conto suo)" });
-    st.avvisa("Prenotazione confermata per " + prenota.n + ": " + nPortate + " portate. Il dipendente riceverà la conferma via email.");
+    /* le scelte passano direttamente a `conferma`: il carrello del portale
+       dipendente non va toccato, è di un'altra persona */
+    st.conferma(giorno, {
+      nome: prenota.n, matricola: prenota.m, ruolo: "Dipendente",
+      inseritaDa: { nome: referente, ruolo: "Referente" },
+    }, scelte);
+    st.avvisa("Prenotazione confermata per " + prenota.n + ", " + etichettaGiorno(giorno).toLowerCase()
+      + ": " + nPortate + (nPortate === 1 ? " portata" : " portate") + ". Il dipendente riceverà la conferma via email.");
     setPrenota(null);
     setScelte({});
   }
 
+  function stampaRiepilogo() {
+    const g = GIORNI[giorno];
+    generaElencoNominativo({
+      titolo: giornoDataIt(g.data),
+      badge: "Riepilogo del giorno",
+      sottotitolo: azienda + " · pranzo · " + ordinati.length + (ordinati.length === 1 ? " pasto" : " pasti"),
+      meta: [
+        { etichetta: "Azienda", valore: azienda },
+        { etichetta: "Giornata", valore: giornoDataIt(g.data) },
+        { etichetta: "Pasto", valore: "Pranzo" },
+        { etichetta: "Pasti", valore: ordinati.length },
+      ],
+      colonne: [{ titolo: "Dipendente" }, { titolo: "Reparto" }, { titolo: "Primo" }, { titolo: "Secondo" }, { titolo: "Contorno" }],
+      righe: ordinati.map((n) => [n.nome, n.reparto, primoPortata(n), n.secondo, n.contorno]),
+      totale: ["Totale pasti", String(ordinati.length), "", "", ""],
+      vuota: "Nessun ordine registrato per questa giornata.",
+      blocchiDopo: [
+        blocco("Non hanno ordinato", senzaOrdine.length
+          ? elenco(senzaOrdine.map((d) => ({ etichetta: d.n, valore: d.rep })))
+          : paragrafo("Tutti i dipendenti attivi hanno ordinato.")),
+      ],
+      note: "Elenco a uso interno dell'azienda: riporta le sole portate scelte. Le diete con "
+        + "motivazione medica restano riservate e non compaiono in questo documento.",
+      piede: "Riepilogo generato dal portale MAVI Ristorazione per " + azienda + " il " + dataIt(new Date()),
+      nomeFile: "Riepilogo_" + g.data + ".html",
+      datiAziendali: st.datiAziendali,
+      avvisa: st.avvisa,
+    });
+    st.logga(referente, "Referente", "Riepilogo del giorno stampato",
+      etichettaGiorno(giorno) + ", " + ordinati.length + " pasti", "generico");
+  }
+
   return (
     <>
-      <Intestazione occhiello="Rossi Manifatture Spa" titolo="Cruscotto" sotto="Mensa aziendale, situazione aggiornata a oggi" />
+      <Intestazione occhiello={azienda} titolo="Cruscotto" sotto="Mensa aziendale, situazione aggiornata a oggi" />
       <div className="tela">
         <div className="numeri">
-          <div className="numero"><div className="n-lab">Dipendenti attivi</div><div className="n-val">{DIPENDENTI.filter((d) => d.stato === "attivo").length}</div><div className="n-nota">su {DIPENDENTI.length} utenze create</div></div>
+          <div className="numero"><div className="n-lab">Dipendenti attivi</div><div className="n-val">{attivi.length}</div><div className="n-nota">su {DIPENDENTI.length} utenze create</div></div>
           <div className="numero"><div className="n-lab">Prenotazioni di domani</div><div className="n-val">22</div><div className="n-nota">su 28 possibili</div><div className="progresso"><i style={{ width: "79%" }} /></div></div>
           <div className="numero"><div className="n-lab">Pasti del mese</div><div className="n-val">143</div><div className="n-nota">media 20 al giorno</div></div>
           <div className="numero"><div className="n-lab">Diete speciali attive</div><div className="n-val">4</div><div className="n-nota">2 senza glutine, 2 vegetariane</div></div>
@@ -87,24 +152,77 @@ function Cruscotto() {
 
         <div className="pannello">
           <div className="pannello-testa">
-            <h2>Chi non ha ancora prenotato per domani</h2>
+            <h2>Ordini del giorno</h2>
+            <span className="pastiglia p-neu">{ordinati.length} {ordinati.length === 1 ? "pasto" : "pasti"}</span>
+            {st.puo("riepilogo.stampa") && (
+              <div className="az">
+                <button className="btn piccolo" onClick={stampaRiepilogo}>
+                  <Icone.stampa size={16} /> Stampa riepilogo
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="scelta-giorno">
+            <div className="giorni-tab">
+              {GIORNI.map((g, i) => (
+                <button key={g.n} className={i === giorno ? "on" : ""} disabled={g.chiuso} onClick={() => setGiorno(i)}>
+                  {g.n}<span>{g.chiuso ? "chiuso" : g.d}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="scorri">
+            <table className="dati">
+              <thead><tr><th>Dipendente</th><th>Reparto</th><th>Primo</th><th>Secondo</th><th>Contorno</th></tr></thead>
+              <tbody>
+                {ordinati.length === 0 ? (
+                  <tr><td colSpan={5} className="riga-vuota">Nessun ordine registrato per {etichettaGiorno(giorno).toLowerCase()}.</td></tr>
+                ) : ordinati.map((n) => (
+                  <tr key={n.id}>
+                    <td><b>{n.nome}</b></td>
+                    <td style={{ color: "var(--muto)" }}>{n.reparto}</td>
+                    <td>{primoPortata(n)}</td>
+                    <td>{n.secondo}</td>
+                    <td>{n.contorno}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="pannello-piede">
+            Il riepilogo stampato riporta la stessa tabella, con in fondo chi non ha ordinato e il
+            totale dei pasti. Nessuna dieta o informazione sanitaria compare nel documento.
+          </div>
+        </div>
+
+        <div className="pannello">
+          <div className="pannello-testa">
+            <h2>Chi non ha ancora prenotato per {etichettaGiorno(giorno).toLowerCase()}</h2>
             <div className="az">
-              <button className="btn piccolo" onClick={() => st.avvisa("Promemoria inviato ai tre dipendenti")}>Invia promemoria</button>
+              <button className="btn piccolo" disabled={senzaOrdine.length === 0}
+                onClick={() => st.avvisa("Promemoria inviato a " + senzaOrdine.length + (senzaOrdine.length === 1 ? " dipendente" : " dipendenti"))}>
+                Invia promemoria
+              </button>
             </div>
           </div>
           <div className="scorri">
             <table className="dati">
               <thead><tr><th>Matricola</th><th>Nome</th><th>Reparto</th><th /></tr></thead>
               <tbody>
-                {DIPENDENTI.slice(3, 6).map((d) => (
+                {senzaOrdine.length === 0 ? (
+                  <tr><td colSpan={4} className="riga-vuota">Tutti i dipendenti attivi hanno ordinato.</td></tr>
+                ) : senzaOrdine.map((d) => (
                   <tr key={d.m}>
                     <td className="cifra">{d.m}</td>
                     <td><b>{d.n}</b></td>
                     <td>{d.rep}</td>
                     <td>
-                      <button className="btn linea piccolo" onClick={() => { setPrenota(d); setScelte({}); }}>
-                        Prenota per lui
-                      </button>
+                      {st.puo("prenota.perConto") && (
+                        <button className="btn linea piccolo" disabled={GIORNI[giorno].chiuso}
+                          onClick={() => { setPrenota(d); setScelte({}); }}>
+                          Prenota per lui
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -121,7 +239,7 @@ function Cruscotto() {
       {prenota && (
         <Velo onChiudi={() => setPrenota(null)} largo>
           <div className="scelta-testa">
-            <div className="occhiello">Prenotazione per conto di un dipendente · Mercoledì 16 settembre</div>
+            <div className="occhiello">Prenotazione per conto di un dipendente · {etichettaGiorno(giorno)}</div>
             <h2>Prenota per {prenota.n}</h2>
             <p>{prenota.rep} · Matricola {prenota.m}</p>
           </div>
@@ -130,7 +248,7 @@ function Cruscotto() {
             {["primo", "sost_primo", "secondo", "sost_secondo", "contorno", "unico"].map((catId) => {
               const cat = CATEGORIE.find((c) => c.id === catId);
               if (!cat) return null;
-              const piatti = menuDelGiorno(st.menu, 2, catId);
+              const piatti = menuDelGiorno(st.menu, giorno, catId);
               if (!piatti.length) return null;
               return (
                 <div key={catId} style={{ marginBottom: 16 }}>
@@ -152,6 +270,17 @@ function Cruscotto() {
                               if (catId === "sost_primo") delete n.primo;
                               if (catId === "secondo") delete n.sost_secondo;
                               if (catId === "sost_secondo") delete n.secondo;
+                              /* stesse esclusioni di `scegli` nello store: il
+                                 piatto unico cancella le portate che copre */
+                              if (catId === "unico") {
+                                (p.so || []).forEach((c) => {
+                                  delete n[c];
+                                  if (c === "primo") delete n.sost_primo;
+                                  if (c === "secondo") delete n.sost_secondo;
+                                });
+                              } else if (n.unico && (PIATTI[n.unico].so || []).includes(catId)) {
+                                delete n.unico;
+                              }
                             }
                             return n;
                           })}
@@ -187,7 +316,7 @@ function Dipendenti() {
     <>
       <Intestazione
         occhiello="Anagrafica" titolo="Dipendenti" sotto="Utenze abilitate al servizio mensa"
-        azioni={<>
+        azioni={st.puo("dipendenti.modifica") && <>
           <button className="btn linea piccolo" onClick={() => st.avvisa("Importazione da file avviata")}>Importa da Excel</button>
           <button className="btn piccolo" onClick={() => st.avvisa("Nuovo dipendente creato")}>Aggiungi dipendente</button>
         </>}
@@ -210,9 +339,11 @@ function Dipendenti() {
                     </td>
                     <td>{d.stato === "attivo" ? <span className="pastiglia p-ok">attivo</span> : <span className="pastiglia p-att">sospeso</span>}</td>
                     <td>
-                      <button className="btn linea piccolo" onClick={() => st.avvisa("Password reimpostata, email inviata")}>
-                        Reimposta password
-                      </button>
+                      {st.puo("dipendenti.modifica") && (
+                        <button className="btn linea piccolo" onClick={() => st.avvisa("Password reimpostata, email inviata")}>
+                          Reimposta password
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -229,6 +360,31 @@ function Dipendenti() {
   );
 }
 
+/* riepilogo e dettaglio del mese, calcolati una volta sola: Excel e PDF devono
+   mostrare gli stessi numeri. L'ultima riga del riepilogo è quella di totale,
+   riconosciuta dal nome "TOTALE" sia da excel.js sia da resoconto.js. */
+function calcolaResoconto(dati) {
+  const riepilogo = dati.dipendenti.map((d) => ({
+    matricola: d.m, nome: d.n, reparto: d.rep, pasti: d.pasti,
+    quotaDip: eur(d.pasti * QUOTA_DIPENDENTE),
+    quotaAz: eur(d.pasti * (PREZZO_PASTO - QUOTA_DIPENDENTE)),
+    totale: eur(d.pasti * PREZZO_PASTO),
+  }));
+  riepilogo.push({
+    matricola: "", nome: "TOTALE", reparto: "", pasti: dati.totPasti,
+    quotaDip: eur(dati.totPasti * QUOTA_DIPENDENTE),
+    quotaAz: eur(dati.totPasti * (PREZZO_PASTO - QUOTA_DIPENDENTE)),
+    totale: eur(dati.totPasti * PREZZO_PASTO),
+  });
+  const dettaglio = [];
+  dati.dipendenti.forEach((d) => {
+    (d.dettaglio || []).forEach((g) => {
+      dettaglio.push({ matricola: d.m, nome: d.n, reparto: d.rep, giorno: g.giorno, primo: g.primo, secondo: g.secondo, contorno: g.contorno });
+    });
+  });
+  return { riepilogo, dettaglio };
+}
+
 function Resoconti() {
   const st = usaStato();
   const [espanso, setEspanso] = React.useState(null);
@@ -237,24 +393,7 @@ function Resoconti() {
   async function esportaExcel() {
     try {
       const { scaricaExcel } = await import("../excel.js");
-      const riepilogo = dati.dipendenti.map((d) => ({
-        matricola: d.m, nome: d.n, reparto: d.rep, pasti: d.pasti,
-        quotaDip: eur(d.pasti * QUOTA_DIPENDENTE),
-        quotaAz: eur(d.pasti * (PREZZO_PASTO - QUOTA_DIPENDENTE)),
-        totale: eur(d.pasti * PREZZO_PASTO),
-      }));
-      riepilogo.push({
-        matricola: "", nome: "TOTALE", reparto: "", pasti: dati.totPasti,
-        quotaDip: eur(dati.totPasti * QUOTA_DIPENDENTE),
-        quotaAz: eur(dati.totPasti * (PREZZO_PASTO - QUOTA_DIPENDENTE)),
-        totale: eur(dati.totPasti * PREZZO_PASTO),
-      });
-      const dettaglio = [];
-      dati.dipendenti.forEach((d) => {
-        (d.dettaglio || []).forEach((g) => {
-          dettaglio.push({ matricola: d.m, nome: d.n, reparto: d.rep, giorno: g.giorno, primo: g.primo, secondo: g.secondo, contorno: g.contorno });
-        });
-      });
+      const { riepilogo, dettaglio } = calcolaResoconto(dati);
       await scaricaExcel("Resoconto_Agosto_2026_Rossi_Manifatture.xlsx", [
         { nome: "Riepilogo", dati: riepilogo, colonne: [
           { header: "Matricola", key: "matricola", width: 12 },
@@ -274,11 +413,28 @@ function Resoconti() {
           { header: "Secondo", key: "secondo", width: 26 },
           { header: "Contorno", key: "contorno", width: 26 },
         ]},
-      ]);
+      ], { datiAziendali: st.datiAziendali });
       st.avvisa("Resoconto Excel scaricato con riepilogo e dettaglio giornaliero");
     } catch (e) {
       console.error(e);
       st.avvisa("Errore nell'export Excel, riprova");
+    }
+  }
+
+  function esportaPDF() {
+    try {
+      const { riepilogo, dettaglio } = calcolaResoconto(dati);
+      generaResocontoPDF({
+        committente: "Rossi Manifatture Spa",
+        periodo: RESOCONTO_MENSILE.mese,
+        riepilogo,
+        dettaglio,
+        datiAziendali: st.datiAziendali,
+        avvisa: st.avvisa,
+      });
+    } catch (e) {
+      console.error(e);
+      st.avvisa("Errore nella generazione del PDF, riprova");
     }
   }
 
@@ -300,7 +456,7 @@ function Resoconti() {
           { header: "Pasti", key: "pasti", width: 8 },
           { header: "Trattenuta lorda", key: "trattenuta", width: 18 },
         ]},
-      ]);
+      ], { datiAziendali: st.datiAziendali });
       st.avvisa("File trattenute Excel scaricato per l'ufficio paghe");
     } catch (e) {
       console.error(e);
@@ -312,9 +468,9 @@ function Resoconti() {
     <>
       <Intestazione
         occhiello="Agosto 2026" titolo="Resoconti" sotto="Consumi per dipendente e dettaglio giornaliero dei piatti"
-        azioni={<>
+        azioni={st.puo("resoconti.export") && <>
           <button className="btn linea piccolo" onClick={esportaExcel}><Icone.scarica size={16} /> Excel</button>
-          <button className="btn linea piccolo" onClick={() => st.avvisa("Resoconto PDF generato")}>PDF</button>
+          <button className="btn linea piccolo" onClick={esportaPDF}><Icone.stampa size={16} /> PDF</button>
           <button className="btn piccolo" onClick={esportaPaghe}><Icone.scarica size={16} /> Export paghe</button>
         </>}
       />
@@ -384,43 +540,61 @@ function Resoconti() {
 
 function Fatture() {
   const st = usaStato();
+  const committente = st.committenti.find((c) => c.id === "azienda");
+  /* solo le proforma intestate a questa azienda: gli importi degli altri
+     committenti non devono mai comparire qui */
+  const elenco = ordinaProforme(st.proforme.filter((p) => p.committenteId === "azienda"));
+  const dovuto = elenco
+    .filter((p) => p.stato === "emessa")
+    .reduce((s, p) => s + totaliProforma(p).totale, 0);
+
   return (
     <>
-      <Intestazione occhiello="Amministrazione" titolo="Fatture" sotto="Documenti ricevuti e stato dei pagamenti" />
+      <Intestazione occhiello="Amministrazione" titolo="Fatture" sotto="Proforma ricevute da MAVI e scadenze di pagamento" />
       <div className="tela">
         <div className="pannello">
+          <div className="pannello-testa">
+            <h2>Proforma ricevute</h2>
+            <span className="conta-piatti">{elenco.length} documenti, {eur(dovuto)} ancora da saldare</span>
+          </div>
           <div className="scorri">
             <table className="dati">
-              <thead><tr><th>Documento</th><th>Periodo</th><th>Pasti</th><th>Importo</th><th>Stato</th><th>Esito SDI</th><th /></tr></thead>
+              <thead><tr><th>Documento</th><th>Periodo</th><th>Imponibile</th><th>IVA</th><th>Totale</th><th>Scadenza</th><th>Condizioni</th><th>Stato</th><th /></tr></thead>
               <tbody>
-                {FATTURE.map((f) => (
-                  <tr key={f.num}>
-                    <td className="cifra">{f.num}</td>
-                    <td>{f.periodo}</td>
-                    <td className="quantita">{f.pasti}</td>
-                    <td className="cifra">€ {f.imp}</td>
-                    <td>
-                      {f.stato === "pagata" ? <span className="pastiglia p-ok">pagata</span>
-                        : f.stato === "da pagare" ? <span className="pastiglia p-att">da pagare</span>
-                          : <span className="pastiglia p-neu">in maturazione</span>}
-                    </td>
-                    <td>{f.sdi === "consegnata" ? <span className="pastiglia p-ok">consegnata</span> : <span className="pastiglia p-neu">non emessa</span>}</td>
-                    <td>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <button className="btn linea piccolo" onClick={async () => {
-                          const { generaProformaPDF } = await import("../proforma.js");
-                          generaProformaPDF([{ nome: "Rossi Manifatture Spa", tipo: "Azienda", pasti: f.pasti, mese: f.periodo }], 7.50);
-                        }}>PDF</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {elenco.length === 0 && (
+                  <tr><td colSpan={9} style={{ textAlign: "center", color: "var(--muto)", padding: 22 }}>
+                    Nessuna proforma ricevuta.
+                  </td></tr>
+                )}
+                {elenco.map((p) => {
+                  const t = totaliProforma(p);
+                  return (
+                    <tr key={p.id} className={p.stato === "annullata" ? "riga-annullata" : undefined}>
+                      <td className="cifra"><b>{p.numero}</b></td>
+                      <td>{p.periodo}</td>
+                      <td className="cifra">{eur(t.imponibile)}</td>
+                      <td className="cifra">{eur(t.iva)}</td>
+                      <td className="cifra"><b>{eur(t.totale)}</b></td>
+                      <td className="cifra">{dataIt(p.scadenza)}</td>
+                      <td style={{ fontSize: 12, color: "var(--muto)" }}>{testoCondizioni(p)}</td>
+                      <td><PastigliaProforma stato={p.stato} /></td>
+                      <td>
+                        {st.puo("fatture.pdf") && (
+                          <button className="btn linea piccolo" onClick={() => {
+                            generaProformaPDF(p, { datiAziendali: st.datiAziendali, committente, avvisa: st.avvisa });
+                          }}>PDF</button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
           <div className="pannello-piede">
-            Capitolo ancora aperto. Modalità di pagamento, quota aziendale e ciclo di
-            fatturazione vanno definiti con MAVI.
+            Le proforma le emette MAVI, con le condizioni concordate per Rossi Manifatture. Non
+            transitano dal Sistema di Interscambio: la fattura elettronica arriva dal gestionale
+            contabile. Il pagamento non passa dal portale.
           </div>
         </div>
       </div>

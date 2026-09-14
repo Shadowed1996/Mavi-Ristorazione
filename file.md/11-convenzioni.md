@@ -75,12 +75,19 @@ della card piatto.
 
 ### HTML composto come stringa
 
-La proforma (`proforma.js`) e la scheda stampabile del piatto (`schedaPdf` in
-`ui.jsx`) sono stringhe HTML scritte con `document.write` in una nuova scheda,
-che ha la stessa origine del portale. I valori arrivano da dati modificabili dal
-portale (anagrafica, catalogo), quindi **ogni valore passa da `testoHtml`**, che
-lo inserisce come testo. Un `${valore}` aggiunto senza, in quei documenti,
-diventa HTML interpretato.
+I documenti stampabili (proforma, manifesto, resoconti, scheda piatto) sono
+stringhe HTML scritte con `document.write` in una nuova scheda, che ha la
+stessa origine del portale. Li compone `documento.js`, che ha **l'unica copia
+di `testoHtml`** del progetto. I valori arrivano da dati modificabili dal
+portale (anagrafica, catalogo), quindi **ogni valore passa da `testoHtml`**,
+che lo inserisce come testo. Un `${valore}` aggiunto senza, in quei documenti,
+diventa HTML interpretato. Le celle nella forma `{ html: "…" }` sono l'unica
+via per inserire HTML già composto, riservata ai moduli documento.
+
+Altra regola: `apriDocumento` va chiamata **dentro il gesto dell'utente**. I
+moduli documento si importano in modo statico; un `await import(...)` prima
+dell'apertura fa perdere il gesto e il browser blocca la scheda (vedi
+`10-export-e-documenti.md`).
 
 Per lo stesso motivo `dangerouslySetInnerHTML`, oggi usato solo in `Accesso` per
 il corsivo delle frasi fisse, non riceve mai valori che vengano dallo stato.

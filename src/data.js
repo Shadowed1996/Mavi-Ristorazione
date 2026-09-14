@@ -443,13 +443,22 @@ export const VARIABILI = [
   { primo: ["min_orz", "ris_fun", "cre_spi", "pas_arr"], sost_primo: ["ins_far", "zup_leg"], secondo: ["sal_for", "tac_lim", "cot_mil", "spe_pol"], sost_secondo: ["fri_zuc", "sfo_ver"], contorno: ["ver_gri"], unico: ["uni_las"] },
 ];
 
+/* `data` è la data ISO del giorno: serve ai documenti stampabili, che
+   intestano il riepilogo con "MARTEDÌ - 15/09/2026". `d` e `breve` restano i
+   testi già usati a schermo. */
 export const GIORNI = [
-  { n: "Lunedì", d: "14 settembre", breve: "14 set", chiuso: false },
-  { n: "Martedì", d: "15 settembre", breve: "15 set", chiuso: false },
-  { n: "Mercoledì", d: "16 settembre", breve: "16 set", chiuso: false },
-  { n: "Giovedì", d: "17 settembre", breve: "17 set", chiuso: false },
-  { n: "Venerdì", d: "18 settembre", breve: "18 set", chiuso: false },
+  { n: "Lunedì", d: "14 settembre", breve: "14 set", data: "2026-09-14", chiuso: false },
+  { n: "Martedì", d: "15 settembre", breve: "15 set", data: "2026-09-15", chiuso: false },
+  { n: "Mercoledì", d: "16 settembre", breve: "16 set", data: "2026-09-16", chiuso: false },
+  { n: "Giovedì", d: "17 settembre", breve: "17 set", data: "2026-09-17", chiuso: false },
+  { n: "Venerdì", d: "18 settembre", breve: "18 set", data: "2026-09-18", chiuso: false },
 ];
+
+/* etichetta leggibile del giorno di menu, la stessa ovunque: "Martedì 15 settembre" */
+export function etichettaGiorno(indice) {
+  const g = GIORNI[indice];
+  return g ? g.n + " " + g.d : "";
+}
 
 /* menu = { variabili: [...5 giorni], fissi: {...} }, tenuto nello stato */
 export const MENU_INIZIALE = {
@@ -487,10 +496,106 @@ export const DIPENDENTI = [
   { m: "MV0149", n: "Davide Orlando", rep: "Produzione", dieta: "nessuna", stato: "attivo", pasti: 17 },
 ];
 
-export const FATTURE = [
-  { num: "2026/0412", periodo: "Giugno 2026", pasti: 842, imp: "6.315,00", stato: "pagata", sdi: "consegnata" },
-  { num: "2026/0489", periodo: "Luglio 2026", pasti: 790, imp: "5.925,00", stato: "da pagare", sdi: "consegnata" },
-  { num: "proforma", periodo: "Agosto 2026", pasti: 301, imp: "2.257,50", stato: "in corso", sdi: "non emessa" },
+/* ============================================================
+   Condizioni di fatturazione
+   Ogni committente ha le proprie: termini, metodo di incasso e regime IVA.
+   Le proforma le ereditano al momento dell'emissione e da lì restano ferme,
+   anche se poi il committente cambia condizioni.
+   ============================================================ */
+
+/* `giorni` si contano dalla data di emissione; con `fineMese` si contano
+   dall'ultimo giorno del mese di emissione (d.f.f.m.). */
+export const TERMINI_PAGAMENTO = [
+  { id: "anticipato", nome: "Pagamento anticipato", giorni: 0, fineMese: false },
+  { id: "vista", nome: "Vista fattura", giorni: 0, fineMese: false },
+  { id: "30gg", nome: "30 gg d.f.", giorni: 30, fineMese: false },
+  { id: "30gg_fm", nome: "30 gg d.f.f.m.", giorni: 30, fineMese: true },
+  { id: "60gg", nome: "60 gg d.f.", giorni: 60, fineMese: false },
+  { id: "60gg_fm", nome: "60 gg d.f.f.m.", giorni: 60, fineMese: true },
+  { id: "90gg_fm", nome: "90 gg d.f.f.m.", giorni: 90, fineMese: true },
+];
+
+export const METODI_PAGAMENTO = [
+  { id: "bonifico", nome: "Bonifico bancario", conIban: true },
+  { id: "riba", nome: "RiBa", conIban: false },
+  { id: "sdd", nome: "SDD, addebito diretto", conIban: true },
+];
+
+export const REGIMI_IVA = [
+  { id: "ordinaria", nome: "IVA ordinaria", conIva: true, dicitura: "" },
+  {
+    id: "senza_iva", nome: "Senza IVA", conIva: false,
+    dicitura: "Operazione esente IVA ai sensi dell'art. 10 DPR 633/72",
+  },
+];
+
+export const terminiPagamento = (id) => TERMINI_PAGAMENTO.find((t) => t.id === id) || TERMINI_PAGAMENTO[2];
+export const metodoPagamento = (id) => METODI_PAGAMENTO.find((m) => m.id === id) || METODI_PAGAMENTO[0];
+export const regimeIva = (id) => REGIMI_IVA.find((r) => r.id === id) || REGIMI_IVA[0];
+
+/* le date ISO si costruiscono a mano, altrimenti slittano di un giorno nei
+   fusi a ovest di Greenwich */
+function aGiorno(v) {
+  if (v instanceof Date && !Number.isNaN(v.getTime())) return new Date(v.getFullYear(), v.getMonth(), v.getDate());
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v ?? ""));
+  if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+  const libera = new Date(v);
+  const d = Number.isNaN(libera.getTime()) ? new Date() : libera;
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+/* data di scadenza del pagamento.
+   Anticipato e vista fattura scadono il giorno stesso dell'emissione; i
+   termini "fine mese" partono dall'ultimo giorno reale del mese di emissione
+   (emissione 14/09/2026 a 60 gg d.f.f.m. → 30/09 + 60 gg → 29/11/2026). */
+export function scadenzaPagamento(dataEmissione, terminiId) {
+  const t = terminiPagamento(terminiId);
+  const emessa = aGiorno(dataEmissione);
+  if (!t.giorni) return emessa;
+  const base = t.fineMese ? new Date(emessa.getFullYear(), emessa.getMonth() + 1, 0) : emessa;
+  return new Date(base.getFullYear(), base.getMonth(), base.getDate() + t.giorni);
+}
+
+const arrotonda = (n) => Math.round((Number(n) || 0) * 100) / 100;
+
+/* totali di una proforma: le righe sono libere, l'IVA dipende dal regime.
+   Unico punto di calcolo, usato dal portale MAVI, dai portali cliente e dal PDF. */
+export function totaliProforma(proforma) {
+  const righe = (proforma && proforma.righe) || [];
+  const quantita = righe.reduce((s, r) => s + (Number(r.quantita) || 0), 0);
+  const imponibile = arrotonda(righe.reduce((s, r) => s + (Number(r.quantita) || 0) * (Number(r.prezzo) || 0), 0));
+  const conIva = regimeIva(proforma && proforma.regimeIva).conIva;
+  const aliquota = conIva ? Number((proforma && proforma.aliquota) || 0) : 0;
+  const iva = arrotonda(imponibile * (aliquota / 100));
+  return { quantita, imponibile, aliquota, iva, totale: arrotonda(imponibile + iva), conIva };
+}
+
+/* riassunto leggibile delle condizioni, di una proforma o di un committente:
+   la percentuale IVA sta in `aliquota` sul documento e in `ivaPercentuale` sul
+   committente, il resto dei campi ha lo stesso nome */
+export function testoCondizioni(x) {
+  const regime = regimeIva(x && x.regimeIva);
+  const aliquota = x && (x.aliquota != null ? x.aliquota : x.ivaPercentuale);
+  return terminiPagamento(x && x.termini).nome
+    + ", " + metodoPagamento(x && x.metodoPagamento).nome
+    + ", " + (regime.conIva ? "IVA " + (Number(aliquota) || 0) + "%" : regime.nome.toLowerCase());
+}
+
+/* proforma dalla più recente alla più vecchia */
+export function ordinaProforme(lista) {
+  return [...lista].sort((a, b) => (a.dataEmissione === b.dataEmissione
+    ? String(b.numero).localeCompare(String(a.numero))
+    : String(b.dataEmissione).localeCompare(String(a.dataEmissione))));
+}
+
+/* Proforma già emesse prima della demo: seed di `st.proforme`, espanso in
+   store.jsx con il listino e le condizioni del committente, così l'importo in
+   elenco è lo stesso che esce nel PDF. La numerazione prosegue da qui. */
+export const PROFORME_INIZIALI = [
+  { numero: "PRO-2026/001", committenteId: "azienda", periodo: "Giugno 2026", dataEmissione: "2026-07-01", pasti: 842, stato: "pagata" },
+  { numero: "PRO-2026/002", committenteId: "azienda", periodo: "Luglio 2026", dataEmissione: "2026-08-03", pasti: 790, stato: "emessa" },
+  { numero: "PRO-2026/003", committenteId: "comunita", periodo: "Giugno 2026", dataEmissione: "2026-07-01", pasti: 262, stato: "pagata" },
+  { numero: "PRO-2026/004", committenteId: "comunita", periodo: "Luglio 2026", dataEmissione: "2026-08-03", pasti: 248, stato: "emessa" },
 ];
 
 /* base della distinta di produzione, il prototipo somma le scelte fatte in demo */
@@ -553,12 +658,14 @@ export const COMMITTENTI = [
     etichettaUnita: "Reparto", pasti: 28, attivo: true,
     nota: "Modello classico della mensa aziendale, ogni dipendente compone il proprio pasto.",
     indirizzo: "Via dell'Industria 42, Varese", piva: "02114560123",
+    cf: "02114560123", pec: "amministrazione@pec.rossimanifatture.it", codiceSdi: "M5UXCR1",
     referente: "Roberto Manzi", ruoloReferente: "Ufficio del personale",
     email: "r.manzi@rossimanifatture.it", telefono: "0332 445 122",
     cutoff: "14:00 del giorno precedente",
     regolaPasto: "Composizione libera, dipendente sceglie",
     listino: "Tariffa unica, 7,50 €", frutta: false, monoporzione: false,
     prezzoUnitario: 7.5, ivaPercentuale: 10, pastiMeseDemo: 790,
+    termini: "30gg", metodoPagamento: "bonifico", regimeIva: "ordinaria", dicituraIva: "",
   },
   {
     id: "comunita", nome: "Comunità Il Ponte", tipo: "Comunità", modello: "unita",
@@ -566,12 +673,15 @@ export const COMMITTENTI = [
     etichettaUnita: "Reparto", pasti: 31, attivo: true,
     nota: "Menu fisso con poche personalizzazioni, ordine dichiarato dall'educatore di turno.",
     indirizzo: "Via Sole Luna 8, Desio (MB)", piva: "03887120968",
+    cf: "91038870968", pec: "comunitailponte@pec.it", codiceSdi: "KRRH6B9",
     referente: "Ilaria Gatti", ruoloReferente: "Responsabile struttura",
     email: "i.gatti@comunitailponte.it", telefono: "0362 998 741",
     cutoff: "16:00 del giorno precedente",
     regolaPasto: "Menu fisso, personalizzazioni per singola casa",
     listino: "Convenzione, fatturazione mensile", frutta: true, monoporzione: false,
-    prezzoUnitario: 7.5, ivaPercentuale: 10, pastiMeseDemo: 248,
+    prezzoUnitario: 7.5, ivaPercentuale: 0, pastiMeseDemo: 248,
+    termini: "60gg_fm", metodoPagamento: "bonifico", regimeIva: "senza_iva",
+    dicituraIva: "Operazione esente IVA ai sensi dell'art. 10 DPR 633/72",
   },
 ];
 
@@ -624,12 +734,157 @@ export const PRESENZE_SCUOLA = [
    con la chiave esterna verso il committente.
    ============================================================ */
 export const UTENTI = [
-  { u: "antonella.rossi", nome: "Antonella Rossi", iniziali: "AR", struttura: "azienda", ruolo: "dipendente", committente: "Rossi Manifatture Spa", mansione: "Amministrazione" },
-  { u: "roberto.manzi", nome: "Roberto Manzi", iniziali: "RM", struttura: "azienda", ruolo: "referente", committente: "Rossi Manifatture Spa", mansione: "Ufficio del personale" },
-      { u: "samuele.ferri", nome: "Samuele Ferri", iniziali: "SF", struttura: "comunita", ruolo: "operatore", committente: "Comunità Il Ponte", mansione: "Educatore", reparto: "Spazio Giovani SGA" },
-  { u: "ilaria.gatti", nome: "Ilaria Gatti", iniziali: "IG", struttura: "comunita", ruolo: "responsabile", committente: "Comunità Il Ponte", mansione: "Responsabile" },
-      { u: "cucina.mavi", nome: "Cucina centrale", iniziali: "MV", struttura: "mavi", ruolo: "fornitore", committente: "MAVI Ristorazione", mansione: "Produzione e amministrazione" },
+  { id: "u1", u: "antonella.rossi", nome: "Antonella Rossi", iniziali: "AR", struttura: "azienda", ruolo: "dipendente", committente: "Rossi Manifatture Spa", mansione: "Amministrazione", email: "antonella.rossi@rossimanifatture.it", telefono: "", attivo: true },
+  { id: "u2", u: "roberto.manzi", nome: "Roberto Manzi", iniziali: "RM", struttura: "azienda", ruolo: "referente", committente: "Rossi Manifatture Spa", mansione: "Ufficio del personale", email: "roberto.manzi@rossimanifatture.it", telefono: "", attivo: true },
+  { id: "u3", u: "samuele.ferri", nome: "Samuele Ferri", iniziali: "SF", struttura: "comunita", ruolo: "operatore", committente: "Comunità Il Ponte", mansione: "Educatore", reparto: "Spazio Giovani SGA", email: "samuele.ferri@ilponte.it", telefono: "", attivo: true },
+  { id: "u4", u: "ilaria.gatti", nome: "Ilaria Gatti", iniziali: "IG", struttura: "comunita", ruolo: "responsabile", committente: "Comunità Il Ponte", mansione: "Responsabile", email: "ilaria.gatti@ilponte.it", telefono: "", attivo: true },
+  { id: "u5", u: "cucina.mavi", nome: "Cucina centrale", iniziali: "MV", struttura: "mavi", ruolo: "fornitore", committente: "MAVI Ristorazione", mansione: "Produzione e amministrazione", email: "cucina@maviristorazione.it", telefono: "", attivo: true },
 ];
+
+/* ============================================================
+   Permessi e ruoli.
+
+   Ogni voce di PERMESSI è una capacità elementare del prodotto:
+     k       chiave usata dal codice con st.puo("chiave")
+     portale mavi | azienda | comunita, decide in quale matrice compare
+     gruppo  la pagina a cui appartiene, per raggruppare la matrice
+     n       nome leggibile mostrato nella matrice
+
+   Le chiavi sono uniche *dentro un portale*, non fra portali: un utente ha
+   un solo ruolo e un ruolo appartiene a un solo portale, quindi documenti.vedi
+   nel portale comunità e documenti.vedi nel portale MAVI non si incrociano mai.
+
+   Convenzione: <pagina>.vedi apre la voce di menu, <pagina>.<azione> abilita
+   una singola azione dentro la pagina.
+   ============================================================ */
+export const PERMESSI = [
+  /* ---------- portale MAVI ---------- */
+  { k: "produzione.vedi", portale: "mavi", gruppo: "Produzione", n: "Vedi la distinta di produzione" },
+  { k: "produzione.stampa", portale: "mavi", gruppo: "Produzione", n: "Stampa la distinta" },
+  { k: "flussi.vedi", portale: "mavi", gruppo: "Ordini in arrivo", n: "Vedi gli ordini in arrivo" },
+  { k: "flussi.manifesto", portale: "mavi", gruppo: "Ordini in arrivo", n: "Genera il manifesto di consegna" },
+  { k: "flussi.excel", portale: "mavi", gruppo: "Ordini in arrivo", n: "Scarica i resoconti Excel" },
+  { k: "consegne.vedi", portale: "mavi", gruppo: "Giri di consegna", n: "Vedi i giri di consegna" },
+  { k: "etichette.vedi", portale: "mavi", gruppo: "Etichette pasto", n: "Vedi le etichette pasto" },
+  { k: "etichette.stampa", portale: "mavi", gruppo: "Etichette pasto", n: "Apri la vista di stampa" },
+  { k: "etichette.elimina", portale: "mavi", gruppo: "Etichette pasto", n: "Elimina una etichetta" },
+  { k: "modelli.vedi", portale: "mavi", gruppo: "Committenti", n: "Vedi i committenti" },
+  { k: "modelli.nuovo", portale: "mavi", gruppo: "Committenti", n: "Crea un committente" },
+  { k: "modelli.attivo", portale: "mavi", gruppo: "Committenti", n: "Imposta attivo, sospendi e riattiva" },
+  { k: "impostazioni.vedi", portale: "mavi", gruppo: "Impostazioni", n: "Vedi le impostazioni per committente" },
+  { k: "impostazioni.modifica", portale: "mavi", gruppo: "Impostazioni", n: "Modifica listino, condizioni e reparti" },
+  { k: "menu.vedi", portale: "mavi", gruppo: "Menu settimana", n: "Vedi il menu della settimana" },
+  { k: "menu.modifica", portale: "mavi", gruppo: "Menu settimana", n: "Compone il menu del giorno" },
+  { k: "menu.fissi", portale: "mavi", gruppo: "Menu settimana", n: "Gestisce i piatti fissi" },
+  { k: "menu.griglia", portale: "mavi", gruppo: "Menu settimana", n: "Apre e stampa la griglia settimana" },
+  { k: "catalogo.vedi", portale: "mavi", gruppo: "Catalogo piatti", n: "Vedi il catalogo piatti" },
+  { k: "catalogo.modifica", portale: "mavi", gruppo: "Catalogo piatti", n: "Crea, modifica piatti e fotografie" },
+  { k: "fatturazione.vedi", portale: "mavi", gruppo: "Fatturazione", n: "Vedi la fatturazione" },
+  { k: "fatturazione.proforma", portale: "mavi", gruppo: "Fatturazione", n: "Emette una nuova proforma" },
+  { k: "fatturazione.annulla", portale: "mavi", gruppo: "Fatturazione", n: "Annulla una proforma emessa" },
+  { k: "fatturazione.excel", portale: "mavi", gruppo: "Fatturazione", n: "Scarica gli Excel di fatturazione" },
+  { k: "log.vedi", portale: "mavi", gruppo: "Log operazioni", n: "Vedi il log operazioni" },
+  { k: "log.excel", portale: "mavi", gruppo: "Log operazioni", n: "Esporta il log in Excel" },
+  { k: "gestione.vedi", portale: "mavi", gruppo: "Gestione portale", n: "Apre la gestione portale" },
+  { k: "gestione.azienda", portale: "mavi", gruppo: "Gestione portale", n: "Modifica i dati aziendali" },
+  { k: "gestione.fatturazione", portale: "mavi", gruppo: "Gestione portale", n: "Modifica le condizioni predefinite" },
+  { k: "gestione.tema", portale: "mavi", gruppo: "Gestione portale", n: "Cambia l'aspetto del portale" },
+  { k: "gestione.utenti", portale: "mavi", gruppo: "Gestione portale", n: "Gestisce gli utenti" },
+  { k: "gestione.ruoli", portale: "mavi", gruppo: "Gestione portale", n: "Gestisce ruoli e permessi" },
+  { k: "gestione.notifiche", portale: "mavi", gruppo: "Gestione portale", n: "Gestisce le notifiche automatiche" },
+  { k: "gestione.backup", portale: "mavi", gruppo: "Gestione portale", n: "Backup e ripristino" },
+  { k: "documenti.vedi", portale: "mavi", gruppo: "Documenti", n: "Vedi i documenti del servizio" },
+  { k: "documenti.riservati", portale: "mavi", gruppo: "Documenti", n: "Vedi anche i documenti riservati" },
+  { k: "documenti.gestisci", portale: "mavi", gruppo: "Documenti", n: "Carica e rimuove documenti" },
+
+  /* ---------- portale azienda, vista dipendente ---------- */
+  { k: "menu.vedi", portale: "azienda", gruppo: "Menu del giorno", n: "Vedi il menu del giorno" },
+  { k: "menu.prenota", portale: "azienda", gruppo: "Menu del giorno", n: "Prenota e disdice il proprio pasto" },
+  { k: "settimana.vedi", portale: "azienda", gruppo: "Menu settimana", n: "Vedi il menu della settimana" },
+  { k: "prenotazioni.vedi", portale: "azienda", gruppo: "Le mie prenotazioni", n: "Vedi le proprie prenotazioni" },
+  { k: "prenotazioni.riepilogo", portale: "azienda", gruppo: "Le mie prenotazioni", n: "Scarica il riepilogo in PDF" },
+  { k: "diete.vedi", portale: "azienda", gruppo: "Diete speciali", n: "Imposta allergeni e preferenze" },
+
+  /* ---------- portale azienda, vista referente ---------- */
+  { k: "cruscotto.vedi", portale: "azienda", gruppo: "Cruscotto", n: "Vedi il cruscotto aziendale" },
+  { k: "prenota.perConto", portale: "azienda", gruppo: "Cruscotto", n: "Prenota per conto di un dipendente" },
+  { k: "riepilogo.stampa", portale: "azienda", gruppo: "Cruscotto", n: "Stampa il riepilogo del giorno" },
+  { k: "dipendenti.vedi", portale: "azienda", gruppo: "Dipendenti", n: "Vedi l'anagrafica dei dipendenti" },
+  { k: "dipendenti.modifica", portale: "azienda", gruppo: "Dipendenti", n: "Aggiunge, importa e reimposta password" },
+  { k: "resoconti.vedi", portale: "azienda", gruppo: "Resoconti", n: "Vedi i resoconti mensili" },
+  { k: "resoconti.export", portale: "azienda", gruppo: "Resoconti", n: "Scarica Excel, PDF ed export paghe" },
+  { k: "fatture.vedi", portale: "azienda", gruppo: "Fatture", n: "Vedi le proforma ricevute" },
+  { k: "fatture.pdf", portale: "azienda", gruppo: "Fatture", n: "Scarica la proforma in PDF" },
+  { k: "documenti.vedi", portale: "azienda", gruppo: "Documenti", n: "Vedi i documenti" },
+  { k: "documenti.riservati", portale: "azienda", gruppo: "Documenti", n: "Vedi anche i documenti riservati" },
+
+  /* ---------- portale comunità ---------- */
+  { k: "cruscotto.vedi", portale: "comunita", gruppo: "Cruscotto", n: "Vedi il cruscotto della struttura" },
+  { k: "pazienti.vedi", portale: "comunita", gruppo: "Pazienti", n: "Vedi l'elenco dei pazienti" },
+  { k: "pazienti.tuttiReparti", portale: "comunita", gruppo: "Pazienti", n: "Vedi tutti i reparti, non solo il proprio" },
+  { k: "pazienti.anagrafica", portale: "comunita", gruppo: "Pazienti", n: "Crea, modifica ed elimina i pazienti" },
+  { k: "pazienti.dieta", portale: "comunita", gruppo: "Pazienti", n: "Modifica, carica e scarica la dieta" },
+  { k: "presenze.vedi", portale: "comunita", gruppo: "Presenze del giorno", n: "Vedi le presenze del giorno" },
+  { k: "presenze.segna", portale: "comunita", gruppo: "Presenze del giorno", n: "Segna presenti e assenti" },
+  { k: "presenze.trasmetti", portale: "comunita", gruppo: "Presenze del giorno", n: "Trasmette le presenze a MAVI" },
+  { k: "resoconti.vedi", portale: "comunita", gruppo: "Resoconti", n: "Vedi i resoconti" },
+  { k: "resoconti.export", portale: "comunita", gruppo: "Resoconti", n: "Scarica il resoconto in Excel" },
+  { k: "fatture.vedi", portale: "comunita", gruppo: "Fatture", n: "Vedi le proforma ricevute" },
+  { k: "fatture.pdf", portale: "comunita", gruppo: "Fatture", n: "Scarica la proforma in PDF" },
+  { k: "documenti.vedi", portale: "comunita", gruppo: "Documenti", n: "Vedi i documenti" },
+  { k: "documenti.riservati", portale: "comunita", gruppo: "Documenti", n: "Vedi anche i documenti riservati" },
+];
+
+/* chiavi di un portale, nell'ordine in cui compaiono nella matrice */
+export function permessiDelPortale(portale) {
+  return PERMESSI.filter((p) => p.portale === portale);
+}
+
+const tutti = (portale) => permessiDelPortale(portale).map((p) => p.k);
+
+/* ============================================================
+   Ruoli iniziali. `bloccato` marca il ruolo di sistema, che non si
+   modifica né si elimina: senza, il portale MAVI potrebbe chiudersi
+   fuori da sé stesso. `vista` esiste solo nel portale azienda, dove
+   convivono due telai diversi (dipendente e referente).
+   ============================================================ */
+export const RUOLI_INIZIALI = [
+  {
+    id: "dipendente", nome: "Dipendente", portale: "azienda", vista: "dipendente",
+    permessi: ["menu.vedi", "menu.prenota", "settimana.vedi", "prenotazioni.vedi", "prenotazioni.riepilogo", "diete.vedi", "documenti.vedi"],
+  },
+  {
+    id: "referente", nome: "Referente aziendale", portale: "azienda", vista: "referente",
+    permessi: ["cruscotto.vedi", "prenota.perConto", "riepilogo.stampa", "dipendenti.vedi", "dipendenti.modifica",
+      "resoconti.vedi", "resoconti.export", "fatture.vedi", "fatture.pdf", "documenti.vedi", "documenti.riservati"],
+  },
+  {
+    id: "operatore", nome: "Educatore", portale: "comunita",
+    permessi: ["pazienti.vedi", "pazienti.dieta", "presenze.vedi", "presenze.segna", "presenze.trasmetti",
+      "resoconti.vedi", "resoconti.export", "documenti.vedi"],
+  },
+  { id: "responsabile", nome: "Responsabile", portale: "comunita", permessi: tutti("comunita") },
+  { id: "fornitore", nome: "Cucina MAVI", portale: "mavi", bloccato: true, permessi: tutti("mavi") },
+];
+
+export const ETICHETTE_PORTALE = {
+  mavi: "Portale MAVI",
+  azienda: "Portale azienda",
+  comunita: "Portale struttura",
+};
+
+/* matricola e reparto veri di chi ordina in azienda, cercati per nome:
+   prima l'anagrafica dipendenti, poi la mansione del profilo di accesso
+   (Antonella Rossi è un profilo demo, non è in DIPENDENTI). Serve ai
+   nominativi dell'azienda, che senza questo riportavano il ruolo al posto
+   del reparto. */
+export function anagraficaAzienda(nome) {
+  const chiave = String(nome || "").trim().toLowerCase();
+  const dipendente = DIPENDENTI.find((d) => d.n.toLowerCase() === chiave);
+  if (dipendente) return { matricola: dipendente.m, reparto: dipendente.rep };
+  const utente = UTENTI.find((u) => u.nome.toLowerCase() === chiave);
+  return { matricola: "", reparto: (utente && utente.mansione) || "" };
+}
 
 export const ETICHETTE_STRUTTURA = {
   azienda: "Azienda",
@@ -644,11 +899,6 @@ export const ETICHETTE_RUOLO = {
   responsabile: "Responsabile",
   fornitore: "Cucina MAVI",
 };
-
-export function trovaUtente(nomeUtente) {
-  const pulito = String(nomeUtente || "").trim().toLowerCase();
-  return UTENTI.find((x) => x.u === pulito) || null;
-}
 
 /* ============================================================
    Ospiti delle RSA. NOMI DI FANTASIA, dati dimostrativi.
@@ -754,7 +1004,7 @@ export const PAZIENTI_COMUNITA = [
   {
     id: "p01", nome: "Beatrice Comi", stanza: "Spazio Giovani SGA", dal: "marzo 2025",
     note: "Celiachia + intolleranza al lattosio. Pasta senza glutine e riso integrale. Niente latticini.",
-    tipo_dieta: "Allergia / Intolleranza",
+    tipo_dieta: "Allergia / Intolleranza", pasti: ["pranzo"],
     dieta: {
       lunedì:    { pranzo: { primo: "Risotto agli asparagi || NO MANTECATO", secondo: "Tacchino freddo", contorno: "Patate arrosto" }, cena: { primo: "—", secondo: "—", contorno: "—" } },
       martedì:   { pranzo: { primo: "Pasta zucchine e pomodori", secondo: "Frittata alle verdure || allergene 3", contorno: "Pomodori e mais" }, cena: { primo: "—", secondo: "—", contorno: "—" } },
@@ -768,7 +1018,7 @@ export const PAZIENTI_COMUNITA = [
   {
     id: "p02", nome: "Zied Dridi", stanza: "Spazio Giovani SGA", dal: "settembre 2025",
     note: "Dieta etico-religiosa. No carne di maiale, no gnocchi. Pasta = pastina.",
-    tipo_dieta: "Etico-religiosa + personalizzata",
+    tipo_dieta: "Etico-religiosa + personalizzata", pasti: ["pranzo"],
     dieta: {
       lunedì:    { pranzo: { primo: "Risotto agli asparagi || NO MANTECATO", secondo: "Fuselli di pollo al forno", contorno: "Patate arrosto" }, cena: { primo: "—", secondo: "—", contorno: "—" } },
       martedì:   { pranzo: { primo: "Pasta zucchine e pomodori", secondo: "Arrosto di tacchino alle erbe", contorno: "Piselli al tegame" }, cena: { primo: "—", secondo: "—", contorno: "—" } },
@@ -782,7 +1032,7 @@ export const PAZIENTI_COMUNITA = [
   {
     id: "p03", nome: "Carmelo Aronica", stanza: "CSS Sole Luna, Desio", dal: "gennaio 2026",
     note: "Esofagite + ernia jatale. No: piccante, limone, tonno, crostacei, formaggi fermentati, pomodori, peperoni, piselli, ceci, lenticchie, agrumi.",
-    tipo_dieta: "Personalizzata per patologia",
+    tipo_dieta: "Personalizzata per patologia", pasti: ["pranzo", "cena"],
     dieta: {
       lunedì:    { pranzo: { primo: "Risotto agli asparagi", secondo: "Fuselli di pollo al forno", contorno: "Patate arrosto" }, cena: { primo: "Pasta pomodoro e basilico", secondo: "Tacchino freddo", contorno: "Carote prezzemolate" } },
       martedì:   { pranzo: { primo: "Pasta al pesto", secondo: "Arrosto di coppa alle erbe", contorno: "Insalata fresca" }, cena: { primo: "Pasta zucchine", secondo: "Frittata alle verdure", contorno: "Purè di patate" } },
@@ -796,7 +1046,7 @@ export const PAZIENTI_COMUNITA = [
   {
     id: "p04", nome: "Marco Bellini", stanza: "CSS Sole Luna, Desio", dal: "maggio 2024",
     note: "Dieta standard. Nessuna allergia o intolleranza nota. Porzioni regolari.",
-    tipo_dieta: "Standard",
+    tipo_dieta: "Standard", pasti: ["pranzo", "cena"],
     dieta: {
       lunedì:    { pranzo: { primo: "Risotto agli asparagi", secondo: "Fuselli di pollo al forno", contorno: "Patate arrosto" }, cena: { primo: "Pasta pomodoro e basilico", secondo: "Tacchino freddo", contorno: "Carote prezzemolate" } },
       martedì:   { pranzo: { primo: "Pasta al pesto", secondo: "Arrosto di coppa alle erbe", contorno: "Insalata fresca" }, cena: { primo: "Pasta zucchine", secondo: "Frittata alle verdure", contorno: "Purè di patate" } },
@@ -811,6 +1061,23 @@ export const PAZIENTI_COMUNITA = [
 
 export { GIORNI_SETT, PASTI_TIPO };
 
+/* Pasti previsti dal paziente, nell'ordine di PASTI_TIPO. Un paziente censito
+   prima dell'introduzione del campo (o arrivato da un import) non ha `pasti`:
+   vale pranzo e cena, com'era il comportamento del prototipo. */
+export function pastiDi(paziente) {
+  const scelti = paziente?.pasti;
+  if (!Array.isArray(scelti) || scelti.length === 0) return PASTI_TIPO;
+  const validi = PASTI_TIPO.filter((p) => scelti.includes(p));
+  return validi.length ? validi : PASTI_TIPO;
+}
+
+/* Portate effettive di un pasto: il trattino lungo e la stringa vuota
+   significano "non previsto", e non generano etichetta. */
+export function portateServite(dieta) {
+  if (!dieta) return [];
+  return ["primo", "secondo", "contorno"].filter((c) => dieta[c] && dieta[c] !== "—");
+}
+
 
 /* Separa il nome del piatto dalla nota di preparazione */
 export function splitPiatto(testo) {
@@ -822,22 +1089,30 @@ export function splitPiatto(testo) {
 /* ============================================================
    Etichette demo dipendenti azienda — ordini già confermati
    ============================================================ */
+const GIORNO_ETICHETTE_DEMO = 2; // mercoledì 16 settembre
+
+/* Il giorno è strutturato (`indiceGiorno`, 0–4) e non più una stringa: il
+   riepilogo del referente e il manifesto del fornitore filtrano per giornata.
+   `committente` è l'id, `committenteNome` la ragione sociale per chi la
+   mostra. Matricola e reparto arrivano da DIPENDENTI, un dato solo. */
 export const ETICHETTE_AZIENDA_DEMO = [
-  { id: "ea01", nome: "Anna Ferrari", matricola: "MV0142", reparto: "Amministrazione", committente: "Rossi Manifatture Spa",
-    giorno: "mer 16 set 2026", pasto: "pranzo", primo: "Pasta al pomodoro", secondo: "Pollo grigliato", contorno: "Verdure grigliate" },
-  { id: "ea02", nome: "Marco Bassi", matricola: "MV0143", reparto: "Produzione", committente: "Rossi Manifatture Spa",
-    giorno: "mer 16 set 2026", pasto: "pranzo", primo: "Risotto ai funghi", secondo: "Salmone al forno", contorno: "Insalata mista" },
-  { id: "ea03", nome: "Sara Colombo", matricola: "MV0144", reparto: "Amministrazione", committente: "Rossi Manifatture Spa",
-    giorno: "mer 16 set 2026", pasto: "pranzo", primo: "Vellutata di zucca", secondo: "Tofu alla piastra", contorno: "Fagiolini a vapore" },
-  { id: "ea04", nome: "Luca De Santis", matricola: "MV0145", reparto: "Logistica", committente: "Rossi Manifatture Spa",
-    giorno: "mer 16 set 2026", pasto: "pranzo", primo: "Lasagne alla bolognese", secondo: "Polpette al sugo", contorno: "Patate al forno" },
-  { id: "ea05", nome: "Giulia Moretti", matricola: "MV0146", reparto: "Logistica", committente: "Rossi Manifatture Spa",
-    giorno: "mer 16 set 2026", pasto: "pranzo", primo: "Insalata di farro", secondo: "Formaggio misto", contorno: "Insalata mista" },
-  { id: "ea06", nome: "Chiara Vitali", matricola: "MV0148", reparto: "Commerciale", committente: "Rossi Manifatture Spa",
-    giorno: "mer 16 set 2026", pasto: "pranzo", primo: "Pasta al pomodoro", secondo: "Tofu alla piastra", contorno: "Verdure grigliate" },
-  { id: "ea07", nome: "Davide Orlando", matricola: "MV0149", reparto: "Produzione", committente: "Rossi Manifatture Spa",
-    giorno: "mer 16 set 2026", pasto: "pranzo", primo: "Risotto ai funghi", secondo: "Pollo grigliato", contorno: "Patate al forno" },
-];
+  { id: "ea01", nome: "Anna Ferrari", primo: "Pasta al pomodoro", secondo: "Pollo grigliato", contorno: "Verdure grigliate" },
+  { id: "ea02", nome: "Marco Bassi", primo: "Risotto ai funghi", secondo: "Salmone al forno", contorno: "Insalata mista" },
+  { id: "ea03", nome: "Sara Colombo", primo: "Vellutata di zucca", secondo: "Tofu alla piastra", contorno: "Fagiolini a vapore" },
+  { id: "ea04", nome: "Luca De Santis", primo: "Lasagne alla bolognese", secondo: "Polpette al sugo", contorno: "Patate al forno" },
+  { id: "ea05", nome: "Giulia Moretti", primo: "Insalata di farro", secondo: "Formaggio misto", contorno: "Insalata mista" },
+  { id: "ea06", nome: "Chiara Vitali", primo: "Pasta al pomodoro", secondo: "Tofu alla piastra", contorno: "Verdure grigliate" },
+  { id: "ea07", nome: "Davide Orlando", primo: "Risotto ai funghi", secondo: "Pollo grigliato", contorno: "Patate al forno" },
+].map((r) => ({
+  ...r,
+  ...anagraficaAzienda(r.nome),
+  committente: "azienda",
+  committenteNome: "Rossi Manifatture Spa",
+  indiceGiorno: GIORNO_ETICHETTE_DEMO,
+  giorno: etichettaGiorno(GIORNO_ETICHETTE_DEMO),
+  pasto: "pranzo",
+  unico: "",
+}));
 
 /* ============================================================
    Resoconto mensile demo — dati aggregati per il mese

@@ -681,6 +681,8 @@ h4 {
 }
 input[type="text"],
 input[type="password"],
+input[type="email"],
+input[type="tel"],
 .campo select {
   width: 100%;
   padding: 14px 18px;
@@ -2359,6 +2361,23 @@ table.settimanale td.cella {
   padding: 2px 6px;
   flex: 0 0 auto;
 }
+.piatto-riga .rendi-fisso {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--muto);
+  background: transparent;
+  border: 1px dashed var(--linea-forte);
+  border-radius: var(--r-m);
+  padding: 4px 8px;
+  flex: 0 0 auto;
+  transition: 0.14s;
+}
+.piatto-riga .rendi-fisso:hover {
+  color: var(--acc);
+  border-color: var(--acc);
+  background: var(--acc-tenue);
+}
 
 /* colonna di destra, catalogo */
 .catalogo-lato {
@@ -2400,7 +2419,8 @@ table.settimanale td.cella {
 .catalogo-voce {
   display: flex;
   align-items: center;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 8px 10px;
   padding: 8px 9px;
   border: 1px solid var(--linea);
   border-radius: var(--r-m);
@@ -2411,11 +2431,9 @@ table.settimanale td.cella {
 }
 .catalogo-voce:hover {
   border-color: var(--acc);
-  background: var(--acc-tenue);
 }
-.catalogo-voce:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+.catalogo-voce.in-uso {
+  background: var(--carta);
 }
 .catalogo-voce .disco {
   width: 30px;
@@ -2444,12 +2462,40 @@ table.settimanale td.cella {
   font-size: 11px;
   color: var(--muto);
 }
-.catalogo-voce .piu {
-  font-size: 18px;
+.catalogo-azioni {
+  flex: 0 0 100%;
+  display: flex;
+  gap: 6px;
+}
+.cat-azione {
+  flex: 1 1 0;
+  padding: 5px 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--inchiostro-2);
+  background: var(--foglio);
+  border: 1px solid var(--linea);
+  border-radius: var(--r-m);
+  transition: 0.14s;
+}
+.cat-azione.forte {
+  border-style: dashed;
+  border-color: var(--linea-forte);
+}
+.cat-azione:hover:not(:disabled) {
   color: var(--acc);
-  flex: 0 0 auto;
-  line-height: 1;
-  padding-right: 4px;
+  border-color: var(--acc);
+  background: var(--acc-tenue);
+}
+.cat-azione:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.catalogo-nota {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--muto);
 }
 
 @media (max-width: 1200px) {
@@ -4338,6 +4384,8 @@ table.settimanale td.cella {
   display: block;
 }
 .impo-riga input[type="text"],
+.impo-riga input[type="email"],
+.impo-riga input[type="tel"],
 .impo-riga input[type="number"],
 .impo-riga select {
   width: 100%;
@@ -4698,6 +4746,71 @@ tr.pz-neutro td:first-child { border-left: 3px solid var(--linea); }
   background: var(--carta);
   color: var(--inchiostro);
 }
+
+/* ---- pasti previsti dal paziente (pranzo e cena indipendenti) ---- */
+.pasti-scelta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.pasti-scelta label {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 0;
+  padding: 11px 18px;
+  border: 1.5px solid var(--linea);
+  border-radius: 12px;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--inchiostro-2);
+  cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s;
+}
+.pasti-scelta label.on {
+  border-color: var(--acc);
+  background: var(--acc-tenue);
+  color: var(--acc);
+}
+.pasti-scelta input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--acc);
+  cursor: pointer;
+}
+.tag-pasti {
+  display: inline-block;
+  padding: 3px 10px;
+  border: 1px solid var(--linea-forte);
+  border-radius: 999px;
+  background: var(--carta);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muto);
+  white-space: nowrap;
+}
+.menu-sett-portata.pasto-escluso {
+  background: var(--carta);
+  color: var(--muto);
+  font-style: italic;
+}
+[data-tema="scuro"] .pasti-scelta label {
+  background: var(--carta);
+  border-color: var(--linea);
+  color: var(--muto);
+}
+[data-tema="scuro"] .pasti-scelta label.on {
+  border-color: var(--acc);
+  background: var(--acc-tenue);
+  color: var(--acc);
+}
+[data-tema="scuro"] .tag-pasti {
+  background: var(--foglio);
+  border-color: var(--linea);
+}
+[data-tema="scuro"] .menu-sett-portata.pasto-escluso { background: var(--foglio); }
 
 /* ---- menu ciclico editabile ---- */
 .ciclico-voce .ciclico-edit {
@@ -5314,3 +5427,354 @@ tr.pz-neutro td:first-child { border-left: 3px solid var(--linea); }
 [data-tema="scuro"] .rot-step { background: #262422; border-color: #3a3632; }
 [data-tema="scuro"] .rot-step.attiva { background: #1a2820; border-color: var(--acc); }
 [data-tema="scuro"] .rot-n { background: #1e1c1a; }
+
+/* ============================================================
+   Riepilogo del giorno, cruscotto del referente
+   ============================================================ */
+.scelta-giorno {
+  padding: 0 22px;
+}
+.scelta-giorno .giorni-tab {
+  margin-bottom: 14px;
+}
+.giorni-tab button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.giorni-tab button:disabled:hover {
+  background: var(--foglio);
+}
+.dati td.riga-vuota {
+  text-align: center;
+  color: var(--muto);
+  font-size: 13px;
+  padding: 26px 22px;
+}
+.dati tbody tr:hover td.riga-vuota {
+  background: transparent;
+}
+
+/* ============================ proforma create a mano ============================ */
+.impo-riga.tre { grid-template-columns: repeat(3, 1fr); }
+
+/* una proforma annullata resta in elenco, barrata: stato e azioni restano leggibili */
+.riga-annullata td { color: var(--muto); }
+.riga-annullata td:nth-child(-n+7) { text-decoration: line-through; }
+.riga-annullata .pastiglia { text-decoration: none; }
+
+.pro-righe {
+  border: 1px solid var(--linea);
+  border-radius: var(--r-m);
+  background: var(--carta);
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+.pro-righe-testa {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muto);
+}
+.pro-riga {
+  display: grid;
+  grid-template-columns: minmax(0, 2.4fr) 90px 110px 140px;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 10px;
+}
+.pro-riga:last-child { margin-bottom: 0; }
+.pro-riga label { display: block; }
+.pro-riga label > span {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muto);
+  margin-bottom: 4px;
+}
+.pro-riga input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--linea-forte);
+  border-radius: var(--r-s);
+  font-family: var(--sans);
+  font-size: 13.5px;
+  background: var(--foglio);
+  color: var(--inchiostro);
+}
+.pro-riga-importo {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-bottom: 7px;
+}
+.pro-riga-importo span { font-size: 14px; font-weight: 600; }
+.pro-riga-importo button {
+  display: flex;
+  padding: 5px;
+  border: none;
+  border-radius: var(--r-s);
+  background: none;
+  color: var(--muto);
+  cursor: pointer;
+}
+.pro-riga-importo button:disabled { opacity: 0.3; cursor: default; }
+.pro-riga-importo button:hover:not(:disabled) { color: #d9534f; }
+
+.pro-anteprima {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  border: 1px solid var(--linea);
+  border-radius: var(--r-m);
+  background: var(--carta);
+}
+.pro-anteprima > div { display: flex; flex-direction: column; gap: 3px; }
+.pro-anteprima span {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muto);
+}
+.pro-anteprima b { font-size: 16px; }
+.pro-anteprima .forte b { color: var(--acc); }
+
+@media (max-width: 760px) {
+  .pro-riga { grid-template-columns: 1fr 1fr; }
+  .pro-anteprima { grid-template-columns: 1fr 1fr; }
+  .impo-riga.tre { grid-template-columns: 1fr; }
+}
+
+[data-tema="scuro"] .pro-righe,
+[data-tema="scuro"] .pro-anteprima { background: var(--carta); border-color: var(--linea); }
+[data-tema="scuro"] .pro-riga input { background: var(--foglio); border-color: var(--linea-forte); color: var(--inchiostro); }
+
+/* ============================ distinta di produzione ============================ */
+/* Barra di periodo e filtri della pagina Produzione: vista giorno o settimana,
+   navigazione fra le giornate, filtro per tipo o struttura, filtro pasto. */
+.dist-barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.dist-barra .commuta { margin-left: 0; }
+.dist-nav {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--linea-forte);
+  border-radius: var(--r-s);
+  background: var(--foglio);
+  overflow: hidden;
+}
+.dist-nav button {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  color: var(--muto);
+}
+.dist-nav button:hover:not(:disabled) {
+  background: var(--carta);
+  color: var(--inchiostro);
+}
+.dist-nav button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.dist-nav-giorno {
+  min-width: 196px;
+  padding: 6px 12px;
+  text-align: center;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--inchiostro);
+  border-left: 1px solid var(--linea);
+  border-right: 1px solid var(--linea);
+}
+.dist-nav-giorno.larga {
+  min-width: 300px;
+  border-left: 0;
+  border-right: 0;
+}
+.dist-nav-giorno small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--muto);
+}
+.dist-nota-barra {
+  margin-left: auto;
+  max-width: 260px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muto);
+}
+
+.numero .n-su {
+  margin-left: 8px;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muto);
+}
+
+/* riga che ripete sempre periodo e perimetro: il filtro resta leggibile anche
+   a metà pagina, e il documento stampato riporta gli stessi due valori */
+.dist-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--linea);
+  border-radius: var(--r-m);
+  background: var(--foglio);
+  font-size: 13px;
+  color: var(--muto);
+}
+.dist-banner b { color: var(--inchiostro); }
+.dist-banner.attivo {
+  border-color: var(--acc-bordo);
+  background: var(--acc-tenue);
+  color: var(--acc-scuro);
+}
+.dist-banner.attivo b { color: var(--acc-scuro); }
+.dist-banner .btn { margin-left: auto; }
+
+.dist-piatto {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.dist-senza-scheda {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--linea-forte);
+  border-radius: 10px;
+  color: var(--muto);
+}
+.dist-colore {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+.dist-totale { min-width: 170px; }
+
+@media (max-width: 860px) {
+  .dist-nota-barra { margin-left: 0; max-width: none; }
+  .dist-nav-giorno,
+  .dist-nav-giorno.larga { min-width: 0; }
+}
+
+/* i tipi di dieta sono frasi intere: la pastiglia deve poter andare a capo */
+.dist-tag-dieta {
+  white-space: normal;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-size: 11.5px;
+}
+
+.dist-piu-stima {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--muto);
+}
+
+[data-tema="scuro"] .dist-nav,
+[data-tema="scuro"] .dist-banner { background: var(--foglio); border-color: var(--linea); }
+[data-tema="scuro"] .dist-nav-giorno { border-left-color: var(--linea); border-right-color: var(--linea); }
+[data-tema="scuro"] .dist-nav button:hover:not(:disabled) { background: var(--carta); }
+[data-tema="scuro"] .dist-banner.attivo { border-color: var(--acc-bordo); background: var(--acc-tenue); color: var(--inchiostro); }
+[data-tema="scuro"] .dist-banner.attivo b { color: var(--inchiostro); }
+[data-tema="scuro"] .dist-senza-scheda { border-color: var(--linea-forte); }
+
+/* ==================== matrice ruoli e permessi ==================== */
+.matrice-permessi {
+  --mp-gruppo: #f2ece1;
+  --mp-ruolo: var(--carta);
+  min-width: 620px;
+}
+.matrice-permessi th.mp-ruolo {
+  text-align: center;
+  min-width: 132px;
+  vertical-align: top;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  background: var(--mp-ruolo);
+}
+.matrice-permessi .mp-nome {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--inchiostro);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.matrice-permessi .mp-nota {
+  display: block;
+  margin-top: 2px;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--muto);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.matrice-permessi .mp-elimina {
+  margin-top: 6px;
+  padding: 2px 8px;
+  border: 1px solid var(--linea-forte);
+  border-radius: var(--r-s);
+  background: transparent;
+  color: #c0504a;
+  font-family: var(--sans);
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.matrice-permessi .mp-elimina:hover { border-color: #c0504a; }
+.matrice-permessi tr.mp-gruppo td {
+  background: var(--mp-gruppo);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muto);
+  padding: 7px 14px;
+}
+.matrice-permessi .mp-chiave {
+  margin-top: 2px;
+  font-size: 10.5px;
+  color: var(--muto);
+}
+.matrice-permessi .mp-casella {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--acc);
+  cursor: pointer;
+}
+.matrice-permessi .mp-casella:disabled { cursor: not-allowed; opacity: 0.45; }
+
+[data-tema="scuro"] .matrice-permessi {
+  --mp-gruppo: #272421;
+  --mp-ruolo: var(--carta);
+}
+[data-tema="scuro"] .matrice-permessi .mp-elimina { color: #e08b84; }

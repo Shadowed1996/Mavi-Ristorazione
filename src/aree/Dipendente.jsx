@@ -4,10 +4,11 @@ import {
   QUOTA_DIPENDENTE, fuoriDieta,
 } from "../data.js";
 import {
-  Accesso, DiscoColore, Icone, Illustrazione, Intestazione, Messaggi,
-  SchedaPiatto, Telaio, Velo, Documenti,
+  Accesso, DiscoColore, Icone, Illustrazione, Intestazione, Messaggi, NessunPermesso,
+  SchedaPiatto, Telaio, Velo, Documenti, usaVociPermesse,
 } from "../ui.jsx";
 import { usaStato } from "../store.jsx";
+import { generaRiepilogoPrenotazioniPDF } from "../resoconto.js";
 
 function valutaEquilibrio(colori) {
   if (colori.length === 0) {
@@ -45,10 +46,18 @@ const VOCI = [
   ["documenti", "Documenti utili", Icone.fattura],
 ];
 
+const PERMESSO_PAGINA = {
+  menu: "menu.vedi",
+  settimana: "settimana.vedi",
+  prenotazioni: "prenotazioni.vedi",
+  diete: "diete.vedi",
+  documenti: "documenti.vedi",
+};
+
 export default function Dipendente({ onEsci, utente }) {
   const [dentro, setDentro] = React.useState(!!utente);
-  const [pagina, setPagina] = React.useState("menu");
   const st = usaStato();
+  const [voci, pagina, setPagina] = usaVociPermesse(VOCI, PERMESSO_PAGINA);
 
   if (!dentro)
     return (
@@ -75,16 +84,17 @@ export default function Dipendente({ onEsci, utente }) {
       ruolo="Dipendente"
       utente={{ iniziali: utente ? utente.iniziali : "AR", nome: utente ? utente.nome : "Antonella Rossi", sotto: utente ? utente.committente : "Rossi Manifatture Spa" }}
       chiaveUtente={utente ? utente.u : "antonella.rossi"}
-      voci={VOCI}
+      voci={voci}
       pagina={pagina}
       setPagina={setPagina}
       onEsci={() => (onEsci ? onEsci() : null)}
     >
+      {voci.length === 0 && <NessunPermesso onEsci={onEsci} />}
       {pagina === "menu" && <MenuGiorno />}
       {pagina === "settimana" && <MenuSettimana />}
-      {pagina === "prenotazioni" && <Prenotazioni />}
+      {pagina === "prenotazioni" && <Prenotazioni utente={utente} />}
       {pagina === "diete" && <Diete />}
-      {pagina === "documenti" && <Documenti soloPubblici />}
+      {pagina === "documenti" && <Documenti soloPubblici={!st.puo("documenti.riservati")} />}
       <Messaggi lista={st.messaggi} />
     </Telaio>
   );
@@ -108,6 +118,10 @@ function MenuGiorno() {
   const [avvisoDieta, setAvvisoDieta] = React.useState(null);
 
   function scegliConCheck(g, cat, id) {
+    if (!st.puo("menu.prenota")) {
+      st.avvisa("Il tuo ruolo consulta il menu ma non prenota");
+      return;
+    }
     if (st.dietaUtente && fuoriDieta(PIATTI[id], st.dietaUtente)) {
       setAvvisoDieta({ g, cat, id, piatto: PIATTI[id] });
     } else {
@@ -263,7 +277,9 @@ function MenuGiorno() {
               : <span className="no">manca {(bilancio.manca || []).join(", ")}</span>}
           </span>
         </span>
-        {g.chiuso ? (
+        {!st.puo("menu.prenota") ? (
+          <button className="btn linea" disabled>Sola consultazione</button>
+        ) : g.chiuso ? (
           <button className="btn linea" disabled>Prenotazioni chiuse</button>
         ) : confermato ? (
           <button className="btn linea" onClick={() => st.disdici(giorno)}>Disdici prenotazione</button>
@@ -278,7 +294,7 @@ function MenuGiorno() {
         <SchedaPiatto
           id={scheda.id}
           scelto={ordine[scheda.cat] === scheda.id}
-          soloLettura={g.chiuso}
+          soloLettura={g.chiuso || !st.puo("menu.prenota")}
           allergeniUtente={st.allergeniUtente}
           onChiudi={() => setScheda(null)}
           onScegli={() => { st.scegli(giorno, scheda.cat, scheda.id); setScheda(null); }}
@@ -468,15 +484,47 @@ function MenuSettimana() {
 }
 
 /* ==================== le mie prenotazioni ==================== */
-function Prenotazioni() {
+function Prenotazioni({ utente }) {
   const st = usaStato();
+
+  /* stessa riga della tabella qui sotto: giorno, portate scelte e stato */
+  const righeSettimana = () => GIORNI.map((d, i) => {
+    const scelte = Object.values(st.ordini[i] || {});
+    return {
+      giorno: d.n,
+      data: d.d,
+      portate: scelte.map((id) => PIATTI[id]?.n).filter(Boolean),
+      stato: d.chiuso ? "chiuso"
+        : st.confermati[i] ? "prenotato"
+          : scelte.length ? "non confermato" : "vuoto",
+    };
+  });
+
+  function scaricaRiepilogo() {
+    try {
+      generaRiepilogoPrenotazioniPDF({
+        dipendente: utente?.nome || "Antonella Rossi",
+        committente: utente?.committente || "Rossi Manifatture Spa",
+        settimana: "Settimana 38",
+        righe: righeSettimana(),
+        datiAziendali: st.datiAziendali,
+        avvisa: st.avvisa,
+      });
+    } catch (e) {
+      console.error(e);
+      st.avvisa("Errore nella generazione del PDF, riprova");
+    }
+  }
+
   return (
     <>
       <Intestazione
         occhiello="Settimana 38"
         titolo="Le mie prenotazioni"
         sotto="Riepilogo della settimana in corso"
-        azioni={<button className="btn linea piccolo" onClick={() => st.avvisa("Riepilogo scaricato, funzione dimostrativa")}><Icone.scarica size={16} /> Scarica riepilogo</button>}
+        azioni={st.puo("prenotazioni.riepilogo") && (
+          <button className="btn linea piccolo" onClick={scaricaRiepilogo}><Icone.scarica size={16} /> Scarica riepilogo</button>
+        )}
       />
       <div className="tela">
         <div className="pannello">

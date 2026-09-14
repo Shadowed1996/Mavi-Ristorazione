@@ -15,36 +15,45 @@ Quattro riquadri `.numero`: dipendenti attivi, prenotazioni di domani (con
 barra di avanzamento), pasti del mese, diete speciali attive. Sono valori
 fissi scritti nel componente, non calcolati: servono a dare contesto in demo.
 
+### Ordini del giorno (dal 14 settembre 2026)
+
+Pannello con un selettore dei cinque `GIORNI` (i giorni `chiuso` sono
+disattivati), apertura su mercoledì. Anteprima a schermo delle righe di
+`st.nominativiAzienda` con `committente === "azienda"` e `indiceGiorno` uguale
+al giorno scelto: Dipendente / Reparto / Primo / Secondo / Contorno, con il
+piatto unico indicato come "Piatto unico: …" nella colonna Primo, e il
+conteggio dei pasti. Le conferme del portale dipendente compaiono qui nel
+giorno giusto, con il reparto vero.
+
+**Stampa riepilogo** apre il documento con `generaElencoNominativo` di
+`documento.js` (`10-export-e-documenti.md`): titolo `giornoDataIt`
+(`MARTEDÌ - 15/09/2026`), sottotitolo con l'azienda, la tabella, in fondo
+"Non hanno ordinato" e il totale pasti. Solo i dipendenti della propria
+azienda, nessuna dieta sanitaria: era la richiesta del cliente, "stampare il
+riepilogo nominativo della sua azienda, stop".
+
 ### Chi non ha ancora prenotato
 
-Tabella con matricola, nome e reparto, popolata da `DIPENDENTI.slice(3, 6)`.
-Un pulsante "Invia promemoria" mostra un toast. In fondo la nota sul cutoff
-delle 14:00 del giorno precedente.
+Tabella con matricola, nome e reparto: i dipendenti attivi di `DIPENDENTI`
+senza riga nominativa per il giorno scelto, non più un `slice` fisso. Un
+pulsante "Invia promemoria" mostra un toast.
 
 ### "Prenota per lui"
 
-È il pezzo forte della pagina. Il bottone sulla riga apre un `Velo largo` con
-il menu del giorno di mercoledì (indice 2, fisso).
+Il bottone sulla riga apre un `Velo largo` con il menu del giorno selezionato.
+Per ogni categoria di `CATEGORIE` compare una fila di pulsanti piatto con il
+pallino del colore WHP. La selezione vive in `scelte`, stato locale, e replica
+le esclusioni fra primo/sostitutivo, secondo/sostitutivo e piatto unico.
 
-Per ogni categoria di `CATEGORIE` compare una fila di pulsanti piatto, con il
-pallino del colore WHP. La selezione vive in `scelte`, stato locale, e
-replica la mutua esclusione primo/sostitutivo e secondo/sostitutivo.
-
-Il piede mostra il conteggio delle portate selezionate; "Conferma prenotazione"
-è disabilitato finché non se ne sceglie almeno una. Alla conferma:
-
-```js
-st.avvisa(...)                                    // toast di conferma
-st.logga("Roberto Manzi", "Referente",
-         "Prenotazione per conto di", ..., "ordine")
-```
-
-Il log è visibile poi nel portale MAVI, alla voce Log operazioni: è la
-dimostrazione della tracciabilità.
-
-> Nota: questa prenotazione **non** scrive in `st.ordini`, quindi non compare
-> nel vassoio del dipendente né nella distinta. È deliberato per la demo, ma
-> se il cliente chiede coerenza va collegata a `st.scegli` / `st.conferma`.
+Alla conferma si chiama `st.conferma(giorno, { nome, matricola, ruolo,
+inseritaDa }, scelte)`: con le portate esplicite la conferma **non tocca il
+carrello del dipendente demo** (`st.ordini`, `st.confermati`), produce solo la
+riga nominativa (deduplicata per persona e giorno, quindi niente doppioni con
+il seme) e scrive nel log "Prenotazione per conto di …" attribuita al
+referente. Il dipendente sparisce da "Chi non ha ancora prenotato" per quel
+giorno e la riga entra nel riepilogo e nel manifesto MAVI. Prima del 14
+settembre 2026 la conferma passava da `st.scegli` sul carrello di Antonella e
+leggeva gli ordini da una closure vecchia: riga vuota o con i piatti sbagliati.
 
 ## Dipendenti — `Dipendenti`
 
@@ -64,19 +73,25 @@ Basata su `RESOCONTO_MENSILE` (agosto 2026).
 - **Click sulla riga** espande il dettaglio giornaliero, giorno per giorno con
   primo, secondo e contorno. I giorni senza pasto mostrano il trattino lungo.
 - Export Excel a due fogli: riepilogo e dettaglio.
+- **PDF** (dal 14 settembre 2026 non più finto): `generaResocontoPDF` di
+  `resoconto.js`, con gli stessi dati dell'Excel perché entrambi partono da
+  `calcolaResoconto`.
 - Export dedicato per l'ufficio paghe, con le sole trattenute.
 
-Entrambi gli export passano da `scaricaExcel` di `excel.js`, vedi
+Gli Excel passano da `scaricaExcel` di `excel.js`, vedi
 `10-export-e-documenti.md`.
 
 ## Fatture — `Fatture`
 
-Tabella dei documenti da `FATTURE`: numero, periodo, pasti, imponibile, stato
-(`pagata`, `da pagare`, `in corso`) e stato SdI.
+Dal 14 settembre 2026 legge `st.proforme` filtrate per il proprio committente
+(`"azienda"`): numero, periodo, imponibile, IVA, totale, scadenza, condizioni
+(termini, metodo, regime IVA) e stato (`emessa`, `pagata`, `annullata`, con
+`PastigliaProforma` di `ui.jsx`). Gli importi sono gli stessi del PDF perché
+vengono da `totaliProforma`.
 
-Il bottone PDF genera la proforma reale con `generaProformaPDF` di
-`proforma.js`: si apre in una nuova scheda, impaginata, con il pulsante di
-stampa.
+Il bottone PDF apre la proforma con `generaProformaPDF` di `proforma.js` in una
+nuova scheda, impaginata, con il pulsante di stampa. Non c'è più la nota
+"vanno definiti con MAVI": le condizioni sono quelle del committente.
 
 Il pulsante "Paga" è stato rimosso di proposito: il pagamento non passa dal
 portale.
