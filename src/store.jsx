@@ -92,13 +92,14 @@ function proformeIniziali() {
       periodo: p.periodo,
       dataEmissione: p.dataEmissione,
       righe: [{ descrizione: "Pasti " + p.periodo, quantita: p.pasti, prezzo: c.prezzoUnitario || 0 }],
-      termini: c.termini || "30gg",
+      termini: c.termini || "",
       metodoPagamento: c.metodoPagamento || "bonifico",
       regimeIva: regime.id,
       aliquota: regime.conIva ? (c.ivaPercentuale || 0) : 0,
       dicituraIva: regime.conIva ? "" : (c.dicituraIva || regime.dicitura),
       note: "",
       stato: p.stato,
+      pagataIl: p.pagataIl || null,
       scadenza: isoGiorno(scadenzaPagamento(p.dataEmissione, c.termini)),
     };
   });
@@ -144,14 +145,12 @@ export function Provider({ children }) {
   const [tema, setTemaRaw] = React.useState(() => {
     try { return localStorage.getItem("mavi-tema") || "auto"; } catch { return "auto"; }
   });
-  /* dati del mittente più le condizioni di fatturazione predefinite: sono la
-     proposta di partenza per ogni nuovo committente e per ogni nuova proforma,
-     si modificano in Gestione portale › Fatturazione */
+  /* dati del mittente, da Gestione portale › Dati aziendali. Le condizioni di
+     fatturazione non hanno più un predefinito unico (niente "30 giorni per
+     tutti"): si decidono committente per committente */
   const [datiAziendali, setDatiAziendali] = React.useState({
     ragioneSociale: "", indirizzo: "", piva: "", cf: "", telefono: "", email: "", pec: "",
     iban: "", noteProforma: "",
-    terminiDefault: "30gg", metodoDefault: "bonifico",
-    regimeIvaDefault: "ordinaria", dicituraIvaDefault: "",
   });
   /* utenti gestiti: stessa anagrafica che alimenta il login (UTENTI è solo il
      seed) e la tabella di Gestione portale › Utenti. `ruolo` è l'id di un
@@ -289,15 +288,12 @@ export function Provider({ children }) {
     const base = {
       attivo: true, unita: [], frutta: false, monoporzione: false,
       cf: "", pec: "", codiceSdi: "",
-      termini: datiAziendali.terminiDefault,
-      metodoPagamento: datiAziendali.metodoDefault,
-      regimeIva: datiAziendali.regimeIvaDefault,
-      dicituraIva: datiAziendali.dicituraIvaDefault,
+      termini: "", metodoPagamento: "bonifico", regimeIva: "ordinaria", dicituraIva: "",
     };
     setCommittenti((p) => [...p, { ...base, ...dati, id }]);
     loggaSessione("Nuovo committente creato", dati.nome + " (" + dati.tipo + ")", "modifica");
     return id;
-  }, [loggaSessione, datiAziendali]);
+  }, [loggaSessione]);
   const aggiornaCommittente = React.useCallback((id, patch) => {
     setCommittenti((p) => p.map((c) => (c.id === id ? { ...c, ...patch } : c)));
   }, []);
@@ -803,7 +799,7 @@ export function Provider({ children }) {
         quantita: Number(r.quantita) || 0,
         prezzo: Number(r.prezzo) || 0,
       })),
-      termini: dati.termini || "30gg",
+      termini: dati.termini || "",
       metodoPagamento: dati.metodoPagamento || "bonifico",
       regimeIva: regime.id,
       aliquota: regime.conIva ? Number(dati.aliquota) || 0 : 0,
@@ -818,12 +814,20 @@ export function Provider({ children }) {
     return proforma;
   }, [proforme, loggaSessione]);
 
-  const annullaProforma = React.useCallback((id) => {
+  /* cambi di stato di una proforma emessa: la data del cambio resta sul
+     documento (pagataIl, stornataIl, annullataIl) e finisce nel timbro del PDF */
+  const cambiaStatoProforma = React.useCallback((id, stato, campoData, azione, avviso) => {
     const p = proforme.find((x) => x.id === id);
-    setProforme((prec) => prec.map((x) => (x.id === id ? { ...x, stato: "annullata" } : x)));
-    loggaSessione("Proforma annullata", p ? p.numero : id, "generico");
-    avvisa("Proforma annullata, resta in elenco per tracciabilità");
+    setProforme((prec) => prec.map((x) => (x.id === id ? { ...x, stato, [campoData]: isoGiorno(new Date()) } : x)));
+    loggaSessione(azione, p ? p.numero : id, "generico");
+    avvisa(avviso);
   }, [proforme, loggaSessione, avvisa]);
+  const annullaProforma = React.useCallback((id) => cambiaStatoProforma(id, "annullata", "annullataIl",
+    "Proforma annullata", "Proforma annullata, resta in elenco per tracciabilità"), [cambiaStatoProforma]);
+  const segnaPagataProforma = React.useCallback((id) => cambiaStatoProforma(id, "pagata", "pagataIl",
+    "Proforma segnata pagata", "Proforma segnata come pagata: il cliente la vede saldata"), [cambiaStatoProforma]);
+  const stornaProforma = React.useCallback((id) => cambiaStatoProforma(id, "stornata", "stornataIl",
+    "Proforma stornata", "Proforma stornata: non è più esigibile, resta in elenco"), [cambiaStatoProforma]);
 
   /* documenti condivisi, caricati da MAVI */
   const aggiungiDocumento = React.useCallback((doc) => {
@@ -837,7 +841,7 @@ export function Provider({ children }) {
     ordini, confermati, messaggi, menu, foto, caricaFoto, togliFoto,
     versione, riordinaMenu, salvaPiatto, eliminaPiatto,
     documenti, aggiungiDocumento, rimuoviDocumento,
-    proforme, emettiProforma, annullaProforma,
+    proforme, emettiProforma, annullaProforma, segnaPagataProforma, stornaProforma,
     committente, setCommittente, committenti, aggiungiCommittente, aggiornaCommittente, unita, cambiaUnita, aggiungiOspitePresente, presenze, cambiaPresenze, assenti, commutaAssente, ospitiExtra, aggiungiOspite, presenzeTrasmesse, trasmissioniCentri, trasmettiPresenze, sostituisciRigaTrasmessa,
     oraConferma, nominativiAzienda,
     variazioni, inviaVariazione, prendiInCaricoVariazione,

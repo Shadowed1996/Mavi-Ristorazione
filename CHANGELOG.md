@@ -13,6 +13,20 @@ e il progetto adotta il [Versionamento Semantico](https://semver.org/lang/it/).
 
 ## [Non rilasciato]
 
+### Cambiato — 15 settembre 2026, stati delle proforma
+- **Lo stato si vede sulla proforma**: timbro NON PAGATA (con la scadenza),
+  PAGATA, ANNULLATA o STORNATA (con la data) stampato sul documento, più il
+  riquadro Stato e la nota. In Fatturazione le azioni "Segna pagata" e
+  "Storna" accanto ad "Annulla"; nei portali cliente lo stato si legge "non
+  pagata", "pagata", "annullata", "stornata".
+- **Tolta la scheda Fatturazione della Gestione portale** con le condizioni
+  predefinite a 30 giorni: ogni committente ha le sue, e un nuovo committente
+  deve scegliere i termini. Le note standard proforma sono in Dati aziendali.
+- **Audit del sito** (58 pagine, desktop e telefono): tabella proforma di
+  Fatturazione ricomposta (non taglia più pulsanti e "Apri"), importi e numeri
+  che non vanno più a capo nelle tabelle, Menu settimana della cucina senza
+  scorrimento orizzontale sul telefono, testi rimasti su "il responsabile".
+
 ### Cambiato — 15 settembre 2026, giorni chiusi e riepiloghi
 - **Giorni chiusi agli ordini, calcolati**: con "adesso" fissato a martedì 15
   settembre alle 22:56 e gli orari limite dei committenti, lunedì, martedì e

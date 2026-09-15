@@ -193,6 +193,12 @@ body{font-family:'Segoe UI',Calibri,Arial,sans-serif;color:var(--scuro);font-siz
 .doc-elenco li{padding-left:14px;position:relative;page-break-inside:avoid}
 .doc-elenco li::before{content:"·";position:absolute;left:2px;color:var(--terracotta);font-weight:700}
 .doc-elenco b{color:var(--scuro)}
+.doc-intesta{position:relative}
+.doc-timbro{position:absolute;right:14px;top:-26px;transform:rotate(-8deg);border:4px double currentColor;border-radius:8px;padding:8px 22px 7px;text-align:center;background:rgba(255,255,255,.88);pointer-events:none}
+.doc-timbro b{display:block;font-size:26px;font-weight:800;letter-spacing:3px;text-transform:uppercase;line-height:1.1}
+.doc-timbro span{display:block;font-size:11px;font-weight:600;letter-spacing:.5px;margin-top:2px}
+.doc-timbro-ok{color:#2f7a45}.doc-timbro-attesa{color:#b0543a}.doc-timbro-neutro{color:#7a726a}.doc-timbro-errore{color:#9b2c2c}
+@media (max-width:640px){.doc-timbro{position:static;transform:none;display:inline-block;margin-bottom:14px}}
 .doc-ordini{display:grid;grid-template-columns:1fr 1fr;gap:0 32px;margin-bottom:22px}
 .doc-ordine{padding:11px 0;border-bottom:1px solid var(--grigio);page-break-inside:avoid}
 .doc-ordine-nome{font-size:13.5px;font-weight:700;color:var(--scuro)}
@@ -232,8 +238,10 @@ table.doc-tabella{width:100%;border-collapse:collapse;margin-bottom:22px;font-si
    `meta`, `blocchi` (HTML già pronto), note e piede.
    meta:    [{ etichetta, valore }] — `valore` è una cella
    blocchi: [stringa HTML]
-   note:    stringa o array di stringhe, un capoverso ciascuna */
-export function paginaDocumento({ titolo, badge, sottotitolo, meta = [], blocchi = [], note, piede, datiAziendali }) {
+   note:    stringa o array di stringhe, un capoverso ciascuna
+   timbro:  { testo, sotto, tono: "ok" | "attesa" | "neutro" | "errore" }, facoltativo:
+            un timbro inclinato accanto al titolo, che resta anche in stampa */
+export function paginaDocumento({ titolo, badge, sottotitolo, meta = [], blocchi = [], note, piede, datiAziendali, timbro }) {
   const riquadri = meta.length
     ? `<div class="doc-meta">${meta.map((m) =>
       `<div class="doc-meta-voce"><label>${testoHtml(m.etichetta)}</label><span>${cella(m.valore)}</span></div>`
@@ -259,8 +267,11 @@ export function paginaDocumento({ titolo, badge, sottotitolo, meta = [], blocchi
   </div>
   ${badge ? `<div class="doc-badge">${testoHtml(badge)}</div>` : ""}
 </header>
+<div class="doc-intesta">
+${timbro ? `<div class="doc-timbro doc-timbro-${testoHtml(timbro.tono || "neutro")}"><b>${testoHtml(timbro.testo)}</b>${timbro.sotto ? `<span>${testoHtml(timbro.sotto)}</span>` : ""}</div>` : ""}
 <h2 class="doc-titolo">${testoHtml(titolo)}</h2>
 ${sottotitolo ? `<p class="doc-sotto">${cella(sottotitolo)}</p>` : ""}
+</div>
 ${riquadri}
 ${blocchi.filter(Boolean).join("\n")}
 ${bloccoNote}

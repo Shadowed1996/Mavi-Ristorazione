@@ -426,25 +426,19 @@ export function ModelliServizio() {
 
 /* ==================== modale nuovo committente ==================== */
 function ModaleCommittente({ onChiudi, onSalva }) {
-  const st = usaStato();
-  /* le condizioni di partenza sono quelle predefinite in Gestione portale ›
-     Fatturazione, poi si correggono qui per il singolo committente */
-  const [d, setD] = React.useState(() => {
-    const pre = st.datiAziendali;
-    const regime = regimeIva(pre.regimeIvaDefault);
-    return {
-      nome: "", tipo: "Azienda", modello: "individuale", etichettaUnita: "Reparto",
-      indirizzo: "", piva: "", cf: "", pec: "", codiceSdi: "",
-      referente: "", ruoloReferente: "", email: "", telefono: "",
-      pasti: 10, cutoff: "14:00 del giorno precedente", prezzoUnitario: 7.5,
-      ivaPercentuale: regime.conIva ? 10 : 0,
-      termini: pre.terminiDefault, metodoPagamento: pre.metodoDefault, regimeIva: regime.id,
-      dicituraIva: regime.conIva ? "" : (pre.dicituraIvaDefault || regime.dicitura),
-    };
+  /* nessuna condizione di pagamento predefinita: ogni committente ha le sue,
+     e i termini vanno scelti qui (non si propone più "30 giorni" per tutti) */
+  const [d, setD] = React.useState({
+    nome: "", tipo: "Azienda", modello: "individuale", etichettaUnita: "Reparto",
+    indirizzo: "", piva: "", cf: "", pec: "", codiceSdi: "",
+    referente: "", ruoloReferente: "", email: "", telefono: "",
+    pasti: 10, cutoff: "14:00 del giorno precedente", prezzoUnitario: 7.5,
+    ivaPercentuale: 10,
+    termini: "", metodoPagamento: "bonifico", regimeIva: "ordinaria", dicituraIva: "",
   });
   const campo = (k, v) => setD((x) => ({ ...x, [k]: v }));
   const conIva = regimeIva(d.regimeIva).conIva;
-  const valido = d.nome.trim().length > 2 && d.referente.trim().length > 1;
+  const valido = d.nome.trim().length > 2 && d.referente.trim().length > 1 && !!d.termini;
 
   function cambiaRegime(id) {
     const r = regimeIva(id);
@@ -561,6 +555,7 @@ function ModaleCommittente({ onChiudi, onSalva }) {
           <label>
             <span>Termini di pagamento</span>
             <select value={d.termini} onChange={(e) => campo("termini", e.target.value)}>
+              {!d.termini && <option value="">Scegli i termini</option>}
               {TERMINI_PAGAMENTO.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
             </select>
           </label>

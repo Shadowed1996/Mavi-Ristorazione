@@ -2,9 +2,9 @@
 
 Documento vivo. Va riletto all'inizio di ogni nuova sessione e aggiornato alla fine di ogni task.
 
-**Ultimo aggiornamento**: 15 settembre 2026, ore 23 — "adesso" fissato a martedì 22:56 con giorni chiusi calcolati dagli orari limite (azienda: solo giovedì e venerdì; comunità da giovedì, presenze della demo su giovedì), riepilogo del dipendente ridotto all'ordine, manifesto della cucina dettagliato (sezione 24).
+**Ultimo aggiornamento**: 15 settembre 2026, notte — stato delle proforma stampato sul documento (non pagata, pagata, annullata, stornata) con le azioni in Fatturazione, tolta la scheda Fatturazione a 30 giorni della Gestione portale, audit completo del sito nel browser (sezione 25).
 
-**Precedente**: 15 settembre 2026, sera — variazioni per tipo (presenze sbloccate, dieta attuale da riscrivere, testo solo per Altro) che si applicano alle quantità, e comunità da lunedì a domenica ovunque (sezione 23).
+**Precedente**: 15 settembre 2026, ore 23 — "adesso" fissato a martedì 22:56 con giorni chiusi calcolati dagli orari limite (azienda: solo giovedì e venerdì; comunità da giovedì, presenze della demo su giovedì), riepilogo del dipendente ridotto all'ordine, manifesto della cucina dettagliato (sezione 24).
 
 ---
 
@@ -1123,5 +1123,51 @@ referente e comunità, riepilogo semplice, manifesto dettagliato con
 l'allergia dichiarata da Antonella, comunità su giovedì). Aggiornate e ripassate
 le prove di variazioni (22 su 22) e ruoli (17 su 17); confronto
 schermo / PDF / Excel della distinta a 0 discrepanze.
+
+---
+
+## 25. Stati delle proforma, via la Fatturazione a 30 giorni, audit — 15 settembre 2026
+
+Richieste di Filippo: "le proforme pagate, non pagate, annullate o stornate
+devono vedersi fisicamente sulla fattura"; "la fatturazione a 30 giorni nella
+gestione portale togliamola, essendo che l'abbiamo diversificata"; poi "esegui
+un piccolo audit, testa tu fisicamente il sito".
+
+**Stati** (`STATI_PROFORMA` in `data.js`): `emessa` si legge "non pagata"; in
+più `stornata`.
+- Store: `segnaPagataProforma` e `stornaProforma` accanto ad
+  `annullaProforma`, ognuna con la data del cambio (`pagataIl`, `stornataIl`,
+  `annullataIl`). Nel seed le due proforma pagate hanno la data di pagamento.
+- Fatturazione MAVI: su una non pagata "Segna pagata", "Storna", "Annulla"; su
+  una pagata "Storna". Permessi nuovi `fatturazione.pagamenti` e
+  `fatturazione.storna`.
+- Totali: `proformaValida` esclude annullate e stornate.
+- PDF: timbro inclinato accanto al titolo (`timbro` di `paginaDocumento`) con
+  NON PAGATA e la scadenza, PAGATA, ANNULLATA o STORNATA con la data; in più il
+  riquadro "Stato" e la nota.
+- Portali cliente: pastiglie con le stesse parole, e "Stornata" nella
+  situazione della responsabile.
+
+**Tolta la scheda Fatturazione** della Gestione portale e le condizioni
+predefinite (`terminiDefault` e simili, permesso `gestione.fatturazione`). Le
+note standard proforma sono in Dati aziendali. "Nuovo committente" e "Nuova
+proforma" chiedono "Scegli i termini" se mancano. `terminiPagamento` di un id
+sconosciuto dice "da definire" invece di ripiegare su 30 giorni.
+
+**Audit nel browser**: 5 profili, tutte le voci di menu, a 1440 px e a 390 px
+(telefono), 58 pagine. Per ognuna errori in console, testi rotti (NaN,
+undefined, date non valide), pagina vuota, scorrimento orizzontale e
+screenshot, guardati uno per uno. Trovato e corretto:
+- la tabella proforma di Fatturazione era troppo stretta (importi spezzati,
+  pulsanti in colonna, "Apri" tagliato): periodo ed emissione sotto il numero,
+  termini e metodo in una colonna;
+- `.dati td.cifra` non va più a capo in tutte le tabelle (importi e numeri di
+  documento spezzati anche in Fatture del referente);
+- Menu settimana della cucina scorreva in orizzontale sul telefono
+  (`.compositore > * { min-width: 0 }`);
+- due testi dicevano ancora "il responsabile" (etichette pasto vuote, notifica
+  di cutoff).
+Dopo le correzioni: 58 pagine, 0 problemi. Ripassate tutte le prove sulla
+build e il confronto schermo / PDF / Excel della distinta.
 
 ---

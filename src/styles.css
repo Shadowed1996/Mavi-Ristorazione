@@ -5889,6 +5889,13 @@ tr.pz-neutro td:first-child { border-left: 3px solid var(--linea); }
 }
 [data-tema="scuro"] .var-dettaglio { background: var(--foglio); }
 
+/* ==== audit 15/09 ==== */
+/* importi, date e numeri di documento non vanno mai a capo ("€" da una parte,
+   la cifra sotto): le tabelle larghe scorrono dentro .scorri */
+.dati td.cifra { white-space: nowrap; }
+/* sul telefono la colonna del compositore menu deve potersi restringere */
+.compositore > * { min-width: 0; }
+
 /* ==== vocale 15/09 · produzione e variazioni MAVI ==== */
 /* righe dei centri sotto il committente, righe fuori dal filtro attenuate */
 .dati tr.dist-riga-centro td { background: var(--carta); font-size: 13.5px; }

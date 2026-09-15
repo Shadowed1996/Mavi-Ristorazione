@@ -2,7 +2,7 @@
    Impaginazione e regole di escape stanno in documento.js. */
 
 import {
-  metodoPagamento, regimeIva, scadenzaPagamento, terminiPagamento, totaliProforma,
+  metodoPagamento, regimeIva, scadenzaPagamento, statoProforma, terminiPagamento, totaliProforma,
 } from "./data.js";
 import {
   apriDocumento, blocco, campo, dataIt, eur, paginaDocumento,
@@ -23,12 +23,25 @@ export function generaProformaPDF(proforma, opzioni = {}) {
   const termini = terminiPagamento(p.termini);
   const metodo = metodoPagamento(p.metodoPagamento);
   const regime = regimeIva(p.regimeIva);
-  const annullata = p.stato === "annullata";
 
   const numDoc = p.numero || "Proforma";
   const periodo = p.periodo || "—";
   const emissione = dataIt(p.dataEmissione);
   const scadenza = dataIt(p.scadenza || scadenzaPagamento(p.dataEmissione, p.termini));
+
+  /* lo stato si vede sul documento stesso: timbro, riquadro e nota */
+  const stato = statoProforma(p.stato);
+  const dettaglioStato = {
+    emessa: "scadenza " + scadenza,
+    pagata: p.pagataIl ? "il " + dataIt(p.pagataIl) : "",
+    annullata: p.annullataIl ? "il " + dataIt(p.annullataIl) : "",
+    stornata: p.stornataIl ? "il " + dataIt(p.stornataIl) : "",
+  }[p.stato] || "";
+  const notaStato = {
+    pagata: "Pagamento registrato" + (p.pagataIl ? " il " + dataIt(p.pagataIl) : "") + ": il documento è saldato.",
+    annullata: "Documento annullato" + (p.annullataIl ? " il " + dataIt(p.annullataIl) : "") + ": resta agli atti per tracciabilità e non è esigibile.",
+    stornata: "Documento stornato" + (p.stornataIl ? " il " + dataIt(p.stornataIl) : "") + " con nota di credito: gli importi non sono più dovuti.",
+  }[p.stato];
 
   const tabella = tabellaHtml({
     colonne: [
@@ -74,7 +87,7 @@ export function generaProformaPDF(proforma, opzioni = {}) {
     ));
 
   const note = [
-    annullata ? "Documento annullato: resta agli atti per tracciabilità e non è più esigibile." : null,
+    notaStato,
     p.note,
     d.noteProforma,
     "I dati in corsivo terracotta sono segnaposto, da compilare in Cucina MAVI › Gestione portale prima della messa in produzione.",
@@ -82,13 +95,15 @@ export function generaProformaPDF(proforma, opzioni = {}) {
 
   const html = paginaDocumento({
     titolo: "Proforma " + numDoc,
-    badge: annullata ? "Proforma annullata" : "Proforma",
+    badge: "Proforma",
     sottotitolo: "Riepilogo dei pasti erogati nel periodo " + periodo,
+    timbro: { testo: stato.timbro, sotto: dettaglioStato, tono: stato.tono },
     meta: [
       { etichetta: "Documento n.", valore: numDoc },
       { etichetta: "Data emissione", valore: emissione },
       { etichetta: "Periodo", valore: periodo },
       { etichetta: "Scadenza", valore: scadenza },
+      { etichetta: "Stato", valore: stato.timbro + (dettaglioStato && p.stato !== "emessa" ? " " + dettaglioStato : "") },
     ],
     blocchi: [
       destinatario,

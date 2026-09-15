@@ -81,7 +81,7 @@ ricalcolare. È un compromesso deliberato del prototipo, non copiarlo altrove.
 | `committente` | id del committente attivo, parte da `COMMITTENTI[0].id` |
 | `setCommittente(id)` | lo cambia; lo chiamano i portali al montaggio |
 | `committenti` | l'elenco vero e proprio, parte da `COMMITTENTI` ma è stato React (12 settembre 2026): anagrafica, configurazione servizio e listino sono lo stesso record, non più tre dizionari separati |
-| `aggiungiCommittente(dati)` | crea un committente (dal modulo "Nuovo committente" in `Modelli.jsx`), ritorna l'id; termini, metodo, regime IVA e dicitura partono dalle condizioni predefinite di `datiAziendali` |
+| `aggiungiCommittente(dati)` | crea un committente (dal modulo "Nuovo committente" in `Modelli.jsx`), ritorna l'id; termini vuoti ("da definire") se il modulo non li passa, metodo bonifico e IVA ordinaria: non c'è più una condizione predefinita (il modulo "Nuovo committente" obbliga a scegliere i termini) |
 | `aggiornaCommittente(id, patch)` | modifica un campo qualsiasi: usato da Impostazioni per committente e da "Sospendi/Riattiva" |
 | `unita` | quantità dichiarate per unità, oggi solo `comunita` |
 | `cambiaUnita(tipo, riga, campo, valore)` | modifica una cella, mai sotto zero |
@@ -136,7 +136,9 @@ Per un paziente, un giorno e un pasto vale l'**ultima** variazione di quel tipo
 |---|---|
 | `proforme` | elenco delle proforma emesse, seed da `PROFORME_INIZIALI` espanso con listino e condizioni del committente |
 | `emettiProforma(dati)` | numera `PRO-2026/NNN` proseguendo dal seed, timbra `dataEmissione` e `scadenza` (`scadenzaPagamento`), logga e **ritorna il documento**, così il chiamante apre il PDF nello stesso gesto di click |
-| `annullaProforma(id)` | `stato: "annullata"`, logga e avvisa; la riga resta in elenco |
+| `annullaProforma(id)` | `stato: "annullata"` con `annullataIl`, logga e avvisa; la riga resta in elenco |
+| `segnaPagataProforma(id)` | `stato: "pagata"` con `pagataIl` (giorno ISO), logga e avvisa |
+| `stornaProforma(id)` | `stato: "stornata"` con `stornataIl`, logga e avvisa: la proforma resta in elenco ma non è più esigibile |
 
 Forma del documento:
 
@@ -144,7 +146,8 @@ Forma del documento:
 { id, numero, committenteId, periodo, dataEmissione,      // ISO giorno
   righe: [{ descrizione, quantita, prezzo }],
   termini, metodoPagamento, regimeIva, aliquota, dicituraIva,
-  note, stato: "emessa" | "pagata" | "annullata", scadenza } // ISO giorno
+  note, stato: "emessa" | "pagata" | "annullata" | "stornata", scadenza, // ISO giorno
+  pagataIl, annullataIl, stornataIl } // ISO giorno del cambio di stato, se c'è
 ```
 
 Le condizioni si copiano dentro il documento al momento dell'emissione e da lì
@@ -197,7 +200,7 @@ ascolta `prefers-color-scheme` e si aggiorna al volo.
 
 | Nome | Cosa |
 |---|---|
-| `datiAziendali`, `setDatiAziendali` | ragione sociale, P.IVA, CF, indirizzo, contatti, PEC, IBAN, note proforma, più le **condizioni predefinite** per i nuovi committenti (`terminiDefault`, `metodoDefault`, `regimeIvaDefault`, `dicituraIvaDefault`). Si compilano nella Gestione portale e finiscono in testata di ogni documento stampabile, nell'intestazione Excel e nella proforma (IBAN, note) |
+| `datiAziendali`, `setDatiAziendali` | ragione sociale, P.IVA, CF, indirizzo, contatti, PEC, IBAN, note proforma (le condizioni predefinite `terminiDefault` e simili sono state tolte il 15 settembre 2026: ogni committente ha le sue). Si compilano nella Gestione portale, scheda Dati aziendali, e finiscono in testata di ogni documento stampabile, nell'intestazione Excel e nella proforma (IBAN, note) |
 | `notifiche`, `setNotifiche` | sei flag booleani |
 | `profili`, `aggiornaProfilo(chiave, patch)` | override del profilo personale per username (`chiave`), letti da `Telaio`/`ModificaProfilo` in `ui.jsx`. Si sommano a `UTENTI`, non lo sostituiscono mai |
 

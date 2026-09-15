@@ -88,7 +88,7 @@ Gli Excel passano da `scaricaExcel` di `excel.js`, vedi
 
 Dal 14 settembre 2026 legge `st.proforme` filtrate per il proprio committente
 (`"azienda"`): numero, periodo, imponibile, IVA, totale, scadenza, condizioni
-(termini, metodo, regime IVA) e stato (`emessa`, `pagata`, `annullata`, con
+(termini, metodo, regime IVA) e stato (non pagata, pagata, annullata, stornata, con
 `PastigliaProforma` di `ui.jsx`). Gli importi sono gli stessi del PDF perché
 vengono da `totaliProforma`.
 

@@ -572,7 +572,7 @@ function Fatture() {
                 {elenco.map((p) => {
                   const t = totaliProforma(p);
                   return (
-                    <tr key={p.id} className={p.stato === "annullata" ? "riga-annullata" : undefined}>
+                    <tr key={p.id} className={p.stato === "annullata" || p.stato === "stornata" ? "riga-annullata" : undefined}>
                       <td className="cifra"><b>{p.numero}</b></td>
                       <td>{p.periodo}</td>
                       <td className="cifra">{eur(t.imponibile)}</td>

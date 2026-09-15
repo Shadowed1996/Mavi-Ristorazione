@@ -3,7 +3,7 @@ import {
   ALLERGENI, CATEGORIE, splitPiatto, COLORI, DIPENDENTI, ETICHETTA_ADESSO, ETICHETTE_PORTALE, GIORNI, GIORNI_COMUNITA, GIORNI_SETT, GIRI, INDICE_DOMANI,
   INGREDIENTI_DIETE, MARCATORI, METODI_PAGAMENTO, PASTI_TIPO, PAZIENTI_COMUNITA, PERMESSI, PIATTI,
   REGIMI_IVA, TERMINI_PAGAMENTO, catalogoPerCategoria, dietaEffettiva, etichettaGiorno, menuDelGiorno, metodoPagamento, presenzaVariata,
-  ordinaProforme, pastiDi, permessiDelPortale, portateServite, regimeIva, scadenzaPagamento, sostituisce,
+  ordinaProforme, pastiDi, permessiDelPortale, portateServite, proformaValida, regimeIva, scadenzaPagamento, sostituisce, statoProforma,
   terminiPagamento, testoCondizioni, totaliProforma,
 } from "../data.js";
 import {
@@ -1777,7 +1777,7 @@ function Fatturazione() {
   /* riepilogo per committente: quello che si è davvero emesso, non una stima */
   const righe = React.useMemo(() => st.committenti.map((x) => {
     const elenco = ordinaProforme(st.proforme.filter((p) => p.committenteId === x.id));
-    const valide = elenco.filter((p) => p.stato !== "annullata");
+    const valide = elenco.filter(proformaValida);
     const somma = valide.reduce((s, p) => {
       const t = totaliProforma(p);
       return { imponibile: s.imponibile + t.imponibile, iva: s.iva + t.iva, totale: s.totale + t.totale };
@@ -1835,7 +1835,7 @@ function Fatturazione() {
         return {
           numero: p.numero, periodo: p.periodo, emissione: dataIt(p.dataEmissione), scadenza: dataIt(p.scadenza),
           imponibile: "€ " + eurIt(t.imponibile), iva: "€ " + eurIt(t.iva), totale: "€ " + eurIt(t.totale),
-          stato: p.stato,
+          stato: statoProforma(p.stato).etichetta,
         };
       });
       dati.push({
@@ -1897,7 +1897,7 @@ function Fatturazione() {
         </div>
 
         <div className="numeri">
-          <div className="numero"><div className="n-lab">Proforma emesse</div><div className="n-val">{r.valide.length}</div><div className="n-nota">{r.elenco.length - r.valide.length} annullate</div></div>
+          <div className="numero"><div className="n-lab">Proforma emesse</div><div className="n-val">{r.valide.length}</div><div className="n-nota">{r.valide.filter((p) => p.stato === "pagata").length} pagate · {r.valide.filter((p) => p.stato === "emessa").length} non pagate · {r.elenco.length - r.valide.length} annullate o stornate</div></div>
           <div className="numero"><div className="n-lab">Imponibile</div><div className="n-val" style={{ fontSize: 22 }}>€ {eurIt(r.somma.imponibile)}</div><div className="n-nota">IVA € {eurIt(r.somma.iva)}</div></div>
           <div className="numero"><div className="n-lab">Totale documenti</div><div className="n-val" style={{ fontSize: 22 }}>€ {eurIt(r.somma.totale)}</div><div className="n-nota">{r.c.nome}</div></div>
           <div className="numero"><div className="n-lab">Prezzo unitario</div><div className="n-val" style={{ fontSize: 22 }}>€ {eurIt(r.c.prezzoUnitario)}</div><div className="n-nota">{testoCondizioni(r.c)}</div></div>
@@ -1915,30 +1915,38 @@ function Fatturazione() {
           </div>
           <div className="scorri">
             <table className="dati">
-              <thead><tr><th>Numero</th><th>Periodo</th><th>Emissione</th><th>Imponibile</th><th>IVA</th><th>Totale</th><th>Scadenza</th><th>Stato</th><th /></tr></thead>
+              <thead><tr><th>Documento</th><th>Imponibile</th><th>IVA</th><th>Totale</th><th>Scadenza</th><th>Stato</th><th /></tr></thead>
               <tbody>
                 {r.elenco.length === 0 && (
-                  <tr><td colSpan={9} style={{ textAlign: "center", color: "var(--muto)", padding: 22 }}>
+                  <tr><td colSpan={7} style={{ textAlign: "center", color: "var(--muto)", padding: 22 }}>
                     Nessuna proforma per questo committente. Creane una con "Nuova proforma".
                   </td></tr>
                 )}
                 {r.elenco.map((p) => {
                   const t = totaliProforma(p);
-                  const annullata = p.stato === "annullata";
+                  const annullata = !proformaValida(p);
                   return (
                     <tr key={p.id} className={annullata ? "riga-annullata" : undefined}>
-                      <td className="cifra"><b>{p.numero}</b></td>
-                      <td>{p.periodo}</td>
-                      <td className="cifra">{dataIt(p.dataEmissione)}</td>
+                      <td>
+                        <b className="cifra" style={{ whiteSpace: "nowrap" }}>{p.numero}</b>
+                        <div style={{ fontSize: 11.5, color: "var(--muto)" }}>{p.periodo} · emessa il {dataIt(p.dataEmissione)}</div>
+                      </td>
                       <td className="cifra">€ {eurIt(t.imponibile)}</td>
                       <td className="cifra">€ {eurIt(t.iva)}{t.conIva && <span style={{ color: "var(--muto)", fontSize: 11 }}> ({t.aliquota}%)</span>}</td>
                       <td className="cifra"><b>€ {eurIt(t.totale)}</b></td>
                       <td className="cifra">{dataIt(p.scadenza)}</td>
                       <td><PastigliaProforma stato={p.stato} /></td>
                       <td>
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
                           <button className="btn linea piccolo" onClick={() => apriPdf(p)}>PDF</button>
-                          {!annullata && st.puo("fatturazione.annulla") && (
+                          {/* non pagata: si segna pagata, si storna o si annulla; pagata: si storna */}
+                          {p.stato === "emessa" && st.puo("fatturazione.pagamenti") && (
+                            <button className="btn piccolo" onClick={() => st.segnaPagataProforma(p.id)}>Segna pagata</button>
+                          )}
+                          {!annullata && st.puo("fatturazione.storna") && (
+                            <button className="btn linea piccolo" onClick={() => st.stornaProforma(p.id)}>Storna</button>
+                          )}
+                          {p.stato === "emessa" && st.puo("fatturazione.annulla") && (
                             <button className="btn linea piccolo" onClick={() => st.annullaProforma(p.id)}>Annulla</button>
                           )}
                         </div>
@@ -1952,7 +1960,8 @@ function Fatturazione() {
           <div className="pannello-piede" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <span style={{ flex: 1 }}>
               Le condizioni proposte arrivano da <b>Impostazioni per committente</b> e restano modificabili
-              per la singola proforma. Una proforma annullata resta in elenco, anche per il cliente.
+              per la singola proforma. Lo stato (non pagata, pagata, annullata, stornata) è stampato
+              anche sul PDF. Annullate e stornate restano in elenco, anche per il cliente, ma fuori dai totali.
             </span>
             {st.puo("fatturazione.excel") && (
               <button className="btn linea piccolo" onClick={() => scaricaExcelStruttura(r)}><Icone.scarica size={16} /> Scarica Excel</button>
@@ -1967,15 +1976,17 @@ function Fatturazione() {
           </div>
           <div className="scorri">
             <table className="dati">
-              <thead><tr><th>Struttura</th><th>Termini</th><th>Metodo</th><th>Regime IVA</th><th>Proforma</th><th>Imponibile</th><th>IVA</th><th>Totale</th><th>Ultima scadenza</th><th /></tr></thead>
+              <thead><tr><th>Struttura</th><th>Condizioni</th><th>Regime IVA</th><th>Proforma</th><th>Imponibile</th><th>IVA</th><th>Totale</th><th>Ultima scadenza</th><th /></tr></thead>
               <tbody>
                 {righe.map((x) => {
                   const regime = regimeIva(x.c.regimeIva);
                   return (
                     <tr key={x.c.id} style={x.c.id === attivo ? { background: "var(--carta)" } : undefined}>
                       <td><b>{x.c.nome}</b><div style={{ fontSize: 11, color: "var(--muto)" }}>{x.c.tipo}</div></td>
-                      <td>{terminiPagamento(x.c.termini).nome}</td>
-                      <td>{metodoPagamento(x.c.metodoPagamento).nome}</td>
+                      <td>
+                        {terminiPagamento(x.c.termini).nome}
+                        <div style={{ fontSize: 11, color: "var(--muto)" }}>{metodoPagamento(x.c.metodoPagamento).nome}</div>
+                      </td>
                       <td>{regime.conIva ? "IVA " + (x.c.ivaPercentuale || 0) + "%" : <span className="pastiglia p-neu">senza IVA</span>}</td>
                       <td className="quantita">{x.valide.length}</td>
                       <td className="cifra">€ {eurIt(x.somma.imponibile)}</td>
@@ -1987,7 +1998,7 @@ function Fatturazione() {
                   );
                 })}
                 <tr className="riga-totale">
-                  <td colSpan={4}><b>Totale</b></td>
+                  <td colSpan={3}><b>Totale</b></td>
                   <td className="quantita">{totProforme}</td>
                   <td className="cifra">€ {eurIt(totImponibile)}</td>
                   <td className="cifra">€ {eurIt(totIva)}</td>
@@ -1998,7 +2009,7 @@ function Fatturazione() {
             </table>
           </div>
           <div className="pannello-piede" style={{ display: "flex", gap: 10, justifyContent: "flex-end", alignItems: "center" }}>
-            <span style={{ flex: 1 }}>Riepilogo di quello che è stato emesso, annullate escluse dai totali.</span>
+            <span style={{ flex: 1 }}>Riepilogo di quello che è stato emesso, annullate e stornate escluse dai totali.</span>
             {st.puo("fatturazione.excel") && (
               <button className="btn linea piccolo" onClick={scaricaExcelTutte}><Icone.scarica size={16} /> Excel di tutte</button>
             )}
@@ -2029,8 +2040,8 @@ function ModuloProforma({ committente, datiAziendali, onChiudi, onEmetti }) {
     quantita: pastiProposti,
     prezzo: committente.prezzoUnitario || 0,
   }]);
-  const [termini, setTermini] = React.useState(committente.termini || datiAziendali.terminiDefault);
-  const [metodo, setMetodo] = React.useState(committente.metodoPagamento || datiAziendali.metodoDefault);
+  const [termini, setTermini] = React.useState(committente.termini || "");
+  const [metodo, setMetodo] = React.useState(committente.metodoPagamento || "bonifico");
   const [regime, setRegime] = React.useState(regimeCommittente.id);
   const [aliquota, setAliquota] = React.useState(regimeCommittente.conIva ? (committente.ivaPercentuale || 0) : 10);
   const [dicitura, setDicitura] = React.useState(committente.dicituraIva || regimeCommittente.dicitura);
@@ -2040,7 +2051,7 @@ function ModuloProforma({ committente, datiAziendali, onChiudi, onEmetti }) {
   const conIva = regimeIva(regime).conIva;
   const totali = totaliProforma({ righe, regimeIva: regime, aliquota });
   const scadenza = scadenzaPagamento(new Date(), termini);
-  const valido = righe.some((r) => r.descrizione.trim() && (Number(r.quantita) || 0) > 0);
+  const valido = !!termini && righe.some((r) => r.descrizione.trim() && (Number(r.quantita) || 0) > 0);
 
   /* cambiando periodo si riscrive la descrizione solo delle righe rimaste
      quelle proposte: una riga scritta a mano non va toccata */
@@ -2138,6 +2149,7 @@ function ModuloProforma({ committente, datiAziendali, onChiudi, onEmetti }) {
           <label>
             <span>Termini di pagamento</span>
             <select value={termini} onChange={(e) => setTermini(e.target.value)}>
+              {!termini && <option value="">Scegli i termini</option>}
               {TERMINI_PAGAMENTO.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
             </select>
           </label>
@@ -3141,7 +3153,7 @@ function EtichettePasto() {
             <Icone.attenzione size={18} />
             <span>
               Nessuna etichetta da mostrare. Le etichette azienda si generano quando un dipendente
-              conferma la prenotazione dal suo portale. Quelle della comunità quando il responsabile
+              conferma la prenotazione dal suo portale. Quelle della comunità quando il referente
               trasmette le presenze.
             </span>
           </div>
@@ -3582,7 +3594,6 @@ function RuoliPermessi() {
 /* ==================== gestione portale ==================== */
 const TAB_GESTIONE = [
   ["azienda", "Dati aziendali", "gestione.azienda"],
-  ["fatturazione", "Fatturazione", "gestione.fatturazione"],
   ["tema", "Aspetto", "gestione.tema"],
   ["utenti", "Utenti", "gestione.utenti"],
   ["ruoli", "Ruoli e permessi", "gestione.ruoli"],
@@ -3632,19 +3643,6 @@ function GestionePortale() {
     );
   }
 
-  function campoScelta(label, chiave, opzioni, nota) {
-    return (
-      <div style={{ marginBottom: 14 }}>
-        <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muto)", marginBottom: 4 }}>{label}</label>
-        <select value={dati[chiave] || opzioni[0].id} onChange={(e) => setDati((d) => ({ ...d, [chiave]: e.target.value }))}
-          style={{ width: "100%", fontSize: 13, padding: "8px 10px" }}>
-          {opzioni.map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}
-        </select>
-        {nota && <div style={{ fontSize: 11.5, color: "var(--muto)", marginTop: 4 }}>{nota}</div>}
-      </div>
-    );
-  }
-
   function toggleNotifica(chiave, label) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--linea)" }}>
@@ -3682,6 +3680,7 @@ function GestionePortale() {
                 {campo("PEC", "pec")}
                 {campo("IBAN", "iban")}
               </div>
+              {campo("Note standard proforma", "noteProforma", "area")}
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
                 <button className="btn" onClick={salvaDati}>Salva dati</button>
               </div>
@@ -3690,34 +3689,9 @@ function GestionePortale() {
               Ragione sociale, indirizzo, dati fiscali e contatti compaiono nella testata di ogni
               documento stampabile del portale: proforma, manifesto di consegna e scheda piatto.
               Quello che resta vuoto esce nel documento come segnaposto in corsivo terracotta.
-            </div>
-          </div>
-        )}
-
-        {tab === "fatturazione" && (
-          <div className="pannello">
-            <div className="pannello-testa"><h2>Condizioni predefinite per i nuovi committenti</h2></div>
-            <div style={{ padding: "20px 24px" }}>
-              <p style={{ fontSize: 12.5, color: "var(--muto)", margin: "0 0 16px" }}>
-                Sono la proposta di partenza quando si crea un committente. Ogni committente poi le
-                cambia in <b>Impostazioni per committente</b>, e ogni singola proforma può scostarsene
-                al momento dell'emissione. Cambiare qui non tocca i committenti già censiti.
-              </p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px" }}>
-                {campoScelta("Termini di pagamento", "terminiDefault", TERMINI_PAGAMENTO)}
-                {campoScelta("Metodo di pagamento", "metodoDefault", METODI_PAGAMENTO)}
-                {campoScelta("Regime IVA", "regimeIvaDefault", REGIMI_IVA)}
-                {campo("Dicitura di esenzione IVA", "dicituraIvaDefault")}
-              </div>
-              {campo("Note standard proforma", "noteProforma", "area")}
-              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
-                <button className="btn" onClick={salvaDati}>Salva</button>
-              </div>
-            </div>
-            <div className="pannello-piede">
-              L'<b>IBAN</b> della scheda Dati aziendali finisce nel blocco "Condizioni di pagamento"
-              della proforma, quando il metodo è bonifico o SDD. Le <b>note standard</b> finiscono in
-              fondo a ogni proforma, sopra le note scritte per il singolo documento.
+              L'<b>IBAN</b> finisce nelle condizioni di pagamento della proforma (bonifico o SDD), le
+              <b> note standard</b> in fondo a ogni proforma. Termini, metodo e regime IVA non hanno un
+              predefinito: si decidono per committente in <b>Impostazioni</b>.
             </div>
           </div>
         )}
@@ -3806,7 +3780,7 @@ function GestionePortale() {
             <div className="pannello-testa"><h2>Notifiche automatiche</h2></div>
             <div style={{ padding: "20px 24px" }}>
               {toggleNotifica("promemoria", "Promemoria prenotazione ai dipendenti che non hanno prenotato")}
-              {toggleNotifica("cutoff", "Avviso cutoff in avvicinamento al responsabile")}
+              {toggleNotifica("cutoff", "Avviso cutoff in avvicinamento a chi ordina")}
               {toggleNotifica("ordineRicevuto", "Notifica ordine ricevuto alla cucina")}
               {toggleNotifica("presenzeMancanti", "Avviso presenze non trasmesse")}
               {toggleNotifica("reportMensile", "Report mensile automatico a fine mese")}
@@ -4039,7 +4013,8 @@ function ImpostazioniServizio() {
             <div className="impo-riga">
               <label>
                 <span className="so-lab">Termini di pagamento</span>
-                <select value={c.termini || "30gg"} onChange={(e) => cambia("termini", e.target.value)}>
+                <select value={c.termini || ""} onChange={(e) => cambia("termini", e.target.value)}>
+                  {!c.termini && <option value="">Scegli i termini</option>}
                   {TERMINI_PAGAMENTO.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
                 </select>
                 <em>I termini "fine mese" contano i giorni dall'ultimo giorno del mese di emissione.</em>

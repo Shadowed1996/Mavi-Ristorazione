@@ -109,7 +109,10 @@ utente.
     "Nuovo paziente").
 17. **Fatturazione** → tab per struttura, **Nuova proforma**: aggiungere una
     riga, cambiare i termini solo per quel documento, "Emetti e apri PDF";
-    sotto l'elenco delle proforma emesse con PDF e Annulla. **Menu settimana**:
+    sotto l'elenco delle proforma con lo stato: su PRO-2026/002 aprire il PDF
+    (timbro **NON PAGATA**), poi **Segna pagata** e riaprirlo (**PAGATA** con la
+    data); su una pagata **Storna** (timbro **STORNATA**). Anche Roberto Manzi
+    e Ilaria Gatti vedono gli stati nelle loro Fatture. **Menu settimana**:
     "Rendi fisso" su un piatto qualsiasi, poi Griglia settimana.
 18. **Modifica profilo** (icona matita accanto al nome, in fondo alla barra
     laterale, in qualsiasi portale) → cambiare foto e telefono.

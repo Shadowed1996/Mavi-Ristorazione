@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  DIETE_TERAPEUTICHE, MODELLI, ordinaProforme, testoCondizioni, totaliProforma,
+  DIETE_TERAPEUTICHE, MODELLI, ordinaProforme, proformaValida, testoCondizioni, totaliProforma,
 } from "../data.js";
 import {
   Documenti, Icone, Intestazione, Messaggi, NessunPermesso,
@@ -443,8 +443,9 @@ const giorniTesto = (n) => n + (n === 1 ? " giorno" : " giorni");
 /* situazione di pagamento derivata dallo stato della proforma e dalla
    scadenza: `emessa` diventa da saldare oppure scaduta */
 function situazioneProforma(p, oggi) {
-  if (p.stato === "pagata") return { classe: "p-ok", etichetta: "Pagata", nota: "" };
+  if (p.stato === "pagata") return { classe: "p-ok", etichetta: "Pagata", nota: p.pagataIl ? "il " + dataIt(p.pagataIl) : "" };
   if (p.stato === "annullata") return { classe: "p-neu", etichetta: "Annullata", nota: "non va pagata" };
+  if (p.stato === "stornata") return { classe: "p-err", etichetta: "Stornata", nota: "nota di credito, non va pagata" };
   const scadenza = giornoLocale(p.scadenza);
   if (!scadenza) return { classe: "p-att", etichetta: "Da saldare", nota: "scadenza non indicata" };
   const giorni = Math.round((scadenza - oggi) / 86400000);
@@ -470,7 +471,7 @@ function FattureStruttura({ cfg }) {
     .filter((r) => !r.s.scaduta && r.s.giorni != null)
     .sort((a, b) => a.s.giorni - b.s.giorni)[0];
   const pagate = righe.filter((r) => r.p.stato === "pagata");
-  const valide = righe.filter((r) => r.p.stato !== "annullata");
+  const valide = righe.filter((r) => proformaValida(r.p));
 
   return (
     <>
@@ -525,7 +526,7 @@ function FattureStruttura({ cfg }) {
                   </td></tr>
                 )}
                 {righe.map(({ p, t, s }) => (
-                  <tr key={p.id} className={p.stato === "annullata" ? "riga-annullata" : undefined}>
+                  <tr key={p.id} className={proformaValida(p) ? undefined : "riga-annullata"}>
                     <td>
                       <b className="cifra">{p.numero}</b>
                       <div style={{ fontSize: 11.5, color: "var(--muto)" }}>{p.periodo} · emessa il {dataIt(p.dataEmissione)}</div>
@@ -556,7 +557,7 @@ function FattureStruttura({ cfg }) {
                 ))}
                 {elenco.length > 0 && (
                   <tr className="riga-totale">
-                    <td><b>Totale</b><div style={{ fontSize: 11.5, color: "var(--muto)" }}>annullate escluse</div></td>
+                    <td><b>Totale</b><div style={{ fontSize: 11.5, color: "var(--muto)" }}>annullate e stornate escluse</div></td>
                     <td className="cifra"><b>{eur(somma(valide))}</b></td>
                     <td />
                     <td className="cifra"><b>{eur(somma(daSaldare))}</b></td>

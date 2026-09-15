@@ -576,7 +576,22 @@ export const REGIMI_IVA = [
   },
 ];
 
-export const terminiPagamento = (id) => TERMINI_PAGAMENTO.find((t) => t.id === id) || TERMINI_PAGAMENTO[2];
+/* senza termini scelti non si inventa un "30 giorni": resta "da definire" */
+export const terminiPagamento = (id) => TERMINI_PAGAMENTO.find((t) => t.id === id)
+  || { id: "", nome: "da definire", giorni: 0, fineMese: false };
+
+/* Stati di una proforma, uguali in Fatturazione, nei portali cliente e
+   stampati sul documento: `emessa` è "non pagata". Annullata = errore, non ha
+   mai avuto valore; stornata = emessa e poi annullata con nota di credito. */
+export const STATI_PROFORMA = {
+  emessa: { etichetta: "non pagata", timbro: "Non pagata", classe: "p-att", tono: "attesa" },
+  pagata: { etichetta: "pagata", timbro: "Pagata", classe: "p-ok", tono: "ok" },
+  annullata: { etichetta: "annullata", timbro: "Annullata", classe: "p-neu", tono: "neutro" },
+  stornata: { etichetta: "stornata", timbro: "Stornata", classe: "p-err", tono: "errore" },
+};
+export const statoProforma = (stato) => STATI_PROFORMA[stato] || STATI_PROFORMA.emessa;
+/* conta negli importi solo ciò che è ancora valido: pagata o non pagata */
+export const proformaValida = (p) => p.stato === "emessa" || p.stato === "pagata";
 export const metodoPagamento = (id) => METODI_PAGAMENTO.find((m) => m.id === id) || METODI_PAGAMENTO[0];
 export const regimeIva = (id) => REGIMI_IVA.find((r) => r.id === id) || REGIMI_IVA[0];
 
@@ -639,9 +654,9 @@ export function ordinaProforme(lista) {
    store.jsx con il listino e le condizioni del committente, così l'importo in
    elenco è lo stesso che esce nel PDF. La numerazione prosegue da qui. */
 export const PROFORME_INIZIALI = [
-  { numero: "PRO-2026/001", committenteId: "azienda", periodo: "Giugno 2026", dataEmissione: "2026-07-01", pasti: 842, stato: "pagata" },
+  { numero: "PRO-2026/001", committenteId: "azienda", periodo: "Giugno 2026", dataEmissione: "2026-07-01", pasti: 842, stato: "pagata", pagataIl: "2026-07-28" },
   { numero: "PRO-2026/002", committenteId: "azienda", periodo: "Luglio 2026", dataEmissione: "2026-08-03", pasti: 790, stato: "emessa" },
-  { numero: "PRO-2026/003", committenteId: "comunita", periodo: "Giugno 2026", dataEmissione: "2026-07-01", pasti: 262, stato: "pagata" },
+  { numero: "PRO-2026/003", committenteId: "comunita", periodo: "Giugno 2026", dataEmissione: "2026-07-01", pasti: 262, stato: "pagata", pagataIl: "2026-09-10" },
   { numero: "PRO-2026/004", committenteId: "comunita", periodo: "Luglio 2026", dataEmissione: "2026-08-03", pasti: 248, stato: "emessa" },
 ];
 
@@ -830,12 +845,13 @@ export const PERMESSI = [
   { k: "fatturazione.vedi", portale: "mavi", gruppo: "Fatturazione", n: "Vedi la fatturazione" },
   { k: "fatturazione.proforma", portale: "mavi", gruppo: "Fatturazione", n: "Emette una nuova proforma" },
   { k: "fatturazione.annulla", portale: "mavi", gruppo: "Fatturazione", n: "Annulla una proforma emessa" },
+  { k: "fatturazione.pagamenti", portale: "mavi", gruppo: "Fatturazione", n: "Segna una proforma come pagata" },
+  { k: "fatturazione.storna", portale: "mavi", gruppo: "Fatturazione", n: "Storna una proforma" },
   { k: "fatturazione.excel", portale: "mavi", gruppo: "Fatturazione", n: "Scarica gli Excel di fatturazione" },
   { k: "log.vedi", portale: "mavi", gruppo: "Log operazioni", n: "Vedi il log operazioni" },
   { k: "log.excel", portale: "mavi", gruppo: "Log operazioni", n: "Esporta il log in Excel" },
   { k: "gestione.vedi", portale: "mavi", gruppo: "Gestione portale", n: "Apre la gestione portale" },
   { k: "gestione.azienda", portale: "mavi", gruppo: "Gestione portale", n: "Modifica i dati aziendali" },
-  { k: "gestione.fatturazione", portale: "mavi", gruppo: "Gestione portale", n: "Modifica le condizioni predefinite" },
   { k: "gestione.tema", portale: "mavi", gruppo: "Gestione portale", n: "Cambia l'aspetto del portale" },
   { k: "gestione.utenti", portale: "mavi", gruppo: "Gestione portale", n: "Gestisce gli utenti" },
   { k: "gestione.ruoli", portale: "mavi", gruppo: "Gestione portale", n: "Gestisce ruoli e permessi" },

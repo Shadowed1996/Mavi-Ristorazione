@@ -1,5 +1,5 @@
 import React from "react";
-import { ALLERGENI, COLORI, MARCATORI, PIATTI, ingredientiEvidenziati, sostituisce } from "./data.js";
+import { ALLERGENI, COLORI, MARCATORI, PIATTI, ingredientiEvidenziati, sostituisce, statoProforma } from "./data.js";
 import { usaStato } from "./store.jsx";
 import { apriDocumento, blocco, elenco, etichette, paginaDocumento, paragrafo, tabellaHtml } from "./documento.js";
 
@@ -541,11 +541,11 @@ export function SchedaPiatto({ id, scelto, soloLettura, allergeniUtente = [], on
   );
 }
 
-/* stato di una proforma, uguale nel portale MAVI e nei portali cliente */
-const PASTIGLIA_PROFORMA = { emessa: "p-att", pagata: "p-ok", annullata: "p-neu" };
-
+/* stato di una proforma, uguale nel portale MAVI, nei portali cliente e nel
+   timbro del PDF: `emessa` si legge "non pagata" */
 export function PastigliaProforma({ stato }) {
-  return <span className={"pastiglia " + (PASTIGLIA_PROFORMA[stato] || "p-neu")}>{stato}</span>;
+  const s = statoProforma(stato);
+  return <span className={"pastiglia " + s.classe}>{s.etichetta}</span>;
 }
 
 export function Velo({ children, onChiudi, largo }) {

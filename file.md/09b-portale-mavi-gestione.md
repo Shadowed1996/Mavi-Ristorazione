@@ -102,7 +102,14 @@ schema a tab per committente di "Impostazioni per committente".
   totale e scadenza. **Emetti e apri PDF** chiama `st.emettiProforma` e apre
   subito il documento con `generaProformaPDF` (`proforma.js`).
 - Sotto, l'**elenco delle proforma emesse** del committente (`st.proforme`),
-  con PDF e Annulla; le annullate restano in elenco barrate con pastiglia.
+  con lo stato in pastiglia (`STATI_PROFORMA`: **non pagata**, **pagata**,
+  **annullata**, **stornata**) e le azioni (15 settembre 2026): PDF sempre;
+  su una non pagata **Segna pagata** (`fatturazione.pagamenti`), **Storna**
+  (`fatturazione.storna`) e **Annulla** (`fatturazione.annulla`); su una
+  pagata solo **Storna**. Annullate e stornate restano in elenco barrate, fuori
+  dai totali (`proformaValida`). Lo stato è stampato anche sul PDF.
+  Il termine non ha più un predefinito: senza termini del committente il
+  modulo chiede "Scegli i termini" prima di emettere.
 - **Tutte le strutture** — tabella riassuntiva con condizioni (termini,
   metodo, regime) e ultima scadenza per committente, più Excel.
 
@@ -130,7 +137,7 @@ Sette tab (`TAB_GESTIONE`, ognuna sotto un permesso `gestione.*`):
 | Tab | Contenuto |
 |---|---|
 | Dati aziendali | ragione sociale, P.IVA, CF, indirizzo, telefono, email, PEC, IBAN. Finiscono in testata di ogni documento stampabile e nell'intestazione degli Excel |
-| Fatturazione | **condizioni predefinite per i nuovi committenti** (termini, metodo, regime IVA, dicitura), IBAN e note standard usati davvero nella proforma |
+| ~~Fatturazione~~ | **tolta il 15 settembre 2026** (Filippo: "la fatturazione a 30 giorni togliamola, l'abbiamo diversificata"): niente più condizioni predefinite, termini, metodo e regime IVA si decidono per committente (Impostazioni e "Nuovo committente", dove i termini vanno scelti). Le note standard proforma sono passate in Dati aziendali, accanto all'IBAN |
 | Aspetto | tre bottoni Chiaro / Scuro / Automatico |
 | Utenti | `st.utenti`, **collegati al login** dal 14 settembre 2026: un utente creato qui entra davvero. Il modale (`ModaleUtente`) ha ruoli da `st.ruoli` filtrati per il portale della struttura, committenti da `st.committenti` più MAVI, username obbligatorio e univoco, reparto obbligatorio per chi non ha `pazienti.tuttiReparti` in una comunità, e mostra i permessi ricavati dal ruolo. Disattivare un utente gli impedisce il login; l'ultimo con `gestione.ruoli` non si disattiva |
 | Ruoli e permessi | matrice permessi × ruoli per portale (selettore Mavi / Azienda / Comunità), spunte disattivate sul ruolo bloccato Cucina MAVI; "Nuovo ruolo" con nome, portale, telaio (solo azienda) e copia da un ruolo esistente; elimina ruolo se nessun utente lo usa. Ogni voce di menu e ogni azione del portale è condizionata da una chiave (`st.puo`), applicata al volo. Nel portale struttura i ruoli iniziali sono Referente (tutti i centri) e Responsabile amministrativo (solo fatture e resoconti numerici) (15 settembre 2026, gruppo Variazioni e `resoconti.nominativi`); in MAVI `flussi.variazioni` arriva da solo a Cucina MAVI |

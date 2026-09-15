@@ -65,8 +65,15 @@ indirizzo, P.IVA/CF, PEC, codice SDI, referente), periodo, righe con quantità e
 prezzo, totali (`totaliProforma` di `data.js`), scadenza calcolata
 (`scadenzaPagamento`), termini e metodo di pagamento, IBAN solo se il metodo lo
 prevede, note del documento e `noteProforma` dei dati aziendali. Se il regime è
-`senza_iva` compare la riga `IVA € 0,00` con la dicitura di esenzione. Le
-proforma annullate hanno badge e nota dedicati.
+`senza_iva` compare la riga `IVA € 0,00` con la dicitura di esenzione.
+
+**Lo stato è stampato sul documento** (15 settembre 2026): un timbro inclinato
+accanto al titolo (`timbro` di `paginaDocumento`, classi `.doc-timbro-*`) con
+**NON PAGATA** e la scadenza, **PAGATA**, **ANNULLATA** o **STORNATA** con la
+data (`pagataIl`, `annullataIl`, `stornataIl`), un riquadro "Stato" fra i dati
+del documento e una nota (pagamento registrato, annullato agli atti, stornato
+con nota di credito). Colori: verde pagata, terracotta non pagata, grigio
+annullata, rosso scuro stornata.
 
 La chiamano Fatturazione (portale MAVI, "Emetti e apri PDF" e "PDF" in elenco),
 `Fatture` in `Cliente.jsx` e `FattureStruttura` in `Struttura.jsx`. Non esiste

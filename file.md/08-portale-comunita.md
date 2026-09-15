@@ -235,8 +235,8 @@ Pagina di partenza del responsabile. Quattro riquadri: **da saldare** (proforma
 **prossima scadenza** (data, numero, importo, giorni mancanti), **pagato**.
 Avviso giallo se c'è qualcosa di scaduto. Tabella per proforma: documento
 (periodo, emissione), totale (imponibile + IVA o "senza IVA"), scadenza con
-condizioni, **da pagare**, situazione (Da saldare / Scaduta / Pagata /
-Annullata, con i giorni). Riga di totale annullate escluse. Stati e importi
+condizioni, **da pagare**, situazione (Da saldare / Scaduta / Pagata con la
+data / Annullata / Stornata). Riga di totale senza annullate e stornate. Stati e importi
 vengono da `st.proforme` e `totaliProforma`, senza toccare il modello.
 
 ## Etichette — `EtichetteComunita`
