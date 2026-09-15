@@ -30,19 +30,22 @@ utente.
 ## Sequenza consigliata
 
 1. **Apertura** — parte il preloader, il piatto che si compone.
-2. **Antonella Rossi** → Menu del giorno. Mostrare le tre colonne con i toggle
-   Alternative, scegliere i piatti, far notare la faccina dell'equilibrio che
-   cambia man mano.
+2. **Antonella Rossi** → Menu del giorno. "Adesso" è martedì 15 settembre alle
+   22:56: si vedono **solo giovedì e venerdì**, gli altri giorni sono chiusi.
+   Mostrare le tre colonne con i toggle Alternative, scegliere i piatti, far
+   notare la faccina dell'equilibrio che cambia man mano.
 3. **Diete speciali** → selezionare Vegetariano → tornare al menu: i piatti con
    carne sono segnalati.
 4. **Menu settimana** → griglia con navigazione settimane e filtro portata.
 5. **Conferma prenotazione.** Provare prima a confermare senza contorno: compare
-   l'avviso che dice cosa manca e lascia decidere.
-6. Uscire → **Roberto Manzi** → Cruscotto → "Ordini del giorno": scegliere
-   martedì, "Prenota per lui" su un dipendente, scegliere i piatti, confermare:
+   l'avviso che dice cosa manca e lascia decidere. Poi **Le mie prenotazioni**
+   → "Scarica riepilogo": solo il nome e, sotto giovedì e venerdì, il pasto.
+6. Uscire → **Roberto Manzi** → Cruscotto → "Ordini del giorno" (giovedì e
+   venerdì): "Prenota per lui" su un dipendente, scegliere i piatti, confermare:
    la riga compare nell'anteprima e il dipendente sparisce da "Chi non ha
-   prenotato". Poi **Stampa riepilogo**: il documento è intestato
-   `MARTEDÌ - 15/09/2026` e riporta solo la Rossi Manifatture.
+   prenotato". Poi **Stampa riepilogo**: "Ordini di giovedì 17 settembre",
+   tutti i dipendenti che hanno ordinato, ognuno con sotto il suo pasto, il
+   totale e chi non ha ordinato. Solo la Rossi Manifatture.
 7. **Resoconti** → espandere un dipendente per il dettaglio giornaliero →
    Excel → **PDF** (stessi numeri) → Export paghe. Poi **Fatture**: solo le
    proforma di Rossi, con scadenza e condizioni.
@@ -51,18 +54,19 @@ utente.
    Beatrice Comi: la settimana va da lunedì a domenica → **Modifica dieta**;
    poi **Nuovo paziente**: si sceglie il centro. **Scarica template** →
    l'Excel per il dietista, anche lui da lunedì a domenica.
-9. **Presenze** (tutti i centri in una pagina) → Carmelo Aronica è già assente
+9. **Presenze** (tutti i centri in una pagina, **giovedì 17**: mercoledì è già
+   chiuso) → Carmelo Aronica è già assente
    a pranzo per una variazione; segnare gli altri → "Trasmetti pranzo a MAVI".
    Passare a **Cena**: Beatrice e Zied non compaiono, fanno solo pranzo.
 10. **Variazioni**, i tre tipi:
-    - **Dieta** → Beatrice Comi: si apre la sua dieta di mercoledì, riscrivere
-      il primo (es. Riso in bianco), "Era: Pasta al ragù" → **Invia a MAVI**.
+    - **Dieta** → Beatrice Comi: si apre la sua dieta di giovedì, riscrivere
+      il primo (es. Riso in bianco), "Era: Pasta alla norma" → **Invia a MAVI**.
       In Presenze del giorno il piatto è già cambiato.
     - **Presenze** → Zied Dridi: "Adesso: presente", mettere **Assente** →
       Invia. Il pranzo era già trasmesso: in Produzione Spazio Giovani scende di
       un pasto, senza ritrasmettere.
     - **Altro** → si apre il box di testo, per esempio "stasera 2 ospiti in più".
-    Il giorno si sceglie fino a domenica. In elenco ce n'è già una "Presa in
+    Il giorno si sceglie fra quelli aperti, da giovedì a domenica. In elenco ce n'è già una "Presa in
     carico" dalla cucina, con data, ora e chi l'ha presa.
 11. Uscire → **Ilaria Gatti** (responsabile amministrativa) → entra
     direttamente in **Fatture**: da saldare, scaduto, prossima scadenza e
@@ -74,9 +78,10 @@ utente.
     Rossi Manifatture Spa (anonime, per piatto), poi Comunità Il Ponte
     (nominative, per reparto e paziente) → provare la ricerca per nominativo
     → "Stampa etichette di Comunità Il Ponte" per la vista dedicata.
-13. **Produzione** → la giornata con la data in cima. "Pasti per committente
-    e centro": l'azienda e sotto Il Ponte **una riga per centro**, con il
-    referente e lo stato. Il pranzo trasmesso da Samuele risulta confermato
+13. **Produzione** → si apre su **mercoledì 16**, la giornata che la cucina
+    prepara stanotte. "Pasti per committente e centro": l'azienda e sotto Il
+    Ponte **una riga per centro**, con il referente e lo stato. Con ‹ › su
+    giovedì: il pranzo trasmesso da Samuele risulta confermato
     per entrambi i centri, la cena di Sole Luna resta in stima. Il pannello "Variazioni dai
     centri" mostra quella appena inviata. "Filtra centro" su Sole Luna, filtro
     Pranzo / Cena, cambiare giorno con ‹ › fino a domenica (l'azienda risulta
@@ -86,8 +91,11 @@ utente.
     **Excel**: cinque fogli, stessi numeri.
 14. **Ordini in arrivo** → aprire il dettaglio di Rossi Manifatture Spa: quantità
     per piatto con "per il giorno"/"generato il", poi il **dettaglio
-    nominativo riservato al fornitore**, scegliere la giornata e "Manifesto
-    PDF" di quel solo giorno. Sulla riga di Comunità Il Ponte la colonna
+    nominativo riservato al fornitore**, scegliere mercoledì e "Manifesto
+    PDF": il resoconto dettagliato della cucina, con totale per piatto e
+    allergeni, poi matricola, reparto, portate, dieta e allergie di ognuno.
+    Su giovedì c'è anche Antonella Rossi, con le allergie dichiarate nel suo
+    portale. Sulla riga di Comunità Il Ponte la colonna
     Variazioni dice quante sono da prendere in carico: aprire il dettaglio,
     elenco nominativo con centro e pasto, poi "Variazioni dai centri" →
     **Prendi in carico** sulla variazione di Samuele. Rientrando come Samuele

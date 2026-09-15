@@ -11,12 +11,11 @@ const Comunita = { Pazienti, Presenze, Variazioni, Resoconti, Etichette };
 
 La pagina **Fatture** del portale è `FattureStruttura` in `Struttura.jsx`.
 
-Due costanti fissano la giornata della demo, da tenere allineate:
-
-```js
-const GIORNO_DEMO = "mercoledì";
-const DATA_DEMO   = "2026-09-16";   // per i titoli dei documenti stampabili
-```
+La giornata della demo non è più scritta a mano: è il primo giorno ancora
+aperto delle comunità (`INDICE_DEMO_COMUNITA`, **giovedì 17** con "adesso"
+martedì 15 alle 22:56, `04-dati.md`). Da lì `INDICE_GIORNO_DEMO`,
+`GIORNO_DEMO` (chiave delle diete), `DATA_DEMO` (titoli dei documenti) ed
+`ETICHETTA_DEMO` (occhielli).
 
 ## Ruoli e permessi
 
@@ -140,7 +139,7 @@ segnare il pranzo non segna la cena. La riga prende una classe che la colora:
 | `null` | `pz-neutro`, non ancora segnato |
 
 Tutti partono da `null`, tranne chi ha una variazione di presenza già inviata
-per mercoledì (nel seed Carmelo Aronica, assente a pranzo). Primo, secondo e
+per la giornata della demo (nel seed Carmelo Aronica, assente a pranzo). Primo, secondo e
 contorno mostrati e trasmessi sono quelli di `dietaEffettiva`, cioè con le
 variazioni di dieta applicate. Il bottone **"Trasmetti pranzo/cena a MAVI" resta
 disabilitato finché c'è anche un solo paziente del pasto non segnato** (o se
@@ -172,7 +171,7 @@ per dire alla cucina ciò che cambia rispetto a presenze e diete. Dati, forma e
 API in `st.variazioni` (`03-store.md`).
 
 **Modulo** (`variazioni.invia`): giorno da **lunedì a domenica**
-(`GIORNI_COMUNITA`, parte da mercoledì), centro, tipo, pasto (Pranzo / Cena /
+(`GIORNI_COMUNITA`, **solo i giorni ancora aperti**: da giovedì), centro, tipo, pasto (Pranzo / Cena /
 Pranzo e cena), paziente. Il modulo cambia con il **tipo** (richiesta di
 Filippo, 15 settembre 2026):
 
@@ -223,13 +222,11 @@ Giorno (pasti previsti, presenti trasmessi a MAVI) e Settimana (pasti previsti
 da lunedì a domenica, totale settimana), con totale per centro (quando i centri sono
 più di uno) e totale generale. Previsti = pazienti con quel pasto fra i pasti
 previsti e almeno una portata nella dieta del giorno; trasmessi = righe di
-`st.presenzeTrasmesse` di mercoledì. Il calcolo è uno solo
-(`contaPastiPerCentro` → `righeResocontoCentri`): schermo, Excel (fogli
-"Mercoledì 16 settembre" e "Settimana") e PDF `generaResocontoCentriPDF`
-leggono le stesse righe, verificato cifra per cifra.
-
-La data dei documenti è `DATA_DEMO` (`2026-09-16`), da tenere allineata a
-`GIORNO_DEMO`.
+`st.presenzeTrasmesse` della giornata della demo. Il calcolo è uno solo
+(`contaPastiPerCentro` → `righeResocontoCentri`): schermo, Excel (fogli della
+giornata e "Settimana") e PDF `generaResocontoCentriPDF` leggono le stesse
+righe, verificato cifra per cifra. I resoconti sono documenti e mostrano tutta
+la settimana, anche i giorni già chiusi agli ordini.
 
 ## Fatture — `FattureStruttura` in `Struttura.jsx`
 

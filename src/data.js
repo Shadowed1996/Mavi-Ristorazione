@@ -443,28 +443,63 @@ export const VARIABILI = [
   { primo: ["min_orz", "ris_fun", "cre_spi", "pas_arr"], sost_primo: ["ins_far", "zup_leg"], secondo: ["sal_for", "tac_lim", "cot_mil", "spe_pol"], sost_secondo: ["fri_zuc", "sfo_ver"], contorno: ["ver_gri"], unico: ["uni_las"] },
 ];
 
+/* "Adesso" della demo: martedì 15 settembre 2026, ore 22:56. Decide quali
+   giorni sono già chiusi agli ordini. In produzione diventa new Date() e
+   tutto il resto si calcola da solo. */
+export const ADESSO_DEMO = new Date(2026, 8, 15, 22, 56);
+
+/* "Martedì 15 settembre 2026, ore 22:56" */
+const giornoAdesso = ADESSO_DEMO.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+export const ETICHETTA_ADESSO = giornoAdesso.charAt(0).toUpperCase() + giornoAdesso.slice(1)
+  + ", ore " + ADESSO_DEMO.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+
+/* Orario limite degli ordini, il giorno prima: lo stesso scritto in
+   COMMITTENTI (`cutoff`, "14:00 del giorno precedente" e "16:00 ..."). */
+export const ORA_LIMITE_AZIENDA = 14;
+export const ORA_LIMITE_COMUNITA = 16;
+
+/* un giorno è chiuso quando è passato l'orario limite del giorno prima */
+export function ordiniChiusi(dataIso, oraLimite, adesso = ADESSO_DEMO) {
+  const [a, m, g] = dataIso.split("-").map(Number);
+  return adesso >= new Date(a, m - 1, g - 1, oraLimite, 0);
+}
+
 /* `data` è la data ISO del giorno: serve ai documenti stampabili, che
    intestano il riepilogo con "MARTEDÌ - 15/09/2026". `d` e `breve` restano i
-   testi già usati a schermo. */
-export const GIORNI = [
-  { n: "Lunedì", d: "14 settembre", breve: "14 set", data: "2026-09-14", chiuso: false },
-  { n: "Martedì", d: "15 settembre", breve: "15 set", data: "2026-09-15", chiuso: false },
-  { n: "Mercoledì", d: "16 settembre", breve: "16 set", data: "2026-09-16", chiuso: false },
-  { n: "Giovedì", d: "17 settembre", breve: "17 set", data: "2026-09-17", chiuso: false },
-  { n: "Venerdì", d: "18 settembre", breve: "18 set", data: "2026-09-18", chiuso: false },
+   testi già usati a schermo. `chiuso` viene da ordiniChiusi. */
+const SETTIMANA_DEMO = [
+  { n: "Lunedì", d: "14 settembre", breve: "14 set", data: "2026-09-14" },
+  { n: "Martedì", d: "15 settembre", breve: "15 set", data: "2026-09-15" },
+  { n: "Mercoledì", d: "16 settembre", breve: "16 set", data: "2026-09-16" },
+  { n: "Giovedì", d: "17 settembre", breve: "17 set", data: "2026-09-17" },
+  { n: "Venerdì", d: "18 settembre", breve: "18 set", data: "2026-09-18" },
+  { n: "Sabato", d: "19 settembre", breve: "19 set", data: "2026-09-19" },
+  { n: "Domenica", d: "20 settembre", breve: "20 set", data: "2026-09-20" },
 ];
+
+/* domani rispetto ad "adesso": è la giornata che la cucina prepara stanotte,
+   con gli ordini già chiusi. Apre la Produzione e porta il seed dei nominativi. */
+const isoLocale = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+export const INDICE_DOMANI = Math.max(0, SETTIMANA_DEMO.findIndex((g) =>
+  g.data === isoLocale(new Date(ADESSO_DEMO.getFullYear(), ADESSO_DEMO.getMonth(), ADESSO_DEMO.getDate() + 1))));
+
+export const GIORNI = SETTIMANA_DEMO.slice(0, 5)
+  .map((g) => ({ ...g, chiuso: ordiniChiusi(g.data, ORA_LIMITE_AZIENDA) }));
 
 /* Le comunità mangiano sette giorni su sette: stesso calendario di GIORNI
-   (indici 0-4 identici), più sabato e domenica. GIORNI resta la settimana del
-   menu aziendale; per le comunità l'indice vale anche per GIORNI_SETT. */
-/* la giornata in cui la demo segna e trasmette le presenze: mercoledì 16 */
-export const INDICE_DEMO_COMUNITA = 2;
+   (indici 0-4 identici), più sabato e domenica, con il proprio orario limite.
+   GIORNI resta la settimana del menu aziendale; per le comunità l'indice vale
+   anche per GIORNI_SETT. */
+export const GIORNI_COMUNITA = SETTIMANA_DEMO
+  .map((g) => ({ ...g, chiuso: ordiniChiusi(g.data, ORA_LIMITE_COMUNITA) }));
 
-export const GIORNI_COMUNITA = [
-  ...GIORNI,
-  { n: "Sabato", d: "19 settembre", breve: "19 set", data: "2026-09-19", chiuso: false },
-  { n: "Domenica", d: "20 settembre", breve: "20 set", data: "2026-09-20", chiuso: false },
-];
+/* giorni ancora aperti, con il loro indice: sono gli unici che si mostrano a
+   chi ordina (dipendente, referente, referente della comunità) */
+export const giorniAperti = (giorni) => giorni.map((g, i) => ({ ...g, i })).filter((g) => !g.chiuso);
+
+/* la giornata in cui la demo segna e trasmette le presenze: il primo giorno
+   ancora aperto delle comunità, giovedì 17 */
+export const INDICE_DEMO_COMUNITA = Math.max(0, GIORNI_COMUNITA.findIndex((g) => !g.chiuso));
 
 /* etichetta leggibile del giorno, la stessa ovunque: "Martedì 15 settembre" */
 export function etichettaGiorno(indice) {
@@ -1114,7 +1149,8 @@ export function splitPiatto(testo) {
    Variazioni dai centri della comunità — seed di st.variazioni.
    Le scrive il referente (cambi di dieta, ospiti in più o in
    meno, uscite), MAVI le prende in carico da Ordini in arrivo. Tutte per
-   mercoledì 16 settembre, la giornata della demo. Le date sono locali, come
+   giovedì 17 settembre (INDICE_DEMO_COMUNITA), il primo giorno ancora aperto
+   delle comunità. Le date sono locali, come
    quelle timbrate da inviaVariazione con new Date().
    ============================================================ */
 const oraLocale = (giorno, ore, minuti) => new Date(2026, 8, giorno, ore, minuti).toISOString();
@@ -1185,14 +1221,14 @@ export function testoVariazioneDieta(dietaPrima, dieta) {
 }
 
 const pazienteSeme = (id) => PAZIENTI_COMUNITA.find((p) => p.id === id);
-const DIETA_PRIMA_ZIED = { pranzo: { ...pazienteSeme("p02").dieta["mercoledì"].pranzo } };
+const DIETA_PRIMA_ZIED = { pranzo: { ...pazienteSeme("p02").dieta[GIORNI_SETT[INDICE_DEMO_COMUNITA]].pranzo } };
 const DIETA_ZIED = { pranzo: { primo: "Pasta all'olio || IN BIANCO", secondo: "Petto di pollo alla griglia", contorno: "Verdure lesse" } };
 
 export const VARIAZIONI_INIZIALI = [
   {
     id: "var-1", committenteId: "comunita", reparto: "Spazio Giovani SGA",
     autore: "Samuele Ferri", ruoloAutore: "Referente",
-    indiceGiorno: 2, pasto: "pranzo", pazienteId: "p02", pazienteNome: "Zied Dridi", tipo: "dieta",
+    indiceGiorno: INDICE_DEMO_COMUNITA, pasto: "pranzo", pazienteId: "p02", pazienteNome: "Zied Dridi", tipo: "dieta",
     dietaPrima: DIETA_PRIMA_ZIED, dieta: DIETA_ZIED,
     testo: testoVariazioneDieta(DIETA_PRIMA_ZIED, DIETA_ZIED),
     creataIl: oraLocale(15, 9, 40), stato: "presa_in_carico",
@@ -1201,15 +1237,15 @@ export const VARIAZIONI_INIZIALI = [
   {
     id: "var-2", committenteId: "comunita", reparto: "CSS Sole Luna, Desio",
     autore: "Samuele Ferri", ruoloAutore: "Referente",
-    indiceGiorno: 2, pasto: "cena", pazienteId: null, pazienteNome: null, tipo: "altro",
-    testo: "Mercoledì sera 2 ospiti in più a cena, rientrano dal soggiorno estivo: dieta standard, nessuna allergia.",
+    indiceGiorno: INDICE_DEMO_COMUNITA, pasto: "cena", pazienteId: null, pazienteNome: null, tipo: "altro",
+    testo: "Giovedì sera 2 ospiti in più a cena, rientrano dal soggiorno estivo: dieta standard, nessuna allergia.",
     creataIl: oraLocale(15, 11, 25), stato: "inviata",
     presaInCaricoIl: null, presaInCaricoDa: null,
   },
   {
     id: "var-3", committenteId: "comunita", reparto: "CSS Sole Luna, Desio",
     autore: "Samuele Ferri", ruoloAutore: "Referente",
-    indiceGiorno: 2, pasto: "pranzo", pazienteId: "p03", pazienteNome: "Carmelo Aronica", tipo: "presenze",
+    indiceGiorno: INDICE_DEMO_COMUNITA, pasto: "pranzo", pazienteId: "p03", pazienteNome: "Carmelo Aronica", tipo: "presenze",
     presenzaPrima: { pranzo: null }, presenza: { pranzo: false },
     testo: testoVariazionePresenza({ pranzo: null }, { pranzo: false }),
     creataIl: oraLocale(15, 12, 5), stato: "inviata",
@@ -1220,7 +1256,9 @@ export const VARIAZIONI_INIZIALI = [
 /* ============================================================
    Etichette demo dipendenti azienda — ordini già confermati
    ============================================================ */
-const GIORNO_ETICHETTE_DEMO = 2; // mercoledì 16 settembre
+/* gli ordini nominativi demo sono di domani (mercoledì 16): già chiusi, sono
+   il manifesto che la cucina stampa stanotte */
+const GIORNO_ETICHETTE_DEMO = INDICE_DOMANI;
 
 /* Il giorno è strutturato (`indiceGiorno`, 0–4) e non più una stringa: il
    riepilogo del referente e il manifesto del fornitore filtrano per giornata.

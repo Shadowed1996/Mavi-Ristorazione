@@ -29,7 +29,8 @@ badge.
 | `cellaConNota(principale, nota)` | cella su due righe, nota in grigio |
 | `riepilogoTotali([{ etichetta, valore, forte }])` | riquadro totali a destra |
 | `blocco(titolo, html)`, `paragrafo(testo, { piccolo })`, `elenco(righe)`, `etichette(lista)` | sezioni di testo |
-| `generaElencoNominativo({ titolo, badge, sottotitolo, meta, colonne, righe, totale, vuota, blocchiPrima, blocchiDopo, note, piede, nomeFile, datiAziendali, avvisa })` | pagina + tabella + apertura, usata dal manifesto e dal riepilogo del referente |
+| `generaElencoNominativo({ titolo, badge, sottotitolo, meta, colonne, righe, totale, vuota, blocchiPrima, blocchiDopo, note, piede, nomeFile, datiAziendali, avvisa })` | pagina + tabella + apertura, usata dal manifesto |
+| `elencoOrdini([{ nome, nota, pasto }])` | nome (con nota accanto) e sotto il pasto, su due colonne: il riepilogo ordini del referente |
 | `apriDocumento(html, { nomeFile, avvisa })` | apre la scheda; ritorna `true` se aperta |
 
 Una **cella** è un valore qualsiasi, che passa da `testoHtml`, oppure
@@ -77,12 +78,20 @@ più la "proforma unica" con tutte le strutture insieme.
 generaManifestoConsegna({ struttura, indiceGiorno, pasto, righe, datiAziendali, avvisa })
 ```
 
-`righe` è `st.nominativiAzienda` completo: la funzione **filtra per
-`indiceGiorno`** e intesta con `giornoDataIt(GIORNI[i].data)`. Le etichette
-pasto dell'azienda sono anonime; questo è l'unico documento nominativo, marcato
-"Riservato al fornitore — non esporre al cliente", raggiungibile solo dal
-drill-down azienda di "Ordini in arrivo" nel portale MAVI, dopo aver scelto la
-giornata. Il piatto unico compare come `Piatto unico: …` nella colonna Primo.
+`righe` è `st.nominativiAzienda` completo, arricchito da `FlussiOrdine` con
+`dieta` (`dietaDipendente` o dieta impostata nel portale) e `allergeni`
+dichiarati: la funzione **filtra per `indiceGiorno`** e intesta con
+`giornoDataIt(GIORNI[i].data)`. Le etichette pasto dell'azienda sono anonime;
+questo è l'unico documento nominativo, marcato "Riservato al fornitore — non
+esporre al cliente", raggiungibile solo dal drill-down azienda di "Ordini in
+arrivo" nel portale MAVI, dopo aver scelto la giornata.
+
+È il **resoconto dettagliato della cucina** (Filippo, 15 settembre 2026):
+riquadri pasti, porzioni e "con dieta o allergie"; **Totale per piatto**
+(portata, piatto, allergeni dal catalogo, porzioni; un nome fuori catalogo è
+segnalato "allergeni da verificare"); poi il dettaglio per dipendente ordinato
+per reparto: matricola, nome con reparto, primo (o piatto unico), secondo,
+contorno, **dieta e allergie** (una prescrizione medica resta "Riservata").
 
 ## `src/resoconto.js` — resoconti e riepiloghi
 
@@ -95,12 +104,13 @@ Ogni funzione compone `paginaDocumento` e chiude con `apriDocumento`.
 | `generaResocontoUnitaPDF({ struttura, modello, periodo, etichettaUnita, etichettaDiete, numeri, righe, nota, datiAziendali, avvisa })` | "Resoconto mensile" del cruscotto struttura: riporta la situazione corrente del cruscotto, lo dichiara in nota |
 | `generaDistintaPDF({ giorno, perimetro, strutture, sezioni, totali, pastiPerCentro, destinazioni, variazioni, diete, datiAziendali, avvisa })` | Produzione, vista Giorno: `sezioni: [{ categoria, righe: [{ piatto, colore, nota?, perStruttura, totale }] }]` (la `nota` segnala i nomi quasi omonimi); poi "Pasti per committente e centro" (`pastiPerCentro: { colonnePasto, righe, totale }`), "Variazioni dai centri", diete (`{ nome, committenteNome, reparto, pastiTesto, tipoDieta, note }`), firma; infine **una scheda di consegna per destinazione, ognuna su pagina nuova** (`schedaDestinazione`: periodo, referente, pasti, stato, piatti con pranzo/cena, diete e variazioni del centro) |
 | `generaDistintaSettimanaPDF({ periodo, perimetro, giorni, sezioni, totali, pastiPerCentro, destinazioni, variazioni, diete, datiAziendali, avvisa })` | Produzione, vista Settimana: `giorni` sono le colonne lun–dom ("Lunedì 14 set"), righe con `perGiorno`; stesse sezioni sommate sulla settimana, variazioni con la colonna Giorno |
-| `generaRiepilogoPrenotazioniPDF({ dipendente, committente, settimana, righe, datiAziendali, avvisa })` | Dipendente › Le mie prenotazioni › "Scarica riepilogo" |
+| `generaRiepilogoPrenotazioniPDF({ dipendente, committente, righe, datiAziendali, avvisa })` | Dipendente › Le mie prenotazioni › "Scarica riepilogo": solo l'ordine, titolo il nome e un blocco per giorno aperto con le portate in elenco (`righe: [{ giorno, portate, confermato }]`) |
 
-Il riepilogo del giorno del referente (`Cliente.jsx`, Cruscotto) usa invece
-`generaElencoNominativo` di `documento.js`: titolo `giornoDataIt`, tabella
-Dipendente / Reparto / Primo / Secondo / Contorno, "Non hanno ordinato" e
-totale pasti. Nessuna dieta sanitaria nel documento.
+Il riepilogo ordini del referente (`Cliente.jsx`, Cruscotto) compone
+`paginaDocumento` con `elencoOrdini([{ nome, nota, pasto }])` di
+`documento.js`: ogni dipendente con il reparto e, sotto, il pasto su una riga,
+su due colonne (`.doc-ordini`), poi `riepilogoTotali` con i pasti ordinati e
+"Non hanno ordinato". Nessuna dieta sanitaria nel documento.
 
 Ogni bottone PDF del progetto ha `try/catch` con avviso: nessun export mostra
 più un messaggio di successo senza produrre un documento. Anche il "Log

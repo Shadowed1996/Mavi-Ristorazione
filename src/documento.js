@@ -146,6 +146,16 @@ export function elenco(righe = []) {
   return `<ul class="doc-elenco">${voci}</ul>`;
 }
 
+/* elenco degli ordini di un gruppo di persone: il nome e, sotto, il pasto.
+   È il riepilogo del referente aziendale, pensato da leggere a colpo d'occhio.
+   voci: [{ nome, nota, pasto }] — `nota` accanto al nome (il reparto) */
+export function elencoOrdini(voci = []) {
+  const righe = voci.map((v) => `<div class="doc-ordine">`
+    + `<div class="doc-ordine-nome">${testoHtml(v.nome)}${v.nota ? `<span>${testoHtml(v.nota)}</span>` : ""}</div>`
+    + `<div class="doc-ordine-pasto">${testoHtml(v.pasto)}</div></div>`).join("");
+  return `<div class="doc-ordini">${righe}</div>`;
+}
+
 /* pastiglie in fila (marcatori, tag di un piatto) */
 export function etichette(lista = []) {
   const voci = lista.filter(Boolean).map((t) => `<span class="doc-et">${testoHtml(t)}</span>`).join("");
@@ -183,6 +193,12 @@ body{font-family:'Segoe UI',Calibri,Arial,sans-serif;color:var(--scuro);font-siz
 .doc-elenco li{padding-left:14px;position:relative;page-break-inside:avoid}
 .doc-elenco li::before{content:"·";position:absolute;left:2px;color:var(--terracotta);font-weight:700}
 .doc-elenco b{color:var(--scuro)}
+.doc-ordini{display:grid;grid-template-columns:1fr 1fr;gap:0 32px;margin-bottom:22px}
+.doc-ordine{padding:11px 0;border-bottom:1px solid var(--grigio);page-break-inside:avoid}
+.doc-ordine-nome{font-size:13.5px;font-weight:700;color:var(--scuro)}
+.doc-ordine-nome span{font-size:10.5px;font-weight:400;color:var(--muto);margin-left:8px}
+.doc-ordine-pasto{font-size:12.5px;color:var(--testo);margin-top:3px;line-height:1.5}
+@media (max-width:640px){.doc-ordini{grid-template-columns:1fr}}
 .doc-etichette{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px}
 .doc-et{background:var(--avorio-chiaro);border:1px solid var(--grigio);border-radius:4px;padding:3px 9px;font-size:10.5px;color:var(--testo)}
 thead{display:table-header-group}

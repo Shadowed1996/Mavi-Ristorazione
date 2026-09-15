@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  ALLERGENI, CATEGORIE, splitPiatto, COLORI, DIPENDENTI, ETICHETTE_PORTALE, GIORNI, GIORNI_COMUNITA, GIORNI_SETT, GIRI,
+  ALLERGENI, CATEGORIE, splitPiatto, COLORI, DIPENDENTI, ETICHETTA_ADESSO, ETICHETTE_PORTALE, GIORNI, GIORNI_COMUNITA, GIORNI_SETT, GIRI, INDICE_DOMANI,
   INGREDIENTI_DIETE, MARCATORI, METODI_PAGAMENTO, PASTI_TIPO, PAZIENTI_COMUNITA, PERMESSI, PIATTI,
   REGIMI_IVA, TERMINI_PAGAMENTO, catalogoPerCategoria, dietaEffettiva, etichettaGiorno, menuDelGiorno, metodoPagamento, presenzaVariata,
   ordinaProforme, pastiDi, permessiDelPortale, portateServite, regimeIva, scadenzaPagamento, sostituisce,
@@ -110,9 +110,9 @@ export default function Fornitore({ diretto, onEsci, utente }) {
 
 /* La settimana della distinta è quella delle comunità, da lunedì a domenica
    (GIORNI_COMUNITA): l'azienda ha il menu solo nei giorni di GIORNI e nel fine
-   settimana risulta "nessun servizio". Si apre sul mercoledì, il giorno su cui
-   sono seminati gli ordini nominativi dell'azienda. */
-const GIORNO_APERTURA = 2;
+   settimana risulta "nessun servizio". Si apre su domani rispetto ad "adesso"
+   (INDICE_DOMANI, mercoledì 16): la giornata che la cucina prepara stanotte. */
+const GIORNO_APERTURA = INDICE_DOMANI;
 const ETICHETTA_SETTIMANA = "Settimana dal " + dataIt(GIORNI_COMUNITA[0].data).slice(0, 5)
   + " al " + dataIt(GIORNI_COMUNITA[GIORNI_COMUNITA.length - 1].data);
 
@@ -2382,7 +2382,9 @@ function OrdiniAzienda({ pasti, giorniConfermati, nominativi, onManifesto }) {
     : 0;
   const [giorno, setGiorno] = React.useState(primoConNominativi);
   const delGiorno = nominativi.filter((n) => n.indiceGiorno === giorno);
-  if (!righe.length) return (
+  /* il dettaglio nominativo (e il manifesto) si mostra anche senza conferme
+     dal vivo: gli ordini già chiusi dei giorni precedenti sono lì */
+  if (!righe.length && !nominativi.length) return (
     <div className="avviso info">
       <Icone.attenzione size={16} />
       <span>Nessuna prenotazione confermata ancora oggi. La lista si popola quando un dipendente conferma dal proprio portale.</span>
@@ -2395,7 +2397,7 @@ function OrdiniAzienda({ pasti, giorniConfermati, nominativi, onManifesto }) {
           Per <b style={{ color: "var(--inchiostro)" }}>{g.giorno}</b> · generato il {g.quando || "poco fa"}
         </div>
       ))}
-      <table className="dati" style={{ marginTop: 8 }}>
+      {righe.length > 0 && <table className="dati" style={{ marginTop: 8 }}>
         <thead><tr><th>Piatto</th><th>Quantità</th></tr></thead>
         <tbody>
           {righe.map(([id, q]) => PIATTI[id] && (
@@ -2405,7 +2407,7 @@ function OrdiniAzienda({ pasti, giorniConfermati, nominativi, onManifesto }) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table>}
 
       <div className="pannello-testa" style={{ padding: "14px 0 8px", border: "none" }}>
         <h2 style={{ fontSize: 15 }}>Dettaglio nominativo</h2>
@@ -2638,11 +2640,26 @@ function FlussiOrdine() {
       [{ nome: "Ordini", ...foglioPerCommittente(d.c.id, pastiAzienda, st.presenzeTrasmesse) }], { datiAziendali: st.datiAziendali });
     st.avvisa("Resoconto di " + d.c.nome + " scaricato");
   }
+  /* il manifesto è il resoconto dettagliato della cucina: a ogni riga si
+     aggiungono dieta dichiarata in anagrafica e allergie. Le allergie note al
+     portale sono quelle impostate dal dipendente nel suo profilo (nella demo
+     un solo dipendente ha il portale, lo stato allergeniUtente è il suo). */
   function generaManifesto(struttura, indiceGiorno) {
     const quanti = st.nominativiAzienda.filter((n) => n.indiceGiorno === indiceGiorno).length;
+    const conPortale = new Set((st.utenti || []).filter((u) => u.ruolo === "dipendente").map((u) => u.nome));
     generaManifestoConsegna({
       struttura, pasto: "pranzo", indiceGiorno,
-      righe: st.nominativiAzienda,
+      righe: st.nominativiAzienda.map((r) => {
+        const suo = conPortale.has(r.nome);
+        const dietaPortale = suo && st.dietaUtente
+          ? { tipoDieta: st.dietaUtente.charAt(0).toUpperCase() + st.dietaUtente.slice(1), note: "impostata dal dipendente" }
+          : null;
+        return {
+          ...r,
+          dieta: dietaDipendente(r.nome) || dietaPortale,
+          allergeni: suo ? (st.allergeniUtente || []).map((c) => ALLERGENI[c]).filter(Boolean) : [],
+        };
+      }),
       datiAziendali: st.datiAziendali,
       avvisa: st.avvisa,
     });
@@ -2653,7 +2670,7 @@ function FlussiOrdine() {
   return (
     <>
       <Intestazione
-        occhiello="Mercoledì 16 settembre 2026"
+        occhiello={ETICHETTA_ADESSO}
         titolo="Ordini in arrivo"
         sotto="Da dove arrivano gli ordini di oggi: apri una struttura per vedere cosa ha dichiarato"
         azioni={<>

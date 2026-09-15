@@ -91,12 +91,21 @@ ottenere l'elenco di una portata: non leggere le liste a mano.
 
 `GIORNI` è la settimana della demo (14–18 settembre 2026), cinque voci con `n`
 (nome), `d` (data leggibile), `breve`, `data` (ISO, `2026-09-15`, per i
-documenti stampabili) e `chiuso`. `chiuso: true` simula il cutoff già passato:
-la selezione su quel giorno viene rifiutata (vedi `store.jsx`). La settimana
-attuale è interamente futura rispetto a "oggi", quindi nessun giorno è
-`chiuso`; il flag va rimesso a `true` sui primi giorni quando si aggiorna
-`GIORNI` a una settimana già iniziata. `etichettaGiorno(indice)` dà l'etichetta
+documenti stampabili) e `chiuso`. `etichettaGiorno(indice)` dà l'etichetta
 leggibile ("Martedì 15 settembre"), la stessa ovunque: non comporla a mano.
+
+**Giorni chiusi, calcolati** (15 settembre 2026). `ADESSO_DEMO` fissa "adesso"
+a **martedì 15 settembre 2026, ore 22:56** (`ETICHETTA_ADESSO` è il testo); in
+produzione diventa `new Date()` e il resto non cambia. `ordiniChiusi(data,
+oraLimite)` dice se è passato l'orario limite del giorno prima:
+`ORA_LIMITE_AZIENDA = 14` e `ORA_LIMITE_COMUNITA = 16`, gli stessi di
+`cutoff` in `COMMITTENTI`. Il campo `chiuso` di `GIORNI` e `GIORNI_COMUNITA`
+viene da lì: lunedì, martedì e mercoledì chiusi, giovedì aperto.
+`giorniAperti(giorni)` dà i giorni aperti con il loro indice `i`: **a chi ordina
+(dipendente, referente aziendale, variazioni della comunità) si mostrano solo
+quelli**; la cucina vede tutta la settimana. `INDICE_DOMANI` (mercoledì 16) è
+la giornata che la cucina prepara stanotte: apre la Produzione e porta il seed
+`ETICHETTE_AZIENDA_DEMO`. `st.scegli` rifiuta un giorno `chiuso`.
 
 **Le comunità mangiano sette giorni su sette** (Filippo, 15 settembre 2026):
 `GIORNI_COMUNITA` è `GIORNI` più sabato 19 e domenica 20, con gli stessi indici
@@ -104,7 +113,9 @@ leggibile ("Martedì 15 settembre"), la stessa ovunque: non comporla a mano.
 Variazioni, Resoconti della comunità e la distinta di Produzione; il menu, le
 prenotazioni e le etichette dell'azienda restano su `GIORNI`.
 `etichettaGiorno` legge `GIORNI_COMUNITA`, quindi copre anche il fine settimana.
-`INDICE_DEMO_COMUNITA = 2` è la giornata in cui la demo segna le presenze.
+`INDICE_DEMO_COMUNITA` è il primo giorno aperto delle comunità (giovedì 17):
+la giornata in cui la demo segna e trasmette le presenze, e quella delle
+variazioni di esempio.
 
 ## Anagrafiche e committenti
 
@@ -113,7 +124,7 @@ prenotazioni e le etichette dell'azienda restano su `GIORNI`.
 | `UTENTI` | seed di `st.utenti`: i cinque profili di prova con `id`, `attivo`, email, struttura e `ruolo` (id di un ruolo). In comunità un solo referente, Samuele Ferri, per tutti i centri (senza `reparto`), e Ilaria Gatti responsabile amministrativa. Un ruolo senza `pazienti.tuttiReparti` usa `reparto` (il centro) per vedere solo quei pazienti, vedi `08-portale-comunita.md` |
 | `PERMESSI` | 72 voci `{ k, portale, gruppo, n }`: chiave (`<pagina>.vedi` per la voce di menu, `<pagina>.<azione>` per le azioni), portale `mavi` / `azienda` / `comunita`, gruppo = pagina (la matrice raggruppa voci **consecutive**), nome leggibile. Le chiavi sono uniche dentro un portale, non fra portali. `permessiDelPortale(p)` filtra. Dal 15 settembre 2026: `variazioni.vedi`, `variazioni.invia`, `resoconti.nominativi` (comunità) e `flussi.variazioni` (MAVI, prende in carico le variazioni) |
 | `RUOLI_INIZIALI` | `{ id, nome, portale, vista?, bloccato?, permessi }`: `dipendente` e `referente` (portale `azienda`, `vista` sceglie il telaio), `operatore` ("Referente": pazienti, diete, presenze, variazioni e resoconti nominativi di tutti i centri), `responsabile` ("Responsabile amministrativo": solo fatture e resoconti senza nominativi, tutti i centri), `fornitore` (`bloccato: true`, tutti i permessi MAVI) |
-| `VARIAZIONI_INIZIALI` | tre variazioni demo per mercoledì (`indiceGiorno: 2`): dieta di Zied Dridi a pranzo (presa in carico), 2 ospiti in più a cena a Sole Luna (Altro), Carmelo Aronica assente a pranzo (Presenze). Seed di `st.variazioni` (forma in `03-store.md`). `TIPI_VARIAZIONE`, `PASTI_VARIAZIONE` e `PORTATE_DIETA` danno le etichette |
+| `VARIAZIONI_INIZIALI` | tre variazioni demo per giovedì (`INDICE_DEMO_COMUNITA`): dieta di Zied Dridi a pranzo (presa in carico), 2 ospiti in più a cena a Sole Luna (Altro), Carmelo Aronica assente a pranzo (Presenze). Seed di `st.variazioni` (forma in `03-store.md`). `TIPI_VARIAZIONE`, `PASTI_VARIAZIONE` e `PORTATE_DIETA` danno le etichette |
 | `ultimaVariazione`, `presenzaVariata`, `dietaEffettiva` | l'ultima variazione di presenza o dieta per paziente, giorno e pasto; `dietaEffettiva(p, indice, pasto, variazioni)` è la dieta del giorno con la variazione applicata. Le usano Presenze del giorno, Variazioni e la stima di Produzione |
 | `testoVariazionePresenza`, `testoVariazioneDieta`, `daA` | il testo generato delle variazioni strutturate ("Pranzo: da presente ad assente.") |
 | `ETICHETTE_STRUTTURA`, `ETICHETTE_RUOLO`, `ETICHETTE_PORTALE` | nomi leggibili; i nomi veri dei ruoli arrivano da `st.ruoli` |
@@ -183,7 +194,7 @@ fuori dieta *ogni* piatto (leggeva `piatto.m`) è stato corretto il 3 settembre
 | `GIRI` | due giri di consegna con furgone, autista, tappe |
 | `CICLICO` | le quattro settimane della rotazione menu |
 | `ORDINI_UNITA` | quantità dichiarate dalle case della comunità |
-| `ETICHETTE_AZIENDA_DEMO` | sette ordini nominativi demo di mercoledì (`indiceGiorno: 2`), con matricola e reparto ricavati da `anagraficaAzienda`, `committente: "azienda"`, `committenteNome` e `unico`. Seed di `st.nominativiAzienda` |
+| `ETICHETTE_AZIENDA_DEMO` | sette ordini nominativi demo di domani, mercoledì 16 (`INDICE_DOMANI`, ordini già chiusi), con matricola e reparto ricavati da `anagraficaAzienda`, `committente: "azienda"`, `committenteNome` e `unico`. Seed di `st.nominativiAzienda` |
 | `RESOCONTO_MENSILE` | dati aggregati di agosto 2026 con dettaglio giornaliero |
 | `PROFORME_INIZIALI` | quattro proforma seed, due per committente (`numero, committenteId, periodo, dataEmissione, pasti, stato`); lo store le espande con listino e condizioni del committente. Ha sostituito `FATTURE`: nessun portale legge più un elenco condiviso |
 | `PREZZO_PASTO` (7,50 €), `QUOTA_DIPENDENTE` (3,20 €) | listino |

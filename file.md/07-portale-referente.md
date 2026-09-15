@@ -17,20 +17,23 @@ fissi scritti nel componente, non calcolati: servono a dare contesto in demo.
 
 ### Ordini del giorno (dal 14 settembre 2026)
 
-Pannello con un selettore dei cinque `GIORNI` (i giorni `chiuso` sono
-disattivati), apertura su mercoledì. Anteprima a schermo delle righe di
+Pannello con un selettore dei soli giorni **ancora aperti**
+(`giorniAperti(GIORNI)`: con "adesso" martedì 15 alle 22:56, giovedì e
+venerdì), apertura sul primo. Anteprima a schermo delle righe di
 `st.nominativiAzienda` con `committente === "azienda"` e `indiceGiorno` uguale
 al giorno scelto: Dipendente / Reparto / Primo / Secondo / Contorno, con il
 piatto unico indicato come "Piatto unico: …" nella colonna Primo, e il
 conteggio dei pasti. Le conferme del portale dipendente compaiono qui nel
 giorno giusto, con il reparto vero.
 
-**Stampa riepilogo** apre il documento con `generaElencoNominativo` di
-`documento.js` (`10-export-e-documenti.md`): titolo `giornoDataIt`
-(`MARTEDÌ - 15/09/2026`), sottotitolo con l'azienda, la tabella, in fondo
-"Non hanno ordinato" e il totale pasti. Solo i dipendenti della propria
-azienda, nessuna dieta sanitaria: era la richiesta del cliente, "stampare il
-riepilogo nominativo della sua azienda, stop".
+**Stampa riepilogo** apre il **riepilogo di tutti gli ordini del giorno**
+(Filippo, 15 settembre 2026: "dipendente 1 pasto, dipendente 2 pasto, un
+insieme di tutto, non troppo dettagliato ma fatto bene"): titolo "Ordini di
+giovedì 17 settembre", poi con `elencoOrdini` di `documento.js` ogni
+dipendente in ordine alfabetico, con il reparto accanto al nome e sotto il
+pasto su una riga (primo · secondo · contorno, oppure il piatto unico), su due
+colonne; in fondo il totale dei pasti e chi non ha ordinato. Solo i dipendenti
+della propria azienda, nessuna dieta sanitaria.
 
 ### Chi non ha ancora prenotato
 

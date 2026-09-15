@@ -2,9 +2,9 @@
 
 Documento vivo. Va riletto all'inizio di ogni nuova sessione e aggiornato alla fine di ogni task.
 
-**Ultimo aggiornamento**: 15 settembre 2026, sera — variazioni per tipo (presenze sbloccate, dieta attuale da riscrivere, testo solo per Altro) che si applicano alle quantità, e comunità da lunedì a domenica ovunque (sezione 23).
+**Ultimo aggiornamento**: 15 settembre 2026, ore 23 — "adesso" fissato a martedì 22:56 con giorni chiusi calcolati dagli orari limite (azienda: solo giovedì e venerdì; comunità da giovedì, presenze della demo su giovedì), riepilogo del dipendente ridotto all'ordine, manifesto della cucina dettagliato (sezione 24).
 
-**Precedente**: 15 settembre 2026 — vocale della referente MAVI: il referente gestisce pazienti, diete, presenze e variazioni di tutti i centri, il responsabile solo la parte amministrativa, resoconto per la cucina diviso per committente e centro. Nuova pagina Variazioni con presa in carico in cucina, Produzione verificata cifra per cifra con PDF ed Excel (sezione 22, con il chiarimento finale sui centri).
+**Precedente**: 15 settembre 2026, sera — variazioni per tipo (presenze sbloccate, dieta attuale da riscrivere, testo solo per Altro) che si applicano alle quantità, e comunità da lunedì a domenica ovunque (sezione 23).
 
 ---
 
@@ -1058,5 +1058,70 @@ scheda e resoconti a sette giorni, nessun errore) e confronto schermo / PDF /
 Excel della distinta a 0 discrepanze, giorno e settimana. Errore mio corretto
 durante la prova: il pulsante "giorno successivo" restava disabilitato a
 venerdì.
+
+---
+
+## 24. Giorni chiusi, riepilogo del dipendente, manifesto della cucina — 15 settembre 2026
+
+Richiesta di Filippo alle 22:56 di martedì: il riepilogo del dipendente "meno
+dettagli ma meglio, dipendente e sotto il pasto, solo un riepilogo
+dell'ordine"; "blocca gli ordini di lunedì, martedì e mercoledì, mostriamo
+giovedì e venerdì e basta (in produzione dovrà essere automatico)"; "per i
+resoconti di MAVI invece loro hanno bisogno di un resoconto dettagliato per la
+cucina". Chiarito con tre domande:
+- il riepilogo è quello del **dipendente**;
+- i giorni chiusi valgono per **azienda e comunità**;
+- il manifesto aggiunge totale per piatto, diete e allergie, reparto e matricola.
+
+**Adesso e giorni chiusi** (`data.js`): `ADESSO_DEMO` (martedì 15, 22:56) e
+`ordiniChiusi(data, oraLimite)` con 14:00 per l'azienda e 16:00 per la
+comunità del giorno prima. `chiuso` di `GIORNI` e `GIORNI_COMUNITA` non è più
+scritto a mano. `giorniAperti` alimenta tutto quello che vede chi ordina:
+- **dipendente**: menu del giorno, menu della settimana in corso e Le mie
+  prenotazioni, solo giovedì e venerdì;
+- **referente aziendale**: ordini del giorno, solo giovedì e venerdì;
+- **comunità**: Variazioni da giovedì a domenica.
+La cucina vede tutta la settimana: Produzione si apre su `INDICE_DOMANI`
+(mercoledì, ordini chiusi da produrre), Ordini in arrivo e Committenti
+mostrano `ETICHETTA_ADESSO`. In produzione basta sostituire `ADESSO_DEMO` con
+l'ora vera.
+
+**Comunità su giovedì**: con mercoledì chiuso, la giornata delle presenze della
+demo è il primo giorno aperto (`INDICE_DEMO_COMUNITA`, giovedì 17). In
+`Comunita.jsx` giorno, data ed etichette della demo si ricavano da lì. Anche
+le variazioni di esempio sono spostate su giovedì, con la dieta di Zied di
+giovedì.
+
+**Riepilogo ordini del referente**: Filippo ha poi precisato che intendeva il
+riepilogo che scarica il referente aziendale: "totale per tutti, dipendente 1
+pasto, dipendente 2 pasto, un insieme di tutto, non troppo dettagliato ma
+fatto bene". "Stampa riepilogo" ora compone un documento "Ordini di giovedì 17
+settembre" con `elencoOrdini` (nuovo in `documento.js`):
+- ogni dipendente in ordine alfabetico, con il reparto accanto al nome e sotto
+  il pasto su una riga, su due colonne;
+- il totale dei pasti e chi non ha ordinato.
+Prova: 6 ordini, 7 controlli su 7.
+
+**Riepilogo del dipendente** (fatto prima del chiarimento, lasciato perché
+coerente con lo stesso stile): `generaRiepilogoPrenotazioniPDF` ora ha il nome
+come titolo e un blocco per giorno aperto con le portate, oppure "Nessuna
+prenotazione". Niente tabella, stato o conteggi.
+
+**Manifesto della cucina** (`manifesto.js`):
+- riquadri pasti, porzioni e dipendenti "con dieta o allergie";
+- "Totale per piatto" con portata, allergeni dal catalogo e porzioni (un nome
+  fuori catalogo è "allergeni da verificare");
+- dettaglio per reparto con matricola, dipendente, portate e "Dieta e
+  allergie": dieta dall'anagrafica, o quella impostata nel portale, e allergie
+  dichiarate.
+In Ordini in arrivo il dettaglio nominativo e il manifesto ora si vedono anche
+senza conferme dal vivo: prima la sezione restava vuota e nascondeva gli
+ordini già chiusi.
+
+**Verifiche**: nuova prova 16 controlli su 16 (giorni visibili a dipendente,
+referente e comunità, riepilogo semplice, manifesto dettagliato con
+l'allergia dichiarata da Antonella, comunità su giovedì). Aggiornate e ripassate
+le prove di variazioni (22 su 22) e ruoli (17 su 17); confronto
+schermo / PDF / Excel della distinta a 0 discrepanze.
 
 ---

@@ -1,7 +1,7 @@
 import React from "react";
 import {
   ALLERGENI, CATEGORIE, COLORI, GIORNI, PIATTI, menuDelGiorno,
-  QUOTA_DIPENDENTE, fuoriDieta,
+  QUOTA_DIPENDENTE, fuoriDieta, giorniAperti,
 } from "../data.js";
 import {
   Accesso, DiscoColore, Icone, Illustrazione, Intestazione, Messaggi, NessunPermesso,
@@ -100,10 +100,15 @@ export default function Dipendente({ onEsci, utente }) {
   );
 }
 
+/* Al dipendente si mostrano solo i giorni ancora aperti agli ordini (con
+   "adesso" martedì 15 alle 22:56: giovedì e venerdì). I giorni chiusi non si
+   vedono più: l'ordine è partito e la cucina ci sta già lavorando. */
+const APERTI = giorniAperti(GIORNI);
+
 /* ==================== menu del giorno ==================== */
 function MenuGiorno() {
   const st = usaStato();
-  const [giorno, setGiorno] = React.useState(0);
+  const [giorno, setGiorno] = React.useState(APERTI.length ? APERTI[0].i : 0);
   const [scheda, setScheda] = React.useState(null);
   const [avviso, setAvviso] = React.useState(null);
   const [vistaCol, setVistaCol] = React.useState({ primo: "base", secondo: "base" });
@@ -150,7 +155,8 @@ function MenuGiorno() {
         </div>
 
         <div className="giorni">
-          {GIORNI.map((d, i) => {
+          {APERTI.map((d) => {
+            const i = d.i;
             const o = st.ordini[i] || {};
             const n = Object.keys(o).length;
             const cls = st.confermati[i] ? "ok" : n ? "parziale" : "";
@@ -393,6 +399,7 @@ function MenuSettimana() {
   const [settIdx, setSettIdx] = React.useState(SETT_ATTUALE);
   const [portataFiltro, setPortataFiltro] = React.useState("tutte");
   const s = SETT[settIdx];
+  const giorniVisti = settIdx === SETT_ATTUALE ? APERTI : GIORNI.map((g, i) => ({ ...g, i }));
 
   const catFiltrate = portataFiltro === "tutte"
     ? CATEGORIE
@@ -432,11 +439,11 @@ function MenuSettimana() {
           ))}
         </div>
 
-        {/* griglia 5 colonne */}
-        <div className="ms-grid">
+        {/* griglia: nella settimana in corso solo i giorni ancora aperti */}
+        <div className="ms-grid" style={{ gridTemplateColumns: "repeat(" + giorniVisti.length + ", 1fr)" }}>
           {/* intestazione giorni */}
-          {GIORNI.map((g) => (
-            <div className={"ms-giorno-head" + (g.chiuso && settIdx === SETT_ATTUALE ? " chiuso" : "")} key={g.n}>
+          {giorniVisti.map((g) => (
+            <div className="ms-giorno-head" key={g.n}>
               <span className="ms-g-nome">{g.n}</span>
               <span className="ms-g-data">{g.breve}</span>
             </div>
@@ -446,11 +453,10 @@ function MenuSettimana() {
           {catFiltrate.map((c) => (
             <React.Fragment key={c.id}>
               <div className="ms-cat-label" style={{ gridColumn: "1 / -1" }}>{c.nome}</div>
-              {GIORNI.map((g, gi) => {
-                const lista = menuDelGiorno(st.menu, gi, c.id);
-                const chiuso = g.chiuso && settIdx === SETT_ATTUALE;
+              {giorniVisti.map((g) => {
+                const lista = menuDelGiorno(st.menu, g.i, c.id);
                 return (
-                  <div className={"ms-cella" + (chiuso ? " chiuso" : "")} key={g.n + c.id}>
+                  <div className="ms-cella" key={g.n + c.id}>
                     {lista.length === 0 ? (
                       <span className="ms-vuoto">—</span>
                     ) : lista.map((id) => (
@@ -487,16 +493,13 @@ function MenuSettimana() {
 function Prenotazioni({ utente }) {
   const st = usaStato();
 
-  /* stessa riga della tabella qui sotto: giorno, portate scelte e stato */
-  const righeSettimana = () => GIORNI.map((d, i) => {
-    const scelte = Object.values(st.ordini[i] || {});
+  /* i giorni ancora aperti, come nella tabella qui sotto: giorno e portate */
+  const righeOrdine = () => APERTI.map((d) => {
+    const scelte = Object.values(st.ordini[d.i] || {});
     return {
-      giorno: d.n,
-      data: d.d,
+      giorno: d.n + " " + d.d,
       portate: scelte.map((id) => PIATTI[id]?.n).filter(Boolean),
-      stato: d.chiuso ? "chiuso"
-        : st.confermati[i] ? "prenotato"
-          : scelte.length ? "non confermato" : "vuoto",
+      confermato: !!st.confermati[d.i],
     };
   });
 
@@ -505,8 +508,7 @@ function Prenotazioni({ utente }) {
       generaRiepilogoPrenotazioniPDF({
         dipendente: utente?.nome || "Antonella Rossi",
         committente: utente?.committente || "Rossi Manifatture Spa",
-        settimana: "Settimana 38",
-        righe: righeSettimana(),
+        righe: righeOrdine(),
         datiAziendali: st.datiAziendali,
         avvisa: st.avvisa,
       });
@@ -521,7 +523,7 @@ function Prenotazioni({ utente }) {
       <Intestazione
         occhiello="Settimana 38"
         titolo="Le mie prenotazioni"
-        sotto="Riepilogo della settimana in corso"
+        sotto="I giorni ancora aperti: si prenota e si disdice fino alle 14:00 del giorno prima"
         azioni={st.puo("prenotazioni.riepilogo") && (
           <button className="btn linea piccolo" onClick={scaricaRiepilogo}><Icone.scarica size={16} /> Scarica riepilogo</button>
         )}
@@ -532,7 +534,8 @@ function Prenotazioni({ utente }) {
             <table className="dati">
               <thead><tr><th>Giorno</th><th>Portate scelte</th><th>Stato</th></tr></thead>
               <tbody>
-                {GIORNI.map((d, i) => {
+                {APERTI.map((d) => {
+                  const i = d.i;
                   const o = st.ordini[i] || {};
                   const v = Object.values(o);
                   return (
@@ -540,8 +543,7 @@ function Prenotazioni({ utente }) {
                       <td><b>{d.n}</b> <span style={{ color: "var(--muto)" }}>{d.breve}</span></td>
                       <td>{v.length ? v.map((id) => PIATTI[id].n).join(", ") : <span className="riservato">nessuna prenotazione</span>}</td>
                       <td>
-                        {d.chiuso ? <span className="pastiglia p-neu">chiuso</span>
-                          : st.confermati[i] ? <span className="pastiglia p-ok">prenotato</span>
+                        {st.confermati[i] ? <span className="pastiglia p-ok">prenotato</span>
                             : v.length ? <span className="pastiglia p-att">non confermato</span>
                               : <span className="pastiglia p-neu">vuoto</span>}
                       </td>

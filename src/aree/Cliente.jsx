@@ -1,7 +1,7 @@
 import React from "react";
 import {
   CATEGORIE, DIPENDENTI, GIORNI, PIATTI, PREZZO_PASTO, QUOTA_DIPENDENTE, RESOCONTO_MENSILE,
-  etichettaGiorno, menuDelGiorno, ordinaProforme, testoCondizioni, totaliProforma,
+  etichettaGiorno, giorniAperti, menuDelGiorno, ordinaProforme, testoCondizioni, totaliProforma,
 } from "../data.js";
 import {
   Accesso, DiscoColore, Documenti, Icone, Intestazione, Messaggi, NessunPermesso,
@@ -10,7 +10,9 @@ import {
 import { usaStato } from "../store.jsx";
 import { generaProformaPDF } from "../proforma.js";
 import { generaResocontoPDF } from "../resoconto.js";
-import { blocco, dataIt, elenco, generaElencoNominativo, giornoDataIt, paragrafo } from "../documento.js";
+import {
+  apriDocumento, blocco, dataIt, elencoOrdini, giornoDataIt, paginaDocumento, paragrafo, riepilogoTotali,
+} from "../documento.js";
 
 const VOCI = [
   ["cruscotto", "Cruscotto", Icone.grafico],
@@ -78,9 +80,12 @@ export default function Cliente({ onEsci, utente }) {
   );
 }
 
+/* il referente ordina per i dipendenti solo nei giorni ancora aperti */
+const APERTI = giorniAperti(GIORNI);
+
 function Cruscotto({ utente }) {
   const st = usaStato();
-  const [giorno, setGiorno] = React.useState(2); // mercoledì, la giornata di partenza della demo
+  const [giorno, setGiorno] = React.useState(APERTI.length ? APERTI[0].i : 0);
   const [prenota, setPrenota] = React.useState(null); // dipendente selezionato
   const [scelte, setScelte] = React.useState({});
   const referente = utente ? utente.nome : "Roberto Manzi";
@@ -107,34 +112,32 @@ function Cruscotto({ utente }) {
     setScelte({});
   }
 
+  /* Il riepilogo di tutti gli ordini del giorno (Filippo, 15 settembre 2026):
+     ogni dipendente e, sotto, il suo pasto, in ordine alfabetico. Curato ma non
+     fitto: niente tabella a cinque colonne, il dettaglio è della cucina. */
   function stampaRiepilogo() {
     const g = GIORNI[giorno];
-    generaElencoNominativo({
-      titolo: giornoDataIt(g.data),
-      badge: "Riepilogo del giorno",
-      sottotitolo: azienda + " · pranzo · " + ordinati.length + (ordinati.length === 1 ? " pasto" : " pasti"),
-      meta: [
-        { etichetta: "Azienda", valore: azienda },
-        { etichetta: "Giornata", valore: giornoDataIt(g.data) },
-        { etichetta: "Pasto", valore: "Pranzo" },
-        { etichetta: "Pasti", valore: ordinati.length },
+    const pastoDi = (n) => (n.unico
+      ? [n.unico + " (piatto unico)"]
+      : [n.primo, n.secondo, n.contorno]).filter((x) => x && x !== "—").join(" · ");
+    const voci = [...ordinati]
+      .sort((a, b) => a.nome.localeCompare(b.nome, "it"))
+      .map((n) => ({ nome: n.nome, nota: n.reparto, pasto: pastoDi(n) || "—" }));
+    const html = paginaDocumento({
+      titolo: "Ordini di " + etichettaGiorno(giorno).toLowerCase(),
+      badge: "Riepilogo ordini",
+      sottotitolo: azienda + " · pranzo · " + giornoDataIt(g.data),
+      blocchi: [
+        voci.length ? elencoOrdini(voci) : paragrafo("Nessun ordine registrato per questa giornata."),
+        riepilogoTotali([{ etichetta: "Pasti ordinati", valore: String(voci.length), forte: true }]),
+        senzaOrdine.length
+          ? blocco("Non hanno ordinato", paragrafo(senzaOrdine.map((d) => d.n).join(", ")))
+          : paragrafo("Tutti i dipendenti attivi hanno ordinato.", { piccolo: true }),
       ],
-      colonne: [{ titolo: "Dipendente" }, { titolo: "Reparto" }, { titolo: "Primo" }, { titolo: "Secondo" }, { titolo: "Contorno" }],
-      righe: ordinati.map((n) => [n.nome, n.reparto, primoPortata(n), n.secondo, n.contorno]),
-      totale: ["Totale pasti", String(ordinati.length), "", "", ""],
-      vuota: "Nessun ordine registrato per questa giornata.",
-      blocchiDopo: [
-        blocco("Non hanno ordinato", senzaOrdine.length
-          ? elenco(senzaOrdine.map((d) => ({ etichetta: d.n, valore: d.rep })))
-          : paragrafo("Tutti i dipendenti attivi hanno ordinato.")),
-      ],
-      note: "Elenco a uso interno dell'azienda: riporta le sole portate scelte. Le diete con "
-        + "motivazione medica restano riservate e non compaiono in questo documento.",
       piede: "Riepilogo generato dal portale MAVI Ristorazione per " + azienda + " il " + dataIt(new Date()),
-      nomeFile: "Riepilogo_" + g.data + ".html",
       datiAziendali: st.datiAziendali,
-      avvisa: st.avvisa,
     });
+    apriDocumento(html, { nomeFile: "Riepilogo_ordini_" + g.data + ".html", avvisa: st.avvisa });
     st.logga(referente, "Referente", "Riepilogo del giorno stampato",
       etichettaGiorno(giorno) + ", " + ordinati.length + " pasti", "generico");
   }
@@ -164,9 +167,9 @@ function Cruscotto({ utente }) {
           </div>
           <div className="scelta-giorno">
             <div className="giorni-tab">
-              {GIORNI.map((g, i) => (
-                <button key={g.n} className={i === giorno ? "on" : ""} disabled={g.chiuso} onClick={() => setGiorno(i)}>
-                  {g.n}<span>{g.chiuso ? "chiuso" : g.d}</span>
+              {APERTI.map((g) => (
+                <button key={g.n} className={g.i === giorno ? "on" : ""} onClick={() => setGiorno(g.i)}>
+                  {g.n}<span>{g.d}</span>
                 </button>
               ))}
             </div>
@@ -190,8 +193,8 @@ function Cruscotto({ utente }) {
             </table>
           </div>
           <div className="pannello-piede">
-            Il riepilogo stampato riporta la stessa tabella, con in fondo chi non ha ordinato e il
-            totale dei pasti. Nessuna dieta o informazione sanitaria compare nel documento.
+            Il riepilogo stampato elenca tutti gli ordini del giorno, ogni dipendente con sotto il suo
+            pasto, poi il totale e chi non ha ordinato. Nessuna dieta o informazione sanitaria compare nel documento.
           </div>
         </div>
 

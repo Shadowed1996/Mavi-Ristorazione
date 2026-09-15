@@ -13,6 +13,22 @@ e il progetto adotta il [Versionamento Semantico](https://semver.org/lang/it/).
 
 ## [Non rilasciato]
 
+### Cambiato — 15 settembre 2026, giorni chiusi e riepiloghi
+- **Giorni chiusi agli ordini, calcolati**: con "adesso" fissato a martedì 15
+  settembre alle 22:56 e gli orari limite dei committenti, lunedì, martedì e
+  mercoledì sono chiusi. Dipendente e referente vedono solo giovedì e venerdì,
+  la comunità da giovedì a domenica (presenze della demo spostate su giovedì).
+  In produzione "adesso" sarà l'ora vera.
+- **Riepilogo ordini del referente aziendale**: tutti i dipendenti del giorno,
+  ognuno con sotto il suo pasto, su due colonne, con totale e chi non ha
+  ordinato (al posto della tabella a cinque colonne).
+- **Riepilogo del dipendente** ridotto all'ordine: il nome e, sotto ogni
+  giorno, il pasto.
+- **Manifesto della cucina** più dettagliato: totale per piatto con allergeni
+  e porzioni, poi matricola, reparto, portate, dieta e allergie di ognuno.
+- Ordini in arrivo: il dettaglio nominativo e il manifesto si vedono anche
+  senza conferme dal vivo.
+
 ### Cambiato — 15 settembre 2026, variazioni e settimana delle comunità
 - **Variazioni per tipo**: Presenze apre lo stato del paziente sbloccato (da
   assente a presente e viceversa), Dieta apre la sua dieta attuale del giorno

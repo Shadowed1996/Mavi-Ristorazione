@@ -12,21 +12,21 @@ da sei colonne a tre.
 
 ### Selettore giorno
 
-Una riga di cinque bottoni, uno per giorno di `GIORNI`. Ogni bottone mostra
-nome, data breve e stato:
+Un bottone per ogni giorno **ancora aperto** agli ordini
+(`giorniAperti(GIORNI)`, costante `APERTI`): con "adesso" fissato a martedì 15
+settembre alle 22:56 (`ADESSO_DEMO`, `04-dati.md`) sono **solo giovedì e
+venerdì**. I giorni chiusi non si mostrano (Filippo, 15 settembre 2026); in
+produzione "adesso" sarà l'ora vera e il calcolo resta lo stesso. Ogni bottone
+mostra nome, data breve e stato:
 
 | Stato | Quando |
 |---|---|
-| `chiuso` | `d.chiuso` è vero, compare il lucchetto |
 | `prenotato` | il giorno è confermato, pallino verde |
 | `in corso` | ci sono scelte non confermate, pallino giallo |
 | `da fare` | nessuna scelta |
 
-Il giorno di partenza è l'indice 0, lunedì. Con la settimana di `GIORNI`
-interamente futura rispetto a "oggi" nessun giorno è `chiuso` di default: lo
-stato `chiuso` in tabella resta un valore possibile del campo (impostabile
-per mostrare il cutoff quando la settimana demo è a cavallo di "oggi"), non
-un giorno fisso della settimana corrente.
+Il giorno di partenza è il primo aperto. `st.scegli` rifiuta comunque un
+giorno `chiuso` (`03-store.md`).
 
 Le frecce settimana sopra il selettore sono decorative: mostrano solo un toast.
 
@@ -103,19 +103,23 @@ mostra un avviso che dice cosa manca e lascia decidere, altrimenti conferma.
 
 Griglia unica con intestazione giorni su fondo scuro, righe-label di categoria
 in terracotta e celle con i piatti cliccabili. Navigazione su quattro settimane,
-filtro per portata, legenda dei codici colore in fondo.
+filtro per portata, legenda dei codici colore in fondo. Nella settimana in
+corso le colonne sono solo i giorni aperti (giovedì e venerdì), nelle
+settimane passate i cinque giorni.
 
 Serve anche a dimostrare che il menu lo governa la cucina: se dal portale MAVI
 si aggiunge un piatto a un giorno, qui compare.
 
 ## Le mie prenotazioni — `Prenotazioni`
 
-Tabella dei cinque giorni con le portate scelte e lo stato in pastiglia:
-`chiuso`, `prenotato`, `non confermato`, `vuoto`. In fondo la nota sul cutoff
-delle 14:00 del giorno precedente. Il pulsante "Scarica riepilogo" apre un
-documento stampabile con la settimana giorno per giorno
-(`generaRiepilogoPrenotazioniPDF` di `resoconto.js`, dal 14 settembre 2026);
-`Prenotazioni` riceve la prop `utente` per intestarlo.
+Tabella dei soli giorni aperti con le portate scelte e lo stato in pastiglia:
+`prenotato`, `non confermato`, `vuoto`. In fondo la nota sul cutoff delle
+14:00 del giorno precedente. Il pulsante "Scarica riepilogo" apre **solo il
+riepilogo dell'ordine** (`generaRiepilogoPrenotazioniPDF` di `resoconto.js`):
+il nome del dipendente e, sotto ogni giorno aperto, il pasto scelto, senza
+tabelle né conteggi (Filippo, 15 settembre 2026: "meno dettagli ma meglio").
+Il resoconto dettagliato è quello della cucina. `Prenotazioni` riceve la prop
+`utente` per intestarlo.
 
 ## Diete speciali — `Diete`
 

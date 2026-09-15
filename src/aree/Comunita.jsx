@@ -1,16 +1,20 @@
 import React from "react";
 import {
-  PAZIENTI_COMUNITA, GIORNI_COMUNITA, GIORNI_SETT, PASTI_TIPO, PASTI_VARIAZIONE, PORTATE_DIETA, TIPI_VARIAZIONE,
-  daA, dietaEffettiva, etichettaGiorno, presenzaVariata, splitPiatto, pastiDi, portateServite,
+  PAZIENTI_COMUNITA, GIORNI_COMUNITA, GIORNI_SETT, INDICE_DEMO_COMUNITA, PASTI_TIPO, PASTI_VARIAZIONE, PORTATE_DIETA, TIPI_VARIAZIONE,
+  daA, dietaEffettiva, etichettaGiorno, giorniAperti as apertiDi, presenzaVariata, splitPiatto, pastiDi, portateServite,
   testoVariazioneDieta, testoVariazionePresenza,
 } from "../data.js";
 import { Icone, Intestazione, Velo } from "../ui.jsx";
 import { usaStato } from "../store.jsx";
 import { generaResocontoComunitaPDF, generaResocontoCentriPDF } from "../resoconto.js";
 
-const GIORNO_DEMO = "mercoledì";
-/* stessa giornata di GIORNO_DEMO in forma di data, per i titoli dei documenti */
-const DATA_DEMO = "2026-09-16";
+/* La giornata in cui la demo segna e trasmette le presenze: il primo giorno
+   ancora aperto agli ordini (INDICE_DEMO_COMUNITA, giovedì 17 con "adesso"
+   martedì 15 alle 22:56). Chiave delle diete, data ISO ed etichetta. */
+const INDICE_GIORNO_DEMO = INDICE_DEMO_COMUNITA;
+const GIORNO_DEMO = GIORNI_SETT[INDICE_GIORNO_DEMO];
+const DATA_DEMO = GIORNI_COMUNITA[INDICE_GIORNO_DEMO].data;
+const ETICHETTA_DEMO = etichettaGiorno(INDICE_GIORNO_DEMO) + " " + DATA_DEMO.slice(0, 4);
 
 /* Avviso sul perimetro di visibilità. Il reparto è il centro della comunità:
    `reparto` null significa tutti i centri, una stringa vuota significa che
@@ -470,7 +474,7 @@ function PresenzeComunita({ reparto }) {
   return (
     <>
       <Intestazione
-        occhiello={"Mercoledì 16 settembre 2026, " + pasto + (reparto ? " · " + reparto : "")}
+        occhiello={ETICHETTA_DEMO + ", " + pasto + (reparto ? " · " + reparto : "")}
         titolo="Presenze del giorno"
         sotto="Segna ogni paziente come presente o assente. La cucina prepara solo i pasti dei presenti"
         azioni={puoTrasmettere && (
@@ -571,9 +575,6 @@ function PresenzeComunita({ reparto }) {
 /* ==================== pagina Variazioni ==================== */
 const NOME_PASTO_VARIAZIONE = Object.fromEntries(PASTI_VARIAZIONE.map((p) => [p.id, p.nome]));
 const NOME_TIPO_VARIAZIONE = Object.fromEntries(TIPI_VARIAZIONE.map((t) => [t.id, t.nome]));
-/* la giornata della demo nel calendario delle comunità, da lunedì a domenica */
-const INDICE_GIORNO_DEMO = Math.max(0, GIORNI_COMUNITA.findIndex((g) => g.data === DATA_DEMO));
-
 /* riga trasmessa a MAVI per un paziente presente: la stessa per Presenze del
    giorno e per una variazione su un pasto già trasmesso */
 function rigaTrasmessa(p, pasto, dieta) {
@@ -587,7 +588,7 @@ function VariazioniComunita({ reparto }) {
   const limitato = reparto !== null && reparto !== undefined;
   const censiti = st.committenti.find((c) => c.id === "comunita")?.unita || [];
   const centri = limitato ? (reparto ? [reparto] : []) : censiti;
-  const giorniAperti = GIORNI_COMUNITA.map((g, i) => ({ ...g, i })).filter((g) => !g.chiuso);
+  const giorniAperti = apertiDi(GIORNI_COMUNITA);
 
   const [giorno, setGiorno] = React.useState(() =>
     giorniAperti.some((g) => g.i === INDICE_GIORNO_DEMO) ? INDICE_GIORNO_DEMO : (giorniAperti[0] ? giorniAperti[0].i : 0));
@@ -956,7 +957,7 @@ function EtichetteComunita() {
   return (
     <>
       <Intestazione
-        occhiello={"Mercoledì 16 settembre 2026, " + pasto}
+        occhiello={ETICHETTA_DEMO + ", " + pasto}
         titolo="Etichette pasto"
         sotto="Tre etichette per paziente: primo, secondo, contorno. Da stampare su etichetta adesiva"
         extra={
@@ -1198,7 +1199,7 @@ function ResocontiNominativi({ reparto }) {
       });
       const nomeFile = "Resoconto_Comunita_Il_Ponte" + (reparto ? "_" + reparto.replace(/[^a-zA-Z0-9]+/g, "_") : "") + ".xlsx";
       await scaricaExcel(nomeFile, [
-        { nome: "Mercoledì", dati: righe, colonne: [
+        { nome: GIORNI_COMUNITA[INDICE_GIORNO_DEMO].n, dati: righe, colonne: [
           { header: "Paziente", key: "paziente", width: 22 },
           { header: "Centro", key: "stanza", width: 24 },
           { header: "Tipo dieta", key: "tipoDieta", width: 22 },
@@ -1259,7 +1260,7 @@ function ResocontiNominativi({ reparto }) {
   return (
     <>
       <Intestazione
-        occhiello={"Mercoledì 16 settembre 2026" + (reparto ? " · " + reparto : "")}
+        occhiello={ETICHETTA_DEMO + (reparto ? " · " + reparto : "")}
         titolo="Resoconti"
         sotto="Cosa è stato trasmesso alla cucina MAVI, con dettaglio per giorno e per paziente"
         azioni={st.puo("resoconti.export") && <>
@@ -1338,7 +1339,7 @@ function totaleRighe(righe) {
    qui, quindi non possono dare numeri diversi.
    Previsti: pazienti del centro che hanno quel pasto fra i pasti previsti e
    almeno una portata nella dieta del giorno (le stesse regole di Presenze).
-   Trasmessi: presenti di mercoledì confermati a MAVI (st.presenzeTrasmesse). */
+   Trasmessi: presenti della giornata della demo confermati a MAVI (st.presenzeTrasmesse). */
 function contaPastiPerCentro(pazienti, centri, trasmesse) {
   const haPasto = (p, giorno, pasto) =>
     pastiDi(p).includes(pasto) && portateServite(p.dieta?.[giorno]?.[pasto]).length > 0;

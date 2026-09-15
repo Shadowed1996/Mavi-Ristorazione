@@ -75,9 +75,13 @@ dalla tabella senza bisogno di una decisione separata.
     presenze e fatture? Oggi le variazioni di presenza e di dieta di un
     paziente si applicano da sole, quelle Altro restano avvisi da applicare a
     mano.
-  - Le presenze si segnano e si trasmettono solo per mercoledì
-    (`GIORNO_DEMO`): negli altri giorni, fine settimana compreso, la comunità
-    è in stima dalle diete e dalle variazioni.
+  - Le presenze si segnano e si trasmettono solo per giovedì, il primo
+    giorno aperto (`INDICE_DEMO_COMUNITA`): negli altri giorni, fine settimana
+    compreso, la comunità è in stima dalle diete e dalle variazioni.
+- **"Adesso" è fisso** (`ADESSO_DEMO`, martedì 15 settembre 2026 ore 22:56):
+  in produzione diventa l'ora vera e i giorni chiusi si calcolano da soli con
+  gli orari limite dei committenti. Da confermare con MAVI gli orari limite
+  (14:00 azienda, 16:00 comunità del giorno prima).
   - Piatti quasi omonimi segnalati in Produzione: sono lo stesso piatto?
     Risotto ai funghi / ai funghi porcini, Pasta al pomodoro / Penne al
     pomodoro e basilico, Salmone al forno / con erbe, Pollo grigliato / Petto

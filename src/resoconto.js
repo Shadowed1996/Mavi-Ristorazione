@@ -11,7 +11,7 @@
    già usate dalla vista a schermo o dall'export Excel corrispondente. */
 
 import {
-  apriDocumento, blocco, cellaConNota, dataIt, giornoDataIt, paginaDocumento,
+  apriDocumento, blocco, cellaConNota, dataIt, elenco, giornoDataIt, paginaDocumento,
   paragrafo, riepilogoTotali, tabellaHtml, testoHtml,
 } from "./documento.js";
 
@@ -530,35 +530,21 @@ export function generaDistintaSettimanaPDF({
 
 /* ==================== dipendente, riepilogo delle prenotazioni ==================== */
 
-/* righe: [{ giorno, data, portate: [nome, ...], stato }] — gli stessi cinque
-   giorni della tabella a schermo in Prenotazioni */
-export function generaRiepilogoPrenotazioniPDF({ dipendente, committente, settimana, righe = [], datiAziendali, avvisa }) {
-  const prenotati = righe.filter((r) => (r.portate || []).length).length;
-  const portate = righe.reduce((s, r) => s + (r.portate || []).length, 0);
-
-  const tabella = tabellaHtml({
-    colonne: [{ titolo: "Giorno" }, { titolo: "Portate scelte" }, { titolo: "Stato", allinea: "centro" }],
-    righe: righe.map((r) => [
-      cellaConNota(r.giorno, r.data),
-      (r.portate || []).length ? (r.portate || []).join(", ") : "nessuna prenotazione",
-      r.stato,
-    ]),
-    vuota: "Nessun giorno in questa settimana.",
-  });
+/* Solo il riepilogo dell'ordine (Filippo, 15 settembre 2026): il dipendente
+   e, sotto ogni giorno ancora aperto, il pasto scelto. Niente tabelle né
+   conteggi: il resoconto dettagliato è quello della cucina.
+   righe: [{ giorno: "Giovedì 17 settembre", portate: [nome, ...], confermato }] */
+export function generaRiepilogoPrenotazioniPDF({ dipendente, committente, righe = [], datiAziendali, avvisa }) {
+  const giorni = righe.map((r) => blocco(r.giorno, (r.portate || []).length
+    ? elenco(r.portate) + (r.confermato ? "" : paragrafo("Scelto ma non ancora confermato", { piccolo: true }))
+    : paragrafo("Nessuna prenotazione", { piccolo: true })));
 
   const html = paginaDocumento({
-    titolo: "Riepilogo delle prenotazioni",
-    badge: "Prenotazioni",
-    sottotitolo: unisci([dipendente, committente, settimana, generatoIl()]),
-    meta: [
-      { etichetta: "Dipendente", valore: dipendente },
-      { etichetta: "Settimana", valore: settimana },
-      { etichetta: "Giorni con prenotazione", valore: prenotati },
-      { etichetta: "Portate scelte", valore: portate },
-    ],
-    blocchi: [blocco("La settimana giorno per giorno", tabella)],
-    note: "Prenotazione e disdetta sono possibili fino alle 14:00 del giorno precedente. "
-      + "Dopo quell'ora il giorno resta consultabile ma non modificabile.",
+    titolo: dipendente,
+    badge: "Il mio ordine",
+    sottotitolo: unisci([committente, generatoIl()]),
+    blocchi: giorni.length ? giorni : [paragrafo("Nessun giorno ancora aperto agli ordini.")],
+    note: "Si prenota e si disdice fino alle 14:00 del giorno precedente.",
     datiAziendali,
   });
 

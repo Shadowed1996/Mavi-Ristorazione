@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  COMMITTENTI, CONSISTENZE, DIETE_TERAPEUTICHE, FASCE_SCOLASTICHE, METODI_PAGAMENTO, MODELLI,
+  COMMITTENTI, CONSISTENZE, DIETE_TERAPEUTICHE, ETICHETTA_ADESSO, FASCE_SCOLASTICHE, METODI_PAGAMENTO, MODELLI,
   REGIMI_IVA, TERMINI_PAGAMENTO, metodoPagamento, regimeIva, terminiPagamento,
 } from "../data.js";
 import { Icone, Intestazione, Velo } from "../ui.jsx";
@@ -314,7 +314,7 @@ export function ModelliServizio() {
         <div className="pannello">
           <div className="pannello-testa">
             <h2>Stato operativo di oggi</h2>
-            <span className="conta-piatti">mercoledì 16 settembre</span>
+            <span className="conta-piatti">{ETICHETTA_ADESSO}</span>
           </div>
           <div className="scorri">
             <table className="dati">
