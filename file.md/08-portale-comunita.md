@@ -6,8 +6,10 @@ Il telaio è quello generico di `Struttura.jsx`; questo file fornisce le pagine.
 Esporta un oggetto:
 
 ```js
-const Comunita = { Pazienti, Presenze, Resoconti, Etichette };
+const Comunita = { Pazienti, Presenze, Variazioni, Resoconti, Etichette };
 ```
+
+La pagina **Fatture** del portale è `FattureStruttura` in `Struttura.jsx`.
 
 Due costanti fissano la giornata della demo, da tenere allineate:
 
@@ -18,33 +20,39 @@ const DATA_DEMO   = "2026-09-16";   // per i titoli dei documenti stampabili
 
 ## Ruoli e permessi
 
-Il modello è "ogni reparto ha il suo educatore, il responsabile li vede e
-coordina tutti" (Filippo, 12 settembre 2026). Dal 14 settembre 2026 non è più
-cablato: viene dalla matrice **Ruoli e permessi** di Gestione portale
-(`09b-portale-mavi-gestione.md`), con le chiavi del portale `comunita` in
-`PERMESSI` (`04-dati.md`). I due ruoli iniziali riproducono il comportamento
-precedente:
+Dal vocale MAVI del 15 settembre 2026: **un referente per ogni centro** (diete,
+presenze, variazioni, pazienti) e **un responsabile per tutti i centri che fa
+solo la parte amministrativa** (fatture e resoconti per controllarle). Nell'
+interfaccia si dice **centro**; nel codice restano `reparto`, `stanza`,
+`unita`. I permessi vengono dalla matrice **Ruoli e permessi** di Gestione
+portale (`09b-portale-mavi-gestione.md`), chiavi del portale `comunita` in
+`PERMESSI` (`04-dati.md`). Ruoli iniziali:
 
-| Permesso | Educatore (`operatore`) | Responsabile |
+| Permesso | Referente del centro (`operatore`) | Responsabile amministrativo |
 |---|---|---|
-| `cruscotto.vedi`, `fatture.vedi`, `fatture.pdf` | no | sì |
-| `pazienti.vedi`, `presenze.vedi`, `resoconti.vedi`, `documenti.vedi` | sì | sì |
-| `pazienti.tuttiReparti` | no: solo il proprio `reparto` | sì |
-| `pazienti.dieta` (modifica, carica, template) | sì, sui pazienti che vede | sì |
-| `pazienti.anagrafica` (nuovo, modifica, elimina) | no | sì |
-| `presenze.segna`, `presenze.trasmetti` | sì | sì |
-| `resoconti.export` | sì | sì |
-| `documenti.riservati` | no | sì |
+| `pazienti.vedi`, `pazienti.anagrafica`, `pazienti.dieta` | sì, solo il proprio centro | no |
+| `presenze.vedi`, `presenze.segna`, `presenze.trasmetti` | sì | no |
+| `variazioni.vedi`, `variazioni.invia` | sì | no |
+| `resoconti.vedi`, `resoconti.export` | sì | sì |
+| `resoconti.nominativi` (nomi e diete nei resoconti) | sì | no: numeri per centro |
+| `pazienti.tuttiReparti` (tutti i centri) | no | sì |
+| `fatture.vedi`, `fatture.pdf`, `documenti.riservati` | no | sì |
+| `documenti.vedi` | sì | sì |
+| `cruscotto.vedi` | no | no |
 
-Il **reparto** è il valore del campo `stanza` del paziente (riusato come
-unità/struttura: nei quattro pazienti demo vale "Spazio Giovani SGA" o "CSS
-Sole Luna, Desio"). Chi non ha `pazienti.tuttiReparti` lo riceve dal proprio
-record utente (`st.utenti`, campo `reparto`, modificabile dal modale Utenti di
-Gestione portale, che ora è collegato al login) e `Struttura.jsx` lo passa
-come prop `reparto` a `Comunita.Pazienti`, `.Presenze` e `.Resoconti`:
-`null` = tutti i reparti, stringa = solo quello, stringa vuota = nessun
-paziente con banner dedicato. `Etichette` resta irraggiungibile dal portale
-comunità (la versione operativa vive nel portale MAVI).
+Pagina di partenza: il campo `home` del ruolo in `STRUTTURE.comunita.ruoli`
+(`pazienti` per il referente, `fatture` per il responsabile), passato come
+terzo argomento a `usaVociPermesse`; se il ruolo non la può aprire, la prima
+voce permessa. Utenti demo: Samuele Ferri (Spazio Giovani SGA), Marta Colli
+(CSS Sole Luna, Desio), Ilaria Gatti (responsabile).
+
+Il **centro** è il campo `stanza` del paziente. Chi non ha
+`pazienti.tuttiReparti` lo riceve dal proprio record utente (`st.utenti`,
+campo `reparto`, dal modale Utenti di Gestione portale) e `Struttura.jsx` lo
+passa come prop `reparto` a `Pazienti`, `Presenze`, `Variazioni` e
+`Resoconti`: `null` = tutti i centri, stringa = solo quello, stringa vuota =
+nessun paziente con banner dedicato. `Etichette` resta irraggiungibile dal
+portale comunità (la versione operativa vive nel portale MAVI).
 
 `soloLettura` (da `pazienti.anagrafica`) gestisce Elimina / Modifica
 anagrafica / Nuovo paziente; `puoDieta` (da `pazienti.dieta`) gestisce
@@ -57,41 +65,32 @@ Elenco a card, una per paziente, con iniziali, nome, stanza e tag del tipo
 dieta. In cima un avviso ricorda che nomi e dettagli sono di fantasia e che a
 regime si tratterebbero dati personali con consenso e responsabilità precise.
 
-CRUD completo per il responsabile: "Nuovo paziente" apre `ModuloPaziente`
-(nome, stanza/reparto — un menu a tendina sui reparti censiti in Impostazioni
-per committente, non più testo libero, dal 12 settembre 2026 — **pasti
-previsti** con le caselle Pranzo/Cena, almeno una obbligatoria, dal 14
-settembre 2026 — note), che alla creazione genera una dieta vuota con
-`dietaVuota()`. Le card dei pazienti con un solo pasto mostrano la chip "Solo
-pranzo" / "Solo cena". Se il paziente ha già una
-stanza non più tra i reparti censiti (rimosso nel frattempo), la select la
-include comunque in cima, per non perderla in silenzio.
+CRUD con `pazienti.anagrafica`: "Nuovo paziente" apre `ModuloPaziente` (nome,
+centro a tendina sui centri censiti in Impostazioni per committente, **ridotto
+al solo proprio centro** per chi è limitato; **pasti previsti** Pranzo/Cena,
+almeno uno; note) e genera una dieta vuota con `dietaVuota()`. Le card con un
+solo pasto mostrano la chip "Solo pranzo" / "Solo cena". Un centro non più
+censito resta comunque in cima alla select, per non perderlo in silenzio.
 
 L'elenco vive in uno stato locale inizializzato da `PAZIENTI_COMUNITA` (filtrato
-per `stanza === reparto` se l'educatore ha un reparto). Creazione ed
-eliminazione (12 settembre 2026) mutano anche l'array condiviso
-`PAZIENTI_COMUNITA` stesso, la stessa scorciatoia di `salvaPiatto`/`eliminaPiatto`
-in `store.jsx`: prima un paziente creato qui restava invisibile a Presenze,
-Resoconti ed Etichette, che leggono `PAZIENTI_COMUNITA` direttamente.
+per `stanza === reparto` se l'utente ha un centro). Creazione ed eliminazione
+mutano anche l'array condiviso `PAZIENTI_COMUNITA` (stessa scorciatoia di
+`salvaPiatto`), altrimenti Presenze, Resoconti ed Etichette non le vedrebbero.
 
 ## Scheda paziente — `SchedaPaziente`
 
-Modale largo. In testa: stanza, data di ingresso, nome, note cliniche, tag del
-tipo dieta.
-
-Il corpo è una griglia di card giornaliere, una per giorno di `GIORNI_SETT`,
-ognuna divisa in **Pranzo** e **Cena** con primo, secondo e contorno. Si
-mostrano solo i pasti previsti dal paziente (`pastiDi`); l'altro compare come
-blocco disattivato "Non previsto per questo paziente", così la modifica inline
-non propone di compilare la cena a chi non la fa. L'import Excel resta
-invariato e non tocca il campo `pasti`.
+Modale largo: in testa centro, data di ingresso, nome, note cliniche, tipo
+dieta; sotto una card per giorno di `GIORNI_SETT` con **Pranzo** e **Cena**
+(primo, secondo, contorno). Si mostrano solo i pasti previsti (`pastiDi`),
+l'altro è un blocco disattivato "Non previsto per questo paziente". L'import
+Excel non tocca il campo `pasti`.
 
 Il testo di ogni portata passa da `splitPiatto`: la parte dopo ` || ` diventa
 una nota di preparazione mostrata con il triangolo di attenzione.
 
 ### Modifica dieta
 
-Solo responsabile. Il bottone "Modifica dieta" accende `modalitaModifica`:
+Con `pazienti.dieta` (il referente del centro). Il bottone "Modifica dieta" accende `modalitaModifica`:
 i campi diventano cliccabili con bordo tratteggiato, al clic si aprono in input
 inline. Si salva con Invio o uscendo dal campo, si annulla con Esc.
 
@@ -101,7 +100,7 @@ usata per il catalogo piatti: non replicarla in codice nuovo.
 
 ### Carica dieta
 
-Solo responsabile. File picker limitato a `.xlsx`/`.xls`, poi:
+Con `pazienti.dieta`. File picker limitato a `.xlsx`/`.xls`, poi:
 
 1. `import("../diete.js")` dinamico e `parsaDietaExcel(file)`;
 2. modale di anteprima con la dieta letta, giorno per giorno;
@@ -113,7 +112,7 @@ lettura compare un avviso con il messaggio dell'eccezione.
 
 ### Scarica template
 
-Solo responsabile. `generaTemplateDieta([paziente])` produce un xlsx per quel
+Con `pazienti.dieta`. `generaTemplateDieta([paziente])` produce un xlsx per quel
 singolo paziente, intestato con nome, stanza e tipo dieta, con righe = giorni e
 colonne = portate divise in Pranzo e Cena, più la nota su come usare il
 separatore ` || ` per le note di preparazione. È il file che si manda al
@@ -144,34 +143,78 @@ prima di trasmettere".
 
 Alla trasmissione costruisce la lista dei soli presenti del pasto, con nome,
 stanza, tipo dieta, note, `pasto` e la dieta del giorno per quel pasto, e
-chiama `st.trasmettiPresenze(lista)`, che timbra ogni riga con `generatoIl`
-(data/ora reale) prima di aggiungerla a `st.presenzeTrasmesse`.
+chiama `st.trasmettiPresenze(lista, { centri, pasto, giorno })`, che timbra
+ogni riga con `generatoIl` (data/ora reale) prima di aggiungerla a
+`st.presenzeTrasmesse`. `centri` sono i centri dei pazienti in pagina: le loro
+righe precedenti per quel pasto vengono sostituite (un paziente ritrasmesso
+assente sparisce dalla distinta) e il centro resta registrato in
+`st.trasmissioniCentri` anche se erano tutti assenti, così la cucina lo vede
+"trasmesso, nessun pasto" invece di tornare alla stima.
 
-Lo stato vive in `st.presenzeComunita`, quindi **operatore e responsabile
-vedono le stesse presenze**: è la dimostrazione dello stato condiviso. La
-pagina si filtra per reparto quando c'è un `reparto` (educatore): i numeri e
-il bottone contano solo i pazienti del proprio reparto, così un educatore può
-trasmettere il suo reparto senza aspettare gli altri. `st.trasmettiPresenze`
-**aggiorna per id e pasto, non sovrascrive**: reparti diversi e pasti diversi
-trasmessi in momenti diversi si sommano invece di cancellarsi a vicenda, e
-MAVI vede pranzo e cena come righe distinte.
+Lo stato vive in `st.presenzeComunita`, condiviso fra tutti gli utenti. La
+pagina si filtra per centro quando c'è un `reparto`: numeri e bottone contano
+solo i pazienti del proprio centro, così ogni referente trasmette senza
+aspettare gli altri. `st.trasmettiPresenze` **aggiorna per id e pasto, non
+sovrascrive**: centri e pasti trasmessi in momenti diversi si sommano, e MAVI
+vede pranzo e cena come righe distinte.
+
+## Variazioni — `VariazioniComunita` (15 settembre 2026)
+
+Voce dopo Presenze del giorno (`variazioni.vedi`). È il canale del referente
+per dire alla cucina ciò che le presenze non dicono: dieta in bianco per
+qualche giorno, ospiti in più, un paziente che esce. Dati e API in
+`st.variazioni` (`03-store.md`).
+
+- **Modulo** (`variazioni.invia`, nascosto a chi è limitato ma senza centro):
+  giorno fra quelli non `chiuso` di `GIORNI` (parte da mercoledì, la giornata
+  della demo), centro (fisso per chi è limitato, a tendina per chi vede tutti
+  i centri), pasto (Pranzo / Cena / Pranzo e cena), tipo (Dieta / Presenze /
+  Altro), paziente facoltativo del centro scelto ("Tutto il centro" di
+  default), testo obbligatorio. "Invia a MAVI" chiama `st.inviaVariazione`.
+- **Numeri**: in attesa di MAVI, prese in carico, totale.
+- **Elenco** delle variazioni del proprio centro (o di tutti con
+  `pazienti.tuttiReparti`), più recenti in alto: per quando, riguarda, testo
+  con autore e ora di invio, stato "Inviata a MAVI" oppure "Presa in carico il
+  … da …". La presa in carico la fa MAVI (`flussi.variazioni`) e si vede qui
+  subito, senza ricaricare.
+
+Le variazioni sono avvisi: non modificano diete né presenze.
 
 ## Resoconti — `ResocontiComunita`
 
-Due viste commutabili:
+Un piccolo smistatore sceglie fra due componenti distinti (così togliere il
+permesso dalla matrice cambia vista senza mescolare gli hook):
 
-- **Giorno** — una tabella per pasto (`TabellaGiornoPasto`), ognuna con i soli
-  pazienti che lo prevedono e il proprio stato trasmesso; la card "Stato" dice
-  `Trasmesso`, `Parziale` o `Da trasmettere` con la nota per pasto.
-- **Settimana** — accordion per paziente (`PazienteAccordion`); il clic espande
-  la griglia delle cinque card giornaliere, con i pasti previsti.
+**Con `resoconti.nominativi`** (referente) — `ResocontiNominativi`, la vista di
+prima. Giorno: una tabella per pasto (`TabellaGiornoPasto`) con stato
+trasmesso; Settimana: accordion per paziente (`PazienteAccordion`). Excel
+(colonne Centro e Pasto) e PDF `generaResocontoComunitaPDF` con le stesse
+righe, filtrati per centro; il nome del file include il centro.
 
-Entrambe le viste, i numeri, l'export Excel (colonna Pasto in entrambi i
-fogli) e il **PDF** (`generaResocontoComunitaPDF` di `resoconto.js`, una
-tabella per pasto con le note di preparazione, non più un avviso finto) si
-filtrano per reparto quando c'è un `reparto` (educatore); il nome del file
-scaricato include il reparto. La data del documento è `DATA_DEMO`
-(`2026-09-16`), da tenere allineata a `GIORNO_DEMO`.
+**Senza** (responsabile amministrativo) — `ResocontiCentri`: **nessun nome, nessuna
+dieta**, avviso che lo spiega. Numeri aggregati **per centro e per pasto**:
+Giorno (pasti previsti, presenti trasmessi a MAVI) e Settimana (pasti previsti
+lunedì-venerdì, totale settimana), con totale per centro (quando i centri sono
+più di uno) e totale generale. Previsti = pazienti con quel pasto fra i pasti
+previsti e almeno una portata nella dieta del giorno; trasmessi = righe di
+`st.presenzeTrasmesse` di mercoledì. Il calcolo è uno solo
+(`contaPastiPerCentro` → `righeResocontoCentri`): schermo, Excel (fogli
+"Mercoledì 16 settembre" e "Settimana") e PDF `generaResocontoCentriPDF`
+leggono le stesse righe, verificato cifra per cifra.
+
+La data dei documenti è `DATA_DEMO` (`2026-09-16`), da tenere allineata a
+`GIORNO_DEMO`.
+
+## Fatture — `FattureStruttura` in `Struttura.jsx`
+
+Pagina di partenza del responsabile. Quattro riquadri: **da saldare** (proforma
+`emessa`), **scaduto** (emesse con scadenza passata rispetto a oggi, in rosso),
+**prossima scadenza** (data, numero, importo, giorni mancanti), **pagato**.
+Avviso giallo se c'è qualcosa di scaduto. Tabella per proforma: documento
+(periodo, emissione), totale (imponibile + IVA o "senza IVA"), scadenza con
+condizioni, **da pagare**, situazione (Da saldare / Scaduta / Pagata /
+Annullata, con i giorni). Riga di totale annullate escluse. Stati e importi
+vengono da `st.proforme` e `totaliProforma`, senza toccare il modello.
 
 ## Etichette — `EtichetteComunita`
 

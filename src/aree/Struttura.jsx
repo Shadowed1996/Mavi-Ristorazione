@@ -4,7 +4,7 @@ import {
 } from "../data.js";
 import {
   Documenti, Icone, Intestazione, Messaggi, NessunPermesso,
-  PastigliaProforma, Telaio, usaVociPermesse,
+  Telaio, usaVociPermesse,
 } from "../ui.jsx";
 import { usaStato } from "../store.jsx";
 import { dataIt } from "../documento.js";
@@ -55,26 +55,27 @@ export const STRUTTURE = {
     titolo: "Portale comunità",
     claim: "Poche voci, <em>ordinate in un minuto</em>.",
     punti: [
-      "Ordine dichiarato dall'educatore di turno",
-      "Menu fisso con poche personalizzazioni",
-      "Riepiloghi per casa e per mese",
+      "Un referente per ogni centro: diete, presenze e variazioni",
+      "Menu fisso con diete personalizzate per paziente",
+      "Resoconti per centro e fatture per il responsabile amministrativo",
     ],
+    /* `home` è la pagina di partenza del ruolo, se il ruolo può aprirla */
     ruoli: [
       {
         id: "operatore",
-        nome: "Educatore di turno",
-        cosa: "Dichiara i pasti della giornata per la propria casa.",
-        utente: "edu.aurora",
+        nome: "Referente del centro",
+        cosa: "Gestisce diete e presenze del proprio centro e scrive le variazioni a MAVI.",
+        utente: "samuele.ferri",
         icona: "gente",
-        home: "ordine",
+        home: "pazienti",
       },
       {
         id: "responsabile",
-        nome: "Coordinatore",
-        cosa: "Vede l'andamento delle case, i resoconti e i documenti del servizio.",
-        utente: "coord.ilponte",
+        nome: "Responsabile amministrativo",
+        cosa: "Segue fatture e pagamenti di tutti i centri, con i resoconti per controllarle.",
+        utente: "ilaria.gatti",
         icona: "grafico",
-        home: "cruscotto",
+        home: "fatture",
       },
     ],
   },
@@ -151,6 +152,7 @@ const VOCI_COMUNITA = [
   ["cruscotto", "Cruscotto", Icone.grafico],
   ["pazienti", "Pazienti", Icone.gente],
   ["presenze", "Presenze del giorno", Icone.calendario],
+  ["variazioni", "Variazioni", Icone.matita],
   ["resoconti", "Resoconti", Icone.lista],
   ["fatture", "Fatture", Icone.fattura],
   ["documenti", "Documenti", Icone.lista],
@@ -171,6 +173,7 @@ const PERMESSO_PAGINA = {
   cruscotto: "cruscotto.vedi",
   pazienti: "pazienti.vedi",
   presenze: "presenze.vedi",
+  variazioni: "variazioni.vedi",
   resoconti: "resoconti.vedi",
   fatture: "fatture.vedi",
   documenti: "documenti.vedi",
@@ -179,8 +182,9 @@ const PERMESSO_PAGINA = {
 export default function PortaleStruttura({ tipo, onEsci, utente }) {
   const cfg = STRUTTURE[tipo] || STRUTTURE.comunita;
   const st = usaStato();
+  const ruoloCfg = cfg.ruoli.find((r) => utente && r.id === utente.ruolo);
   const [voci, pagina, setPagina] = usaVociPermesse(
-    tipo === "comunita" ? VOCI_COMUNITA : VOCI_ALTRE, PERMESSO_PAGINA
+    tipo === "comunita" ? VOCI_COMUNITA : VOCI_ALTRE, PERMESSO_PAGINA, ruoloCfg && ruoloCfg.home
   );
 
   /* un utente di un committente creato in demo non ha una configurazione in
@@ -196,9 +200,10 @@ export default function PortaleStruttura({ tipo, onEsci, utente }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cfgAttiva.committente]);
 
-  /* null = tutti i reparti; stringa = solo quel reparto; stringa vuota =
-     l'utente è limitato al proprio reparto ma non gliene è stato assegnato
-     nessuno, quindi non vede niente e lo dice a schermo */
+  /* il reparto è il centro della comunità. null = tutti i centri; stringa =
+     solo quel centro; stringa vuota = l'utente è limitato al proprio centro
+     ma non gliene è stato assegnato nessuno, quindi non vede niente e lo dice
+     a schermo */
   const reparto = st.puo("pazienti.tuttiReparti") ? null : ((utente && utente.reparto) || "");
   const puoAnagrafica = st.puo("pazienti.anagrafica");
   const puoDieta = st.puo("pazienti.dieta");
@@ -229,6 +234,7 @@ export default function PortaleStruttura({ tipo, onEsci, utente }) {
         <Comunita.Pazienti key={"paz-" + chiaveScope} soloLettura={!puoAnagrafica} puoDieta={puoDieta} reparto={reparto} />
       )}
       {tipo === "comunita" && pagina === "presenze" && <Comunita.Presenze key={"pre-" + chiaveScope} reparto={reparto} />}
+      {tipo === "comunita" && pagina === "variazioni" && <Comunita.Variazioni key={"var-" + chiaveScope} reparto={reparto} />}
       {tipo === "comunita" && pagina === "resoconti" && <Comunita.Resoconti key={"res-" + chiaveScope} reparto={reparto} />}
       {pagina === "cruscotto" && <CruscottoStruttura tipo={tipo} cfg={cfgAttiva} />}
       {pagina === "settimana" && <MenuStruttura cfg={cfgAttiva} />}
@@ -425,6 +431,27 @@ function MenuStruttura({ cfg }) {
 }
 
 /* ==================== fatture della struttura ==================== */
+
+/* le scadenze sono date ISO senza ora: si confrontano a mezzanotte locale */
+function giornoLocale(v) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v || ""));
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+}
+
+const giorniTesto = (n) => n + (n === 1 ? " giorno" : " giorni");
+
+/* situazione di pagamento derivata dallo stato della proforma e dalla
+   scadenza: `emessa` diventa da saldare oppure scaduta */
+function situazioneProforma(p, oggi) {
+  if (p.stato === "pagata") return { classe: "p-ok", etichetta: "Pagata", nota: "" };
+  if (p.stato === "annullata") return { classe: "p-neu", etichetta: "Annullata", nota: "non va pagata" };
+  const scadenza = giornoLocale(p.scadenza);
+  if (!scadenza) return { classe: "p-att", etichetta: "Da saldare", nota: "scadenza non indicata" };
+  const giorni = Math.round((scadenza - oggi) / 86400000);
+  if (giorni < 0) return { classe: "p-err", etichetta: "Scaduta", nota: "da " + giorniTesto(-giorni), scaduta: true, giorni };
+  return { classe: "p-att", etichetta: "Da saldare", nota: giorni === 0 ? "scade oggi" : "scade tra " + giorniTesto(giorni), giorni };
+}
+
 function FattureStruttura({ cfg }) {
   const st = usaStato();
   const eur = (n) => "€ " + (Number(n) || 0).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -432,56 +459,120 @@ function FattureStruttura({ cfg }) {
   /* solo le proforma di questa struttura: il portale non deve mai mostrare gli
      importi di un altro committente */
   const elenco = ordinaProforme(st.proforme.filter((p) => p.committenteId === cfg.committente));
-  const dovuto = elenco
-    .filter((p) => p.stato === "emessa")
-    .reduce((s, p) => s + totaliProforma(p).totale, 0);
+  const adesso = new Date();
+  const oggi = new Date(adesso.getFullYear(), adesso.getMonth(), adesso.getDate());
+  const righe = elenco.map((p) => ({ p, t: totaliProforma(p), s: situazioneProforma(p, oggi) }));
+  const somma = (lista) => lista.reduce((tot, r) => tot + r.t.totale, 0);
+
+  const daSaldare = righe.filter((r) => r.p.stato === "emessa");
+  const scadute = daSaldare.filter((r) => r.s.scaduta);
+  const prossima = daSaldare
+    .filter((r) => !r.s.scaduta && r.s.giorni != null)
+    .sort((a, b) => a.s.giorni - b.s.giorni)[0];
+  const pagate = righe.filter((r) => r.p.stato === "pagata");
+  const valide = righe.filter((r) => r.p.stato !== "annullata");
 
   return (
     <>
-      <Intestazione occhiello={cfg.nome} titolo="Fatture" sotto="Proforma ricevute da MAVI e scadenze di pagamento" />
+      <Intestazione occhiello={cfg.nome} titolo="Fatture" sotto="Quello che c'è da pagare a MAVI: importi da saldare, scadenze e proforma già pagate" />
       <div className="tela">
+        <div className="numeri">
+          <div className="numero">
+            <div className="n-lab">Da saldare</div>
+            <div className="n-val" style={{ fontSize: 28 }}>{eur(somma(daSaldare))}</div>
+            <div className="n-nota">{daSaldare.length === 0 ? "nessuna proforma da pagare" : daSaldare.length === 1 ? "1 proforma emessa, non ancora pagata" : daSaldare.length + " proforma emesse, non ancora pagate"}</div>
+          </div>
+          <div className="numero">
+            <div className="n-lab">Scaduto</div>
+            <div className="n-val" style={{ fontSize: 28, color: scadute.length ? "var(--err)" : undefined }}>{eur(somma(scadute))}</div>
+            <div className="n-nota">{scadute.length === 0 ? "nessuna proforma oltre la scadenza" : scadute.length === 1 ? "1 proforma oltre la scadenza" : scadute.length + " proforma oltre la scadenza"}</div>
+          </div>
+          <div className="numero">
+            <div className="n-lab">Prossima scadenza</div>
+            <div className="n-val" style={{ fontSize: 28 }}>{prossima ? dataIt(prossima.p.scadenza) : "—"}</div>
+            <div className="n-nota">{prossima ? prossima.p.numero + ", " + eur(prossima.t.totale) + ", " + prossima.s.nota : "nessun pagamento in scadenza"}</div>
+          </div>
+          <div className="numero">
+            <div className="n-lab">Pagato</div>
+            <div className="n-val" style={{ fontSize: 28, color: pagate.length ? "var(--ok)" : undefined }}>{eur(somma(pagate))}</div>
+            <div className="n-nota">{pagate.length === 1 ? "1 proforma saldata" : pagate.length + " proforma saldate"}</div>
+          </div>
+        </div>
+
+        {scadute.length > 0 && (
+          <div className="avviso chiuso" style={{ marginBottom: 20 }}>
+            <Icone.attenzione size={18} />
+            <span>
+              {scadute.length === 1 ? "È scaduta " : "Sono scadute "}
+              {scadute.map((r) => r.p.numero + " (" + eur(r.t.totale) + ", scadenza " + dataIt(r.p.scadenza) + ")").join(", ")}:
+              {" "}{eur(somma(scadute))} da saldare subito.
+            </span>
+          </div>
+        )}
+
         <div className="pannello">
           <div className="pannello-testa">
             <h2>Proforma ricevute</h2>
-            <span className="conta-piatti">{elenco.length} documenti, {eur(dovuto)} ancora da saldare</span>
+            <span className="conta-piatti">{elenco.length} documenti · {eur(somma(daSaldare))} da saldare</span>
           </div>
           <div className="scorri">
             <table className="dati">
-              <thead><tr><th>Documento</th><th>Periodo</th><th>Imponibile</th><th>IVA</th><th>Totale</th><th>Scadenza</th><th>Condizioni</th><th>Stato</th><th /></tr></thead>
+              <thead><tr><th>Documento</th><th>Totale</th><th>Scadenza</th><th>Da pagare</th><th>Situazione</th><th /></tr></thead>
               <tbody>
                 {elenco.length === 0 && (
-                  <tr><td colSpan={9} style={{ textAlign: "center", color: "var(--muto)", padding: 22 }}>
+                  <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--muto)", padding: 22 }}>
                     Nessuna proforma ricevuta.
                   </td></tr>
                 )}
-                {elenco.map((p) => {
-                  const t = totaliProforma(p);
-                  return (
-                    <tr key={p.id} className={p.stato === "annullata" ? "riga-annullata" : undefined}>
-                      <td className="cifra"><b>{p.numero}</b></td>
-                      <td>{p.periodo}</td>
-                      <td className="cifra">{eur(t.imponibile)}</td>
-                      <td className="cifra">{eur(t.iva)}</td>
-                      <td className="cifra"><b>{eur(t.totale)}</b></td>
-                      <td className="cifra">{dataIt(p.scadenza)}</td>
-                      <td style={{ fontSize: 12, color: "var(--muto)" }}>{testoCondizioni(p)}</td>
-                      <td><PastigliaProforma stato={p.stato} /></td>
-                      <td>
-                        {st.puo("fatture.pdf") && (
-                          <button className="btn linea piccolo" onClick={() => {
-                            generaProformaPDF(p, { datiAziendali: st.datiAziendali, committente, avvisa: st.avvisa });
-                          }}>PDF</button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {righe.map(({ p, t, s }) => (
+                  <tr key={p.id} className={p.stato === "annullata" ? "riga-annullata" : undefined}>
+                    <td>
+                      <b className="cifra">{p.numero}</b>
+                      <div style={{ fontSize: 11.5, color: "var(--muto)" }}>{p.periodo} · emessa il {dataIt(p.dataEmissione)}</div>
+                    </td>
+                    <td className="cifra">
+                      <b>{eur(t.totale)}</b>
+                      <div style={{ fontSize: 11.5, color: "var(--muto)" }}>
+                        {t.conIva ? "imponibile " + eur(t.imponibile) + " + IVA " + eur(t.iva) : "senza IVA"}
+                      </div>
+                    </td>
+                    <td className="cifra">
+                      {dataIt(p.scadenza)}
+                      <div style={{ fontSize: 11.5, color: "var(--muto)" }}>{testoCondizioni(p)}</div>
+                    </td>
+                    <td className="cifra"><b>{p.stato === "emessa" ? eur(t.totale) : "—"}</b></td>
+                    <td>
+                      <span className={"pastiglia " + s.classe}>{s.etichetta}</span>
+                      {s.nota && <div style={{ fontSize: 11.5, color: "var(--muto)", marginTop: 4 }}>{s.nota}</div>}
+                    </td>
+                    <td>
+                      {st.puo("fatture.pdf") && (
+                        <button className="btn linea piccolo" onClick={() => {
+                          generaProformaPDF(p, { datiAziendali: st.datiAziendali, committente, avvisa: st.avvisa });
+                        }}>PDF</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {elenco.length > 0 && (
+                  <tr className="riga-totale">
+                    <td><b>Totale</b><div style={{ fontSize: 11.5, color: "var(--muto)" }}>annullate escluse</div></td>
+                    <td className="cifra"><b>{eur(somma(valide))}</b></td>
+                    <td />
+                    <td className="cifra"><b>{eur(somma(daSaldare))}</b></td>
+                    <td colSpan={2} style={{ fontSize: 12, color: "var(--muto)" }}>
+                      di cui pagato {eur(somma(pagate))}
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
           <div className="pannello-piede">
-            Le proforma le emette MAVI, con le condizioni concordate per {cfg.nome}. Non transitano
-            dal Sistema di Interscambio: la fattura elettronica arriva dal gestionale contabile.
+            Le proforma le emette MAVI, con le condizioni concordate per {cfg.nome}
+            {committente ? " (" + testoCondizioni(committente) + ")" : ""}. Non transitano dal Sistema di
+            Interscambio: la fattura elettronica arriva dal gestionale contabile.
+            {cfg.tema === "comunita" && " Per controllare i pasti fatturati ci sono i Resoconti, divisi per centro."}
           </div>
         </div>
       </div>

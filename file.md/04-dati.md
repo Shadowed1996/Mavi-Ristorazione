@@ -102,15 +102,16 @@ leggibile ("Martedì 15 settembre"), la stessa ovunque: non comporla a mano.
 
 | Costante | Cosa contiene |
 |---|---|
-| `UTENTI` | seed di `st.utenti`: i cinque profili di prova con `id`, `attivo`, email, struttura e `ruolo` (id di un ruolo). Chi non ha `pazienti.tuttiReparti` usa `reparto` (es. "Spazio Giovani SGA") per vedere solo i propri pazienti, vedi `08-portale-comunita.md` |
-| `PERMESSI` | 68 voci `{ k, portale, gruppo, n }`: chiave (`<pagina>.vedi` per la voce di menu, `<pagina>.<azione>` per le azioni), portale `mavi` / `azienda` / `comunita`, gruppo = pagina, nome leggibile. Le chiavi sono uniche dentro un portale, non fra portali. `permessiDelPortale(p)` filtra |
-| `RUOLI_INIZIALI` | `{ id, nome, portale, vista?, bloccato?, permessi }`: `dipendente` e `referente` (portale `azienda`, `vista` sceglie il telaio), `operatore` (Educatore), `responsabile`, `fornitore` (`bloccato: true`, tutti i permessi MAVI). Riproducono il comportamento precedente alla matrice |
+| `UTENTI` | seed di `st.utenti`: i sei profili di prova con `id`, `attivo`, email, struttura e `ruolo` (id di un ruolo). In comunità un referente per centro, Samuele Ferri (Spazio Giovani SGA) e Marta Colli (`u6`, CSS Sole Luna, Desio), più Ilaria Gatti responsabile amministrativa. Chi non ha `pazienti.tuttiReparti` usa `reparto` (il centro) per vedere solo i propri pazienti, vedi `08-portale-comunita.md` |
+| `PERMESSI` | 72 voci `{ k, portale, gruppo, n }`: chiave (`<pagina>.vedi` per la voce di menu, `<pagina>.<azione>` per le azioni), portale `mavi` / `azienda` / `comunita`, gruppo = pagina (la matrice raggruppa voci **consecutive**), nome leggibile. Le chiavi sono uniche dentro un portale, non fra portali. `permessiDelPortale(p)` filtra. Dal 15 settembre 2026: `variazioni.vedi`, `variazioni.invia`, `resoconti.nominativi` (comunità) e `flussi.variazioni` (MAVI, prende in carico le variazioni) |
+| `RUOLI_INIZIALI` | `{ id, nome, portale, vista?, bloccato?, permessi }`: `dipendente` e `referente` (portale `azienda`, `vista` sceglie il telaio), `operatore` ("Referente del centro": pazienti, diete, presenze, variazioni, resoconti nominativi), `responsabile` ("Responsabile amministrativo": fatture, resoconti senza nominativi, tutti i centri, documenti riservati), `fornitore` (`bloccato: true`, tutti i permessi MAVI) |
+| `VARIAZIONI_INIZIALI` | tre variazioni demo per mercoledì (`indiceGiorno: 2`) sui due centri, una già presa in carico: seed di `st.variazioni` (forma in `03-store.md`). `TIPI_VARIAZIONE` e `PASTI_VARIAZIONE` danno le etichette di `tipo` e `pasto` |
 | `ETICHETTE_STRUTTURA`, `ETICHETTE_RUOLO`, `ETICHETTE_PORTALE` | nomi leggibili; i nomi veri dei ruoli arrivano da `st.ruoli` |
 
 `trovaUtente` non è più qui: sta nello store, perché lavora su `st.utenti`.
 | `DIPENDENTI` | otto dipendenti Rossi Manifatture con matricola, reparto, dieta, stato, pasti |
 | `anagraficaAzienda(nome)` | matricola e reparto veri di chi ordina in azienda: prima `DIPENDENTI`, poi la `mansione` di `UTENTI` (Antonella Rossi è un profilo demo, non è in `DIPENDENTI`) |
-| `COMMITTENTI` | i due committenti di partenza (azienda e comunità): modello, unità, etichetta unità, **più** anagrafica (indirizzo, P.IVA, `cf`, `pec`, `codiceSdi`, referente), configurazione (cutoff, regola pasto, frutta, monoporzione), listino (`prezzoUnitario`, `ivaPercentuale`, `pastiMeseDemo`) e **condizioni di fatturazione** (`termini`, `metodoPagamento`, `regimeIva`, `dicituraIva`) — un solo record. È solo il seed: lo stato vero è `st.committenti` in `store.jsx`, esteso da "Nuovo committente". Demo: Rossi a 30 gg d.f. con IVA 10 %, Il Ponte a 60 gg d.f.f.m. senza IVA con dicitura |
+| `COMMITTENTI` | i due committenti di partenza (azienda e comunità): modello, unità, etichetta unità, **più** anagrafica (indirizzo, P.IVA, `cf`, `pec`, `codiceSdi`, referente), configurazione (cutoff, regola pasto, frutta, monoporzione), listino (`prezzoUnitario`, `ivaPercentuale`, `pastiMeseDemo`) e **condizioni di fatturazione** (`termini`, `metodoPagamento`, `regimeIva`, `dicituraIva`) — un solo record. È solo il seed: lo stato vero è `st.committenti` in `store.jsx`, esteso da "Nuovo committente". Demo: Rossi a 30 gg d.f. con IVA 10 %, Il Ponte a 60 gg d.f.f.m. senza IVA con dicitura. Il Ponte ha `etichettaUnita: "Centro"` e `unita` = i due centri |
 | `MODELLI` | i tre modelli di ordinazione: `individuale`, `unita`, `presenze` |
 | `PAZIENTI_COMUNITA` | quattro pazienti con dieta settimanale completa |
 | `OSPITI`, `OSPITI_RSA` | ospiti RSA, fuori dal flusso attivo |
@@ -129,8 +130,8 @@ retrocompatibile (senza il campo valgono pranzo e cena) e `portateServite(dieta)
 dà le portate diverse da `—` e non vuote: sono le funzioni da usare per contare
 etichette e presenze, non un fisso `× 3`.
 
-`stanza` fa doppio servizio: è anche il **reparto/struttura** usato per
-filtrare la visibilità dell'educatore (vedi `08-portale-comunita.md`). Nei
+`stanza` fa doppio servizio: è anche il **centro** (nel codice `reparto`) usato
+per filtrare la visibilità del referente (vedi `08-portale-comunita.md`). Nei
 quattro pazienti demo vale "Spazio Giovani SGA" o "CSS Sole Luna, Desio", non
 un numero di stanza — riflette il dato reale, non un vincolo di nome.
 

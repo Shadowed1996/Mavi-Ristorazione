@@ -13,6 +13,36 @@ e il progetto adotta il [Versionamento Semantico](https://semver.org/lang/it/).
 
 ## [Non rilasciato]
 
+### Aggiunto — 15 settembre 2026, vocale di MAVI
+- **Un referente per ogni centro, un responsabile solo amministrativo**: nel
+  portale comunità i ruoli diventano "Referente del centro" (pazienti, diete,
+  presenze e variazioni del proprio centro) e "Responsabile amministrativo"
+  (solo Resoconti, Fatture e Documenti, entra in Fatture). Nuovo profilo di
+  prova `marta.colli`, referente di CSS Sole Luna.
+- **Variazioni**: il referente scrive alla cucina cambi di dieta, ospiti in
+  più o in meno, uscite; la cucina le trova in Ordini in arrivo e in
+  Produzione (schermo, PDF, Excel) e le prende in carico, il referente vede
+  data, ora e chi.
+- **Resoconti per l'amministrazione** senza nomi né diete: pasti per centro e
+  per pasto, giorno e settimana, con Excel e PDF uguali allo schermo.
+- **Fatture** leggibili a colpo d'occhio: da saldare, scaduto, prossima
+  scadenza, pagato.
+- **Distinta di produzione divisa per committente e per centro**: una riga
+  per centro con il suo referente, una scheda di consegna per destinazione
+  su pagina nuova nel PDF, Excel in cinque fogli, piatti quasi omonimi
+  segnalati "da verificare".
+
+### Corretto — 15 settembre 2026
+- Produzione: il filtro Cena contava i pasti del pranzo dell'azienda; la stima
+  dell'azienda si sommava intera alle conferme; il primo centro che
+  trasmetteva azzerava la stima degli altri; l'Excel non riportava giornata e
+  perimetro; intestazioni della settimana diverse fra schermo ed export.
+- Presenze: un paziente ritrasmesso assente restava nella distinta; un centro
+  che trasmetteva tutti assenti tornava alla stima (ora "trasmesso, nessun
+  pasto").
+- Documenti PDF: la riga di totale in posizione pari aveva il testo invisibile.
+- Nomi dei file Excel con lettere accentate troncate ("Comunit_").
+
 ### Aggiunto — 14 settembre 2026, TO DO MAVI (nove punti del cliente)
 - **`src/documento.js`**: impaginazione A4 condivisa per tutti i documenti
   stampabili (proforma, manifesto, resoconti, scheda piatto), un solo CSS,

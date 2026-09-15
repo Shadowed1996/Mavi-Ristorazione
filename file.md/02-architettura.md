@@ -94,13 +94,16 @@ restano nel file ma non sono raggiungibili dal login, perché nessun utente in
 `UTENTI` ha quelle strutture. Vedi `12-stato-e-todo.md`.
 
 Il componente `PortaleStruttura` costruisce l'elenco voci con
-`usaVociPermesse` (`ui.jsx`), che filtra sulla mappa `PERMESSO_PAGINA` con
-`st.puo` e sceglie la prima voce permessa come pagina iniziale. Per `comunita`
-delega tutto a `aree/Comunita.jsx`, passando `reparto` (`null` per chi ha
-`pazienti.tuttiReparti`, altrimenti `utente.reparto`, o stringa vuota se
-manca: nessun paziente, con banner) e i flag derivati da `pazienti.anagrafica`
-e `pazienti.dieta`. `Telaio` riceve il nome e le iniziali reali di chi ha
-fatto login.
+`usaVociPermesse(voci, permessoDi, iniziale)` (`ui.jsx`), che filtra sulla
+mappa `PERMESSO_PAGINA` con `st.puo`; la pagina iniziale è `iniziale` se
+permessa (il campo `home` del ruolo in `STRUTTURE`: Pazienti per il referente
+del centro, Fatture per il responsabile amministrativo), altrimenti la prima
+voce permessa. Per `comunita` delega le pagine a `aree/Comunita.jsx`
+(Pazienti, Presenze del giorno, Variazioni, Resoconti), passando `reparto`, cioè
+il centro (`null` per chi ha `pazienti.tuttiReparti`, altrimenti
+`utente.reparto`, o stringa vuota se manca: nessun paziente, con banner) e i
+flag derivati da `pazienti.anagrafica` e `pazienti.dieta`. `Telaio` riceve il
+nome e le iniziali reali di chi ha fatto login.
 
 Esporta ancora `SceltaRuolo`, non più usata nel flusso attivo, come
 `Landing.jsx`.

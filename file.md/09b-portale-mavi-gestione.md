@@ -72,7 +72,7 @@ bottone "Aggiungi" per aggiungerne uno. Scrive con `st.aggiornaCommittente(id,
 Questo stesso elenco alimenta:
 - il menu a tendina "Stanza / struttura" in `ModuloPaziente` (`Comunita.jsx`),
   che decide anche il reparto del paziente;
-- il menu a tendina "Reparto assegnato" per il ruolo Educatore nel modale
+- il menu a tendina "Reparto assegnato" (il centro) per il Referente del centro nel modale
   Utenti di Gestione portale.
 
 Rimuovere un reparto **non sposta** i pazienti o gli utenti già assegnati a
@@ -131,7 +131,7 @@ Sette tab (`TAB_GESTIONE`, ognuna sotto un permesso `gestione.*`):
 | Fatturazione | **condizioni predefinite per i nuovi committenti** (termini, metodo, regime IVA, dicitura), IBAN e note standard usati davvero nella proforma |
 | Aspetto | tre bottoni Chiaro / Scuro / Automatico |
 | Utenti | `st.utenti`, **collegati al login** dal 14 settembre 2026: un utente creato qui entra davvero. Il modale (`ModaleUtente`) ha ruoli da `st.ruoli` filtrati per il portale della struttura, committenti da `st.committenti` più MAVI, username obbligatorio e univoco, reparto obbligatorio per chi non ha `pazienti.tuttiReparti` in una comunità, e mostra i permessi ricavati dal ruolo. Disattivare un utente gli impedisce il login; l'ultimo con `gestione.ruoli` non si disattiva |
-| Ruoli e permessi | matrice permessi × ruoli per portale (selettore Mavi / Azienda / Comunità), spunte disattivate sul ruolo bloccato Cucina MAVI; "Nuovo ruolo" con nome, portale, telaio (solo azienda) e copia da un ruolo esistente; elimina ruolo se nessun utente lo usa. Ogni voce di menu e ogni azione del portale è condizionata da una chiave (`st.puo`), applicata al volo |
+| Ruoli e permessi | matrice permessi × ruoli per portale (selettore Mavi / Azienda / Comunità), spunte disattivate sul ruolo bloccato Cucina MAVI; "Nuovo ruolo" con nome, portale, telaio (solo azienda) e copia da un ruolo esistente; elimina ruolo se nessun utente lo usa. Ogni voce di menu e ogni azione del portale è condizionata da una chiave (`st.puo`), applicata al volo. Nel portale struttura i ruoli iniziali sono Referente del centro e Responsabile amministrativo (15 settembre 2026, gruppo Variazioni e `resoconti.nominativi`); in MAVI `flussi.variazioni` arriva da solo a Cucina MAVI |
 | Notifiche | sei toggle: promemoria, cutoff, ordine ricevuto, presenze mancanti, report mensile, digest email |
 | Backup | numeri e pulsanti backup manuale, export completo, ripristino |
 

@@ -193,7 +193,8 @@ table.doc-tabella{width:100%;border-collapse:collapse;margin-bottom:22px;font-si
 .doc-tabella td{padding:9px 14px;border-bottom:1px solid var(--grigio);vertical-align:top}
 .doc-tabella tbody tr:nth-child(even) td{background:var(--avorio-chiaro)}
 .doc-tabella tr.doc-vuota td{padding:18px;text-align:center;color:var(--muto);background:#fff}
-.doc-tabella tr.doc-totale td{background:var(--terracotta);color:#fff;font-weight:700;border-bottom:none}
+.doc-tabella tbody tr.doc-totale td{background:var(--terracotta);color:#fff;font-weight:700;border-bottom:none}
+.doc-tabella tbody tr.doc-totale td .doc-cella-nota{color:#fff}
 .doc-cella-nota{display:block;font-size:10.5px;color:var(--muto);margin-top:2px}
 .a-sx{text-align:left}.a-centro{text-align:center}.a-dx{text-align:right}
 .doc-totali{display:flex;justify-content:flex-end;margin-bottom:26px;page-break-inside:avoid}

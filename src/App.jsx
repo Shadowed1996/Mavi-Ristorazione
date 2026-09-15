@@ -15,7 +15,7 @@ function Instradamento() {
      il motivo si vede davvero — sull'accesso non c'è la coda dei toast */
   React.useEffect(() => {
     if (sessione && !ruoloSessione) {
-      setAvvisoUscita("Il ruolo della tua utenza non è più configurato. Chiedi al referente del portale di riassegnartelo.");
+      setAvvisoUscita("Il ruolo della tua utenza non è più configurato. Chiedi a MAVI di riassegnartelo.");
       esci();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

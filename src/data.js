@@ -578,7 +578,7 @@ export function testoCondizioni(x) {
   const aliquota = x && (x.aliquota != null ? x.aliquota : x.ivaPercentuale);
   return terminiPagamento(x && x.termini).nome
     + ", " + metodoPagamento(x && x.metodoPagamento).nome
-    + ", " + (regime.conIva ? "IVA " + (Number(aliquota) || 0) + "%" : regime.nome.toLowerCase());
+    + ", " + (regime.conIva ? "IVA " + (Number(aliquota) || 0) + "%" : regime.nome.charAt(0).toLowerCase() + regime.nome.slice(1));
 }
 
 /* proforma dalla più recente alla più vecchia */
@@ -670,14 +670,14 @@ export const COMMITTENTI = [
   {
     id: "comunita", nome: "Comunità Il Ponte", tipo: "Comunità", modello: "unita",
     unita: ["Spazio Giovani SGA", "CSS Sole Luna, Desio"],
-    etichettaUnita: "Reparto", pasti: 31, attivo: true,
-    nota: "Menu fisso con poche personalizzazioni, ordine dichiarato dall'educatore di turno.",
+    etichettaUnita: "Centro", pasti: 31, attivo: true,
+    nota: "Menu fisso con diete personalizzate: presenze e variazioni le invia il referente di ogni centro.",
     indirizzo: "Via Sole Luna 8, Desio (MB)", piva: "03887120968",
     cf: "91038870968", pec: "comunitailponte@pec.it", codiceSdi: "KRRH6B9",
-    referente: "Ilaria Gatti", ruoloReferente: "Responsabile struttura",
+    referente: "Ilaria Gatti", ruoloReferente: "Responsabile amministrativa",
     email: "i.gatti@comunitailponte.it", telefono: "0362 998 741",
     cutoff: "16:00 del giorno precedente",
-    regolaPasto: "Menu fisso, personalizzazioni per singola casa",
+    regolaPasto: "Menu fisso, personalizzazioni per singolo centro",
     listino: "Convenzione, fatturazione mensile", frutta: true, monoporzione: false,
     prezzoUnitario: 7.5, ivaPercentuale: 0, pastiMeseDemo: 248,
     termini: "60gg_fm", metodoPagamento: "bonifico", regimeIva: "senza_iva",
@@ -736,8 +736,9 @@ export const PRESENZE_SCUOLA = [
 export const UTENTI = [
   { id: "u1", u: "antonella.rossi", nome: "Antonella Rossi", iniziali: "AR", struttura: "azienda", ruolo: "dipendente", committente: "Rossi Manifatture Spa", mansione: "Amministrazione", email: "antonella.rossi@rossimanifatture.it", telefono: "", attivo: true },
   { id: "u2", u: "roberto.manzi", nome: "Roberto Manzi", iniziali: "RM", struttura: "azienda", ruolo: "referente", committente: "Rossi Manifatture Spa", mansione: "Ufficio del personale", email: "roberto.manzi@rossimanifatture.it", telefono: "", attivo: true },
-  { id: "u3", u: "samuele.ferri", nome: "Samuele Ferri", iniziali: "SF", struttura: "comunita", ruolo: "operatore", committente: "Comunità Il Ponte", mansione: "Educatore", reparto: "Spazio Giovani SGA", email: "samuele.ferri@ilponte.it", telefono: "", attivo: true },
-  { id: "u4", u: "ilaria.gatti", nome: "Ilaria Gatti", iniziali: "IG", struttura: "comunita", ruolo: "responsabile", committente: "Comunità Il Ponte", mansione: "Responsabile", email: "ilaria.gatti@ilponte.it", telefono: "", attivo: true },
+  { id: "u3", u: "samuele.ferri", nome: "Samuele Ferri", iniziali: "SF", struttura: "comunita", ruolo: "operatore", committente: "Comunità Il Ponte", mansione: "Educatore, referente del centro", reparto: "Spazio Giovani SGA", email: "samuele.ferri@ilponte.it", telefono: "", attivo: true },
+  { id: "u6", u: "marta.colli", nome: "Marta Colli", iniziali: "MC", struttura: "comunita", ruolo: "operatore", committente: "Comunità Il Ponte", mansione: "Educatrice, referente del centro", reparto: "CSS Sole Luna, Desio", email: "marta.colli@ilponte.it", telefono: "", attivo: true },
+  { id: "u4", u: "ilaria.gatti", nome: "Ilaria Gatti", iniziali: "IG", struttura: "comunita", ruolo: "responsabile", committente: "Comunità Il Ponte", mansione: "Responsabile amministrativa", email: "ilaria.gatti@ilponte.it", telefono: "", attivo: true },
   { id: "u5", u: "cucina.mavi", nome: "Cucina centrale", iniziali: "MV", struttura: "mavi", ruolo: "fornitore", committente: "MAVI Ristorazione", mansione: "Produzione e amministrazione", email: "cucina@maviristorazione.it", telefono: "", attivo: true },
 ];
 
@@ -764,6 +765,7 @@ export const PERMESSI = [
   { k: "flussi.vedi", portale: "mavi", gruppo: "Ordini in arrivo", n: "Vedi gli ordini in arrivo" },
   { k: "flussi.manifesto", portale: "mavi", gruppo: "Ordini in arrivo", n: "Genera il manifesto di consegna" },
   { k: "flussi.excel", portale: "mavi", gruppo: "Ordini in arrivo", n: "Scarica i resoconti Excel" },
+  { k: "flussi.variazioni", portale: "mavi", gruppo: "Ordini in arrivo", n: "Prende in carico le variazioni" },
   { k: "consegne.vedi", portale: "mavi", gruppo: "Giri di consegna", n: "Vedi i giri di consegna" },
   { k: "etichette.vedi", portale: "mavi", gruppo: "Etichette pasto", n: "Vedi le etichette pasto" },
   { k: "etichette.stampa", portale: "mavi", gruppo: "Etichette pasto", n: "Apri la vista di stampa" },
@@ -821,14 +823,17 @@ export const PERMESSI = [
   /* ---------- portale comunità ---------- */
   { k: "cruscotto.vedi", portale: "comunita", gruppo: "Cruscotto", n: "Vedi il cruscotto della struttura" },
   { k: "pazienti.vedi", portale: "comunita", gruppo: "Pazienti", n: "Vedi l'elenco dei pazienti" },
-  { k: "pazienti.tuttiReparti", portale: "comunita", gruppo: "Pazienti", n: "Vedi tutti i reparti, non solo il proprio" },
+  { k: "pazienti.tuttiReparti", portale: "comunita", gruppo: "Pazienti", n: "Vede tutti i centri, non solo il proprio" },
   { k: "pazienti.anagrafica", portale: "comunita", gruppo: "Pazienti", n: "Crea, modifica ed elimina i pazienti" },
   { k: "pazienti.dieta", portale: "comunita", gruppo: "Pazienti", n: "Modifica, carica e scarica la dieta" },
   { k: "presenze.vedi", portale: "comunita", gruppo: "Presenze del giorno", n: "Vedi le presenze del giorno" },
   { k: "presenze.segna", portale: "comunita", gruppo: "Presenze del giorno", n: "Segna presenti e assenti" },
   { k: "presenze.trasmetti", portale: "comunita", gruppo: "Presenze del giorno", n: "Trasmette le presenze a MAVI" },
+  { k: "variazioni.vedi", portale: "comunita", gruppo: "Variazioni", n: "Vedi le variazioni inviate a MAVI" },
+  { k: "variazioni.invia", portale: "comunita", gruppo: "Variazioni", n: "Scrive e invia variazioni a MAVI" },
   { k: "resoconti.vedi", portale: "comunita", gruppo: "Resoconti", n: "Vedi i resoconti" },
-  { k: "resoconti.export", portale: "comunita", gruppo: "Resoconti", n: "Scarica il resoconto in Excel" },
+  { k: "resoconti.export", portale: "comunita", gruppo: "Resoconti", n: "Scarica il resoconto in Excel e PDF" },
+  { k: "resoconti.nominativi", portale: "comunita", gruppo: "Resoconti", n: "Vede nominativi e diete nei resoconti" },
   { k: "fatture.vedi", portale: "comunita", gruppo: "Fatture", n: "Vedi le proforma ricevute" },
   { k: "fatture.pdf", portale: "comunita", gruppo: "Fatture", n: "Scarica la proforma in PDF" },
   { k: "documenti.vedi", portale: "comunita", gruppo: "Documenti", n: "Vedi i documenti" },
@@ -858,12 +863,20 @@ export const RUOLI_INIZIALI = [
     permessi: ["cruscotto.vedi", "prenota.perConto", "riepilogo.stampa", "dipendenti.vedi", "dipendenti.modifica",
       "resoconti.vedi", "resoconti.export", "fatture.vedi", "fatture.pdf", "documenti.vedi", "documenti.riservati"],
   },
+  /* comunità: un referente per ogni centro (diete, presenze, variazioni) e un
+     responsabile per tutti i centri che segue solo la parte amministrativa
+     (vocale MAVI del 15 settembre 2026) */
   {
-    id: "operatore", nome: "Educatore", portale: "comunita",
-    permessi: ["pazienti.vedi", "pazienti.dieta", "presenze.vedi", "presenze.segna", "presenze.trasmetti",
-      "resoconti.vedi", "resoconti.export", "documenti.vedi"],
+    id: "operatore", nome: "Referente del centro", portale: "comunita",
+    permessi: ["pazienti.vedi", "pazienti.anagrafica", "pazienti.dieta",
+      "presenze.vedi", "presenze.segna", "presenze.trasmetti", "variazioni.vedi", "variazioni.invia",
+      "resoconti.vedi", "resoconti.export", "resoconti.nominativi", "documenti.vedi"],
   },
-  { id: "responsabile", nome: "Responsabile", portale: "comunita", permessi: tutti("comunita") },
+  {
+    id: "responsabile", nome: "Responsabile amministrativo", portale: "comunita",
+    permessi: ["fatture.vedi", "fatture.pdf", "resoconti.vedi", "resoconti.export", "pazienti.tuttiReparti",
+      "documenti.vedi", "documenti.riservati"],
+  },
   { id: "fornitore", nome: "Cucina MAVI", portale: "mavi", bloccato: true, permessi: tutti("mavi") },
 ];
 
@@ -895,8 +908,8 @@ export const ETICHETTE_STRUTTURA = {
 export const ETICHETTE_RUOLO = {
   dipendente: "Dipendente",
   referente: "Referente",
-  operatore: "Operatore",
-  responsabile: "Responsabile",
+  operatore: "Referente del centro",
+  responsabile: "Responsabile amministrativo",
   fornitore: "Cucina MAVI",
 };
 
@@ -1085,6 +1098,54 @@ export function splitPiatto(testo) {
   const parti = testo.split(" || ");
   return { nome: parti[0], nota: parti[1] || "" };
 }
+
+/* ============================================================
+   Variazioni dai centri della comunità — seed di st.variazioni.
+   Le scrive il referente del centro (cambi di dieta, ospiti in più o in
+   meno, uscite), MAVI le prende in carico da Ordini in arrivo. Tutte per
+   mercoledì 16 settembre, la giornata della demo. Le date sono locali, come
+   quelle timbrate da inviaVariazione con new Date().
+   ============================================================ */
+const oraLocale = (giorno, ore, minuti) => new Date(2026, 8, giorno, ore, minuti).toISOString();
+
+/* etichette leggibili dei campi `tipo` e `pasto` di una variazione */
+export const TIPI_VARIAZIONE = [
+  { id: "dieta", nome: "Dieta" },
+  { id: "presenze", nome: "Presenze" },
+  { id: "altro", nome: "Altro" },
+];
+export const PASTI_VARIAZIONE = [
+  { id: "pranzo", nome: "Pranzo" },
+  { id: "cena", nome: "Cena" },
+  { id: "entrambi", nome: "Pranzo e cena" },
+];
+
+export const VARIAZIONI_INIZIALI = [
+  {
+    id: "var-1", committenteId: "comunita", reparto: "Spazio Giovani SGA",
+    autore: "Samuele Ferri", ruoloAutore: "Referente del centro",
+    indiceGiorno: 2, pasto: "pranzo", pazienteId: "p02", pazienteNome: "Zied Dridi", tipo: "dieta",
+    testo: "Da mercoledì a venerdì dieta in bianco per Zied Dridi: pasta o riso all'olio, carne bianca ai ferri, verdure lesse. Niente sughi né fritti.",
+    creataIl: oraLocale(15, 9, 40), stato: "presa_in_carico",
+    presaInCaricoIl: oraLocale(15, 10, 15), presaInCaricoDa: "Cucina centrale",
+  },
+  {
+    id: "var-2", committenteId: "comunita", reparto: "CSS Sole Luna, Desio",
+    autore: "Marta Colli", ruoloAutore: "Referente del centro",
+    indiceGiorno: 2, pasto: "cena", pazienteId: null, pazienteNome: null, tipo: "presenze",
+    testo: "Mercoledì sera 2 ospiti in più a cena, rientrano dal soggiorno estivo: dieta standard, nessuna allergia.",
+    creataIl: oraLocale(15, 11, 25), stato: "inviata",
+    presaInCaricoIl: null, presaInCaricoDa: null,
+  },
+  {
+    id: "var-3", committenteId: "comunita", reparto: "CSS Sole Luna, Desio",
+    autore: "Marta Colli", ruoloAutore: "Referente del centro",
+    indiceGiorno: 2, pasto: "pranzo", pazienteId: "p03", pazienteNome: "Carmelo Aronica", tipo: "presenze",
+    testo: "Carmelo Aronica mercoledì pranza fuori con la famiglia: niente pranzo, la cena resta confermata.",
+    creataIl: oraLocale(15, 12, 5), stato: "inviata",
+    presaInCaricoIl: null, presaInCaricoDa: null,
+  },
+];
 
 /* ============================================================
    Etichette demo dipendenti azienda — ordini già confermati

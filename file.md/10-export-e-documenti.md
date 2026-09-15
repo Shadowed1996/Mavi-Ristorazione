@@ -11,7 +11,9 @@ Un solo CSS A4 per tutti i documenti stampabili: palette terracotta / scuro /
 avorio (la stessa di `excel.js`), font Segoe UI / Calibri, `@page A4 14mm`,
 `thead` ripetuto su ogni pagina, righe che non si spezzano, numero di pagina
 nei browser che supportano le margin box di `@page`, barra "Stampa / Salva PDF"
-esclusa dalla stampa. Testata con marchio MAVI, mittente (`intestazioneMavi`) e
+esclusa dalla stampa. La riga di totale (`tbody tr.doc-totale td`) ha la stessa
+specificità della riga pari e viene dopo: resta terracotta con testo bianco
+anche quando cade in posizione pari (prima diventava bianco su avorio). Testata con marchio MAVI, mittente (`intestazioneMavi`) e
 badge.
 
 | Funzione | Cosa |
@@ -91,8 +93,8 @@ Ogni funzione compone `paginaDocumento` e chiude con `apriDocumento`.
 | `generaResocontoPDF({ committente, periodo, riepilogo, dettaglio, datiAziendali, avvisa })` | Referente › Resoconti › PDF. `riepilogo` è **lo stesso array** passato a `scaricaExcel`, riga `TOTALE` inclusa (`calcolaResoconto` in `Cliente.jsx`): Excel e PDF non possono divergere |
 | `generaResocontoComunitaPDF({ struttura, reparto, giorno, pasti, datiAziendali, avvisa })` | Comunità › Resoconti › PDF; `pasti` è `[{ pasto, righe }]`, ogni portata `{ nome, nota }` da `splitPiatto` |
 | `generaResocontoUnitaPDF({ struttura, modello, periodo, etichettaUnita, etichettaDiete, numeri, righe, nota, datiAziendali, avvisa })` | "Resoconto mensile" del cruscotto struttura: riporta la situazione corrente del cruscotto, lo dichiara in nota |
-| `generaDistintaPDF({ giorno, perimetro, strutture, sezioni, totali, diete, datiAziendali, avvisa })` | Produzione, vista Giorno: `sezioni: [{ categoria, righe: [{ piatto, colore, nota?, perStruttura, totale }] }]`, `diete: [{ nome, reparto, tipoDieta, note }]`; chiude con "Diete particolari e consistenze" e "Note di lavorazione e firma" |
-| `generaDistintaSettimanaPDF({ periodo, perimetro, giorni, sezioni, totali, diete, datiAziendali, avvisa })` | Produzione, vista Settimana: `giorni` sono le colonne lun–ven, righe con `perGiorno` |
+| `generaDistintaPDF({ giorno, perimetro, strutture, sezioni, totali, pastiPerCentro, destinazioni, variazioni, diete, datiAziendali, avvisa })` | Produzione, vista Giorno: `sezioni: [{ categoria, righe: [{ piatto, colore, nota?, perStruttura, totale }] }]` (la `nota` segnala i nomi quasi omonimi); poi "Pasti per committente e centro" (`pastiPerCentro: { colonnePasto, righe, totale }`), "Variazioni dai centri", diete (`{ nome, committenteNome, reparto, pastiTesto, tipoDieta, note }`), firma; infine **una scheda di consegna per destinazione, ognuna su pagina nuova** (`schedaDestinazione`: periodo, referente, pasti, stato, piatti con pranzo/cena, diete e variazioni del centro) |
+| `generaDistintaSettimanaPDF({ periodo, perimetro, giorni, sezioni, totali, pastiPerCentro, destinazioni, variazioni, diete, datiAziendali, avvisa })` | Produzione, vista Settimana: `giorni` sono le colonne lun–ven ("Lunedì 14 set"), righe con `perGiorno`; stesse sezioni sommate sulla settimana, variazioni con la colonna Giorno |
 | `generaRiepilogoPrenotazioniPDF({ dipendente, committente, settimana, righe, datiAziendali, avvisa })` | Dipendente › Le mie prenotazioni › "Scarica riepilogo" |
 
 Il riepilogo del giorno del referente (`Cliente.jsx`, Cruscotto) usa invece
@@ -119,7 +121,8 @@ funzione. Ogni foglio è impaginato con l'identità MAVI:
    terracotta 20 pt, celle unite.
 2. Riga 2, indirizzo e P.IVA da `datiAziendali`; se vuoti, i testi fissi di
    esempio.
-3. Riga 3, nome del foglio più la data di generazione.
+3. Riga 3, nome del foglio, `titolo` facoltativo del foglio (la distinta ci
+   mette giornata e perimetro) e data di generazione.
 4. Intestazione colonne su fondo scuro, righe alternate bianco / avorio.
 5. **Riga totale**: se in una cella dell'ultima riga compare `TOTALE`, la riga
    è evidenziata in terracotta. Non serve un flag.

@@ -1,17 +1,21 @@
 import React from "react";
-import { PAZIENTI_COMUNITA, GIORNI_SETT, PASTI_TIPO, splitPiatto, pastiDi, portateServite } from "../data.js";
+import {
+  PAZIENTI_COMUNITA, GIORNI, GIORNI_SETT, PASTI_TIPO, PASTI_VARIAZIONE, TIPI_VARIAZIONE,
+  etichettaGiorno, splitPiatto, pastiDi, portateServite,
+} from "../data.js";
 import { Icone, Intestazione, Velo } from "../ui.jsx";
 import { usaStato } from "../store.jsx";
-import { generaResocontoComunitaPDF } from "../resoconto.js";
+import { generaResocontoComunitaPDF, generaResocontoCentriPDF } from "../resoconto.js";
 
 const GIORNO_DEMO = "mercoledì";
 /* stessa giornata di GIORNO_DEMO in forma di data, per i titoli dei documenti */
 const DATA_DEMO = "2026-09-16";
 
-/* Avviso sul perimetro di visibilità. `reparto` null significa tutti i
-   reparti, una stringa vuota significa che l'utente è limitato al proprio
-   reparto ma non gliene è stato assegnato nessuno: senza questo avviso
-   vedrebbe solo una pagina vuota, senza capire perché. */
+/* Avviso sul perimetro di visibilità. Il reparto è il centro della comunità:
+   `reparto` null significa tutti i centri, una stringa vuota significa che
+   l'utente è limitato al proprio centro ma non gliene è stato assegnato
+   nessuno: senza questo avviso vedrebbe solo una pagina vuota, senza capire
+   perché. */
 function BannerReparto({ reparto, margine }) {
   if (reparto === null || reparto === undefined) return null;
   const stile = margine ? { marginBottom: 16 } : null;
@@ -19,16 +23,26 @@ function BannerReparto({ reparto, margine }) {
     return (
       <div className="banner-dieta" style={{ background: "#fdf0e6", borderColor: "#e8c9a8", color: "#7a4a17", ...stile }}>
         <Icone.attenzione size={15} />
-        Al tuo profilo non è assegnato nessun reparto, quindi non vedi nessun paziente. Chiedi al
-        referente del portale di assegnartene uno da <b>Gestione portale, Utenti</b>.
+        <span>
+          Al tuo profilo non è assegnato nessun centro, quindi non vedi nessun paziente. Chiedi a MAVI
+          di assegnartene uno da <b>Gestione portale, Utenti</b>.
+        </span>
       </div>
     );
   return (
     <div className="banner-dieta" style={{ background: "#eef3fa", borderColor: "#b8cce0", color: "#2c4a6c", ...stile }}>
       <Icone.attenzione size={15} />
-      Stai vedendo solo i pazienti di <b>{reparto}</b>. Il responsabile vede tutte le strutture.
+      <span>Stai vedendo solo il centro <b>{reparto}</b>, di cui sei referente. Gli altri centri li segue il loro referente.</span>
     </div>
   );
+}
+
+/* "15/09 alle 10:15" da una data ISO con ora */
+function quandoIt(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })
+    + " alle " + d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
 }
 
 /* ==================== pagina Pazienti ==================== */
@@ -43,7 +57,9 @@ function Pazienti({ soloLettura, puoDieta, reparto }) {
   const [scheda, setScheda] = React.useState(null);
   const [modulo, setModulo] = React.useState(null); // null | "nuovo" | paziente per modifica
   const [giornoVista, setGiornoVista] = React.useState("lunedì");
-  const repartiComunita = st.committenti.find((c) => c.id === "comunita")?.unita || [];
+  /* chi è limitato al proprio centro crea e sposta pazienti solo lì */
+  const censiti = st.committenti.find((c) => c.id === "comunita")?.unita || [];
+  const repartiComunita = limitato ? (reparto ? [reparto] : []) : censiti;
 
   /* Nuovo paziente ed eliminazione mutano anche l'elenco condiviso
      PAZIENTI_COMUNITA (stessa scorciatoia del catalogo piatti in store.jsx):
@@ -78,7 +94,7 @@ function Pazienti({ soloLettura, puoDieta, reparto }) {
       <Intestazione
         occhiello="Comunità Il Ponte"
         titolo="Pazienti"
-        sotto="Anagrafica e dieta settimanale di ogni paziente. La dieta la scrive il dietista, il responsabile la carica"
+        sotto="Anagrafica e dieta settimanale di ogni paziente. La dieta la scrive il dietista, il referente del centro la carica"
         azioni={
           !soloLettura && <button className="btn piccolo" onClick={() => setModulo("nuovo")}>
             <Icone.piu size={14} /> Nuovo paziente
@@ -373,10 +389,10 @@ function ModuloPaziente({ paziente, reparti, onChiudi, onSalva }) {
           <input type="text" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="es. Mario Bianchi" />
         </div>
         <div className="campo">
-          <label>Stanza / struttura</label>
+          <label>Centro</label>
           {opzioni.length === 0 ? (
             <p style={{ fontSize: 12.5, color: "var(--muto)" }}>
-              Nessun reparto ancora censito. Aggiungine uno da Impostazioni per committente → Comunità Il Ponte.
+              Nessun centro ancora censito. MAVI lo aggiunge da Impostazioni per committente → Comunità Il Ponte.
             </p>
           ) : (
             <select value={stanza} onChange={(e) => setStanza(e.target.value)}>
@@ -384,7 +400,7 @@ function ModuloPaziente({ paziente, reparti, onChiudi, onSalva }) {
             </select>
           )}
           <p style={{ fontSize: 11, color: "var(--muto)", margin: "4px 0 0" }}>
-            Determina anche il reparto: solo l'educatore assegnato a questo valore vedrà il paziente.
+            Il paziente lo vede e lo gestisce il referente di questo centro.
           </p>
         </div>
         <div className="campo">
@@ -468,7 +484,9 @@ function PresenzeComunita({ reparto }) {
                 giorno: GIORNO_DEMO,
                 dieta: p.dieta[GIORNO_DEMO]?.[pasto] || {},
               }));
-            st.trasmettiPresenze(trasmessi);
+            st.trasmettiPresenze(trasmessi, {
+              centri: [...new Set(paz.map((p) => p.stanza).filter(Boolean))], pasto, giorno: GIORNO_DEMO,
+            });
             st.avvisa(trasmessi.length + " presenze del " + pasto + " trasmesse alla cucina MAVI con " + totEtichette + " etichette");
           }}>
             {paz.length === 0 ? "Nessun paziente per questo pasto" : totNonSegnati > 0 ? "Segna tutti prima di trasmettere" : "Trasmetti " + pasto + " a MAVI"}
@@ -498,7 +516,7 @@ function PresenzeComunita({ reparto }) {
 
         <div className="pannello">
           <div className="pannello-testa">
-            <h2>Pazienti della struttura, {pasto}</h2>
+            <h2>{reparto != null ? "Pazienti del centro" : "Pazienti di tutti i centri"}, {pasto}</h2>
             <span className="conta-piatti">{totPresenti} presenti, {totAssenti} assenti su {paz.length}</span>
           </div>
           <div className="scorri">
@@ -506,7 +524,7 @@ function PresenzeComunita({ reparto }) {
               <thead>
                 <tr>
                   <th>Paziente</th>
-                  <th>Stanza</th>
+                  <th>Centro</th>
                   <th>Primo</th>
                   <th>Secondo</th>
                   <th>Contorno</th>
@@ -549,6 +567,213 @@ function PresenzeComunita({ reparto }) {
             Segna ogni paziente come presente o assente. Il pulsante Trasmetti si attiva quando tutti sono segnati
             per questo pasto: pranzo e cena sono indipendenti e si trasmettono separatamente, senza cancellarsi a vicenda.
             I pasti dei pazienti assenti non vengono preparati.
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ==================== pagina Variazioni ==================== */
+const NOME_PASTO_VARIAZIONE = Object.fromEntries(PASTI_VARIAZIONE.map((p) => [p.id, p.nome]));
+const NOME_TIPO_VARIAZIONE = Object.fromEntries(TIPI_VARIAZIONE.map((t) => [t.id, t.nome]));
+/* la giornata della demo nell'elenco GIORNI del menu */
+const INDICE_GIORNO_DEMO = Math.max(0, GIORNI.findIndex((g) => g.data === DATA_DEMO));
+
+function VariazioniComunita({ reparto }) {
+  const st = usaStato();
+  const puoInviare = st.puo("variazioni.invia");
+  const limitato = reparto !== null && reparto !== undefined;
+  const censiti = st.committenti.find((c) => c.id === "comunita")?.unita || [];
+  const centri = limitato ? (reparto ? [reparto] : []) : censiti;
+  const giorniAperti = GIORNI.map((g, i) => ({ ...g, i })).filter((g) => !g.chiuso);
+
+  const [giorno, setGiorno] = React.useState(() =>
+    giorniAperti.some((g) => g.i === INDICE_GIORNO_DEMO) ? INDICE_GIORNO_DEMO : (giorniAperti[0] ? giorniAperti[0].i : 0));
+  const [centro, setCentro] = React.useState(centri[0] || "");
+  const [pasto, setPasto] = React.useState("pranzo");
+  const [tipo, setTipo] = React.useState("dieta");
+  const [pazienteId, setPazienteId] = React.useState("");
+  const [testo, setTesto] = React.useState("");
+
+  const pazientiCentro = PAZIENTI_COMUNITA.filter((p) => p.stanza === centro);
+  const elenco = (st.variazioni || [])
+    .filter((v) => v.committenteId === "comunita" && (!limitato || v.reparto === reparto))
+    .sort((a, b) => String(b.creataIl).localeCompare(String(a.creataIl)));
+  const inAttesa = elenco.filter((v) => v.stato !== "presa_in_carico").length;
+  const pronto = !!testo.trim() && !!centro && giorniAperti.length > 0;
+
+  function invia(e) {
+    e.preventDefault();
+    if (!pronto) return;
+    const paziente = pazientiCentro.find((p) => p.id === pazienteId);
+    const id = st.inviaVariazione({
+      committenteId: "comunita",
+      reparto: centro,
+      autore: st.sessione ? st.sessione.nome : undefined,
+      ruoloAutore: st.ruoloSessione ? st.ruoloSessione.nome : undefined,
+      indiceGiorno: Number(giorno),
+      pasto,
+      pazienteId: paziente ? paziente.id : null,
+      pazienteNome: paziente ? paziente.nome : null,
+      tipo,
+      testo,
+    });
+    if (id) {
+      setTesto("");
+      setPazienteId("");
+    }
+  }
+
+  const piccolo = { fontSize: 11.5, color: "var(--muto)", marginTop: 4 };
+
+  return (
+    <>
+      <Intestazione
+        occhiello={"Comunità Il Ponte" + (reparto ? " · " + reparto : "")}
+        titolo="Variazioni"
+        sotto="Cambi di dieta, ospiti in più o in meno, uscite: quello che la cucina deve sapere oltre alle presenze. Qui vedi anche quando MAVI le prende in carico"
+      />
+      <div className="tela">
+        <BannerReparto reparto={reparto} margine />
+
+        <div className="numeri">
+          <div className="numero"><div className="n-lab">In attesa di MAVI</div><div className="n-val">{inAttesa}</div><div className="n-nota">inviate, non ancora prese in carico</div></div>
+          <div className="numero"><div className="n-lab">Prese in carico</div><div className="n-val">{elenco.length - inAttesa}</div><div className="n-nota">lette dalla cucina, che ne tiene conto</div></div>
+          <div className="numero"><div className="n-lab">Variazioni inviate</div><div className="n-val">{elenco.length}</div><div className="n-nota">{limitato ? "dal tuo centro" : "da tutti i centri"}</div></div>
+        </div>
+
+        {puoInviare && centri.length > 0 && (
+          <div className="pannello">
+            <div className="pannello-testa">
+              <h2>Nuova variazione</h2>
+              <span className="conta-piatti">arriva subito alla cucina MAVI</span>
+            </div>
+            <form className="modulo-variazione" onSubmit={invia}>
+              <div className="modulo-riga due">
+                <div className="campo">
+                  <label htmlFor="var-giorno">Giorno</label>
+                  <select id="var-giorno" value={giorno} onChange={(e) => setGiorno(Number(e.target.value))} disabled={giorniAperti.length === 0}>
+                    {giorniAperti.length === 0 && <option value="">Nessun giorno ancora aperto</option>}
+                    {giorniAperti.map((g) => <option key={g.i} value={g.i}>{etichettaGiorno(g.i)}</option>)}
+                  </select>
+                </div>
+                <div className="campo">
+                  <label htmlFor="var-centro">Centro</label>
+                  <select id="var-centro" value={centro} disabled={limitato}
+                    onChange={(e) => { setCentro(e.target.value); setPazienteId(""); }}>
+                    {centri.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="modulo-riga due">
+                <div className="campo">
+                  <label>Pasto</label>
+                  <div className="pasti-scelta">
+                    {PASTI_VARIAZIONE.map((p) => (
+                      <label key={p.id} className={pasto === p.id ? "on" : ""}>
+                        <input type="radio" name="var-pasto" checked={pasto === p.id} onChange={() => setPasto(p.id)} />
+                        {p.nome}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="campo">
+                  <label>Tipo</label>
+                  <div className="pasti-scelta">
+                    {TIPI_VARIAZIONE.map((t) => (
+                      <label key={t.id} className={tipo === t.id ? "on" : ""}>
+                        <input type="radio" name="var-tipo" checked={tipo === t.id} onChange={() => setTipo(t.id)} />
+                        {t.nome}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="modulo-riga due">
+                <div className="campo">
+                  <label htmlFor="var-paziente">Paziente</label>
+                  <select id="var-paziente" value={pazienteId} onChange={(e) => setPazienteId(e.target.value)}>
+                    <option value="">Tutto il centro</option>
+                    {pazientiCentro.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                  </select>
+                  <p style={piccolo}>Facoltativo: lascia "Tutto il centro" per ospiti in più, uscite di gruppo o avvisi generali.</p>
+                </div>
+              </div>
+              <div className="campo">
+                <label htmlFor="var-testo">Variazione</label>
+                <textarea id="var-testo" rows={3} value={testo} onChange={(e) => setTesto(e.target.value)}
+                  placeholder="es. Da mercoledì a venerdì dieta in bianco: pasta all'olio, carne ai ferri, niente sughi né fritti" />
+              </div>
+              <div className="variazione-piede">
+                <span style={{ fontSize: 12, color: "var(--muto)" }}>
+                  La cucina la trova in Ordini in arrivo e nella distinta di Produzione del giorno indicato.
+                </span>
+                <button type="submit" className="btn" disabled={!pronto}>
+                  <Icone.ok size={15} /> Invia a MAVI
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        <div className="pannello">
+          <div className="pannello-testa">
+            <h2>{limitato ? "Variazioni del centro" : "Variazioni di tutti i centri"}</h2>
+            <span className="conta-piatti">le più recenti in alto</span>
+          </div>
+          <div className="scorri">
+            <table className="dati">
+              <thead>
+                <tr>
+                  <th>Per quando</th>
+                  {!limitato && <th>Centro</th>}
+                  <th>Riguarda</th>
+                  <th>Variazione</th>
+                  <th>Stato</th>
+                </tr>
+              </thead>
+              <tbody>
+                {elenco.length === 0 && (
+                  <tr><td colSpan={limitato ? 4 : 5} className="riga-vuota">Nessuna variazione inviata.</td></tr>
+                )}
+                {elenco.map((v) => (
+                  <tr key={v.id}>
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      <b>{etichettaGiorno(v.indiceGiorno)}</b>
+                      <div style={piccolo}>{NOME_PASTO_VARIAZIONE[v.pasto] || v.pasto}</div>
+                    </td>
+                    {!limitato && <td style={{ fontSize: 13 }}>{v.reparto}</td>}
+                    <td style={{ minWidth: 140 }}>
+                      {v.pazienteNome || "Tutto il centro"}
+                      <div style={{ marginTop: 5 }}><span className="tag-pasti">{NOME_TIPO_VARIAZIONE[v.tipo] || v.tipo}</span></div>
+                    </td>
+                    <td style={{ minWidth: 280 }}>
+                      {v.testo}
+                      <div style={piccolo}>Inviata il {quandoIt(v.creataIl)} da {v.autore}{v.ruoloAutore ? " (" + v.ruoloAutore.toLowerCase() + ")" : ""}</div>
+                    </td>
+                    <td>
+                      {v.stato === "presa_in_carico" ? (
+                        <>
+                          <span className="pastiglia p-ok">Presa in carico</span>
+                          <div style={piccolo}>il {quandoIt(v.presaInCaricoIl)}{v.presaInCaricoDa ? " da " + v.presaInCaricoDa : ""}</div>
+                        </>
+                      ) : (
+                        <>
+                          <span className="pastiglia p-att">Inviata a MAVI</span>
+                          <div style={piccolo}>in attesa di presa in carico</div>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="pannello-piede">
+            Le variazioni sono avvisi per la cucina e non cambiano da sole diete e presenze: un cambio di
+            dieta stabile va riportato anche nella scheda del paziente, le presenze del giorno si segnano
+            come sempre in Presenze del giorno.
           </div>
         </div>
       </div>
@@ -735,10 +960,23 @@ function TabellaGiornoPasto({ pasto, inviato, pazienti }) {
   );
 }
 
-/* ==================== resoconti per il gestore ==================== */
+/* ==================== resoconti ==================== */
+const GIORNI_SETT_DEMO = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì"];
+
+/* Nomi e diete sono dati sanitari: li vede solo chi ha resoconti.nominativi
+   (il referente del centro). Il responsabile amministrativo vede i numeri
+   dei pasti per centro, che bastano a controllare le fatture. Due componenti
+   distinti, così togliere il permesso dalla matrice cambia vista senza
+   mescolare gli hook. */
 function ResocontiComunita({ reparto }) {
   const st = usaStato();
-  const GIORNI_SETT_DEMO = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì"];
+  return st.puo("resoconti.nominativi")
+    ? <ResocontiNominativi reparto={reparto} />
+    : <ResocontiCentri reparto={reparto} />;
+}
+
+function ResocontiNominativi({ reparto }) {
+  const st = usaStato();
   const [vista, setVista] = React.useState("giorno"); // "giorno" o "mese"
   const paz = reparto != null ? PAZIENTI_COMUNITA.filter((p) => p.stanza === reparto) : PAZIENTI_COMUNITA;
 
@@ -749,7 +987,8 @@ function ResocontiComunita({ reparto }) {
     const elenco = pazientiDelPasto(pasto);
     if (!elenco.length) return null;
     return elenco.some((p) => st.presenzeComunita[p.id]?.[pasto] != null)
-      || st.presenzeTrasmesse.some((t) => t.pasto === pasto && elenco.some((p) => p.id === t.id));
+      || st.presenzeTrasmesse.some((t) => t.pasto === pasto && elenco.some((p) => p.id === t.id))
+      || st.trasmissioniCentri.some((t) => t.pasto === pasto && elenco.some((p) => p.stanza === t.reparto));
   };
   const statiPasto = PASTI_TIPO.map((pasto) => [pasto, statoPasto(pasto)]).filter(([, v]) => v !== null);
   const pastiInviati = statiPasto.filter(([, v]) => v);
@@ -793,7 +1032,7 @@ function ResocontiComunita({ reparto }) {
       await scaricaExcel(nomeFile, [
         { nome: "Mercoledì", dati: righe, colonne: [
           { header: "Paziente", key: "paziente", width: 22 },
-          { header: "Stanza", key: "stanza", width: 24 },
+          { header: "Centro", key: "stanza", width: 24 },
           { header: "Tipo dieta", key: "tipoDieta", width: 22 },
           { header: "Pasto", key: "pasto", width: 10 },
           { header: "Primo", key: "primo", width: 26 },
@@ -913,10 +1152,241 @@ function ResocontiComunita({ reparto }) {
   );
 }
 
+/* ---- resoconto per centro e per pasto, senza nominativi ---- */
+const NOME_PASTO = { pranzo: "Pranzo", cena: "Cena" };
+const INDICE_SETT_DEMO = GIORNI_SETT_DEMO.indexOf(GIORNO_DEMO);
+const sommaNumeri = (lista) => lista.reduce((s, n) => s + (Number(n) || 0), 0);
+
+function totaleRighe(righe) {
+  return {
+    previsti: sommaNumeri(righe.map((r) => r.previsti)),
+    trasmessi: sommaNumeri(righe.map((r) => r.trasmessi)),
+    settimana: GIORNI_SETT_DEMO.map((_, i) => sommaNumeri(righe.map((r) => r.settimana[i]))),
+    totaleSettimana: sommaNumeri(righe.map((r) => r.totaleSettimana)),
+  };
+}
+
+/* Unico punto di calcolo: schermo, Excel e PDF leggono le righe che escono da
+   qui, quindi non possono dare numeri diversi.
+   Previsti: pazienti del centro che hanno quel pasto fra i pasti previsti e
+   almeno una portata nella dieta del giorno (le stesse regole di Presenze).
+   Trasmessi: presenti di mercoledì confermati a MAVI (st.presenzeTrasmesse). */
+function contaPastiPerCentro(pazienti, centri, trasmesse) {
+  const haPasto = (p, giorno, pasto) =>
+    pastiDi(p).includes(pasto) && portateServite(p.dieta?.[giorno]?.[pasto]).length > 0;
+  const gruppi = centri.map((centro) => {
+    const delCentro = pazienti.filter((p) => p.stanza === centro);
+    const ids = new Set(delCentro.map((p) => p.id));
+    const righe = PASTI_TIPO.map((pasto) => {
+      const settimana = GIORNI_SETT_DEMO.map((g) => delCentro.filter((p) => haPasto(p, g, pasto)).length);
+      return {
+        pasto,
+        previsti: settimana[INDICE_SETT_DEMO],
+        trasmessi: trasmesse.filter((t) => t.pasto === pasto && ids.has(t.id) && (t.giorno || GIORNO_DEMO) === GIORNO_DEMO).length,
+        settimana,
+        totaleSettimana: sommaNumeri(settimana),
+      };
+    }).filter((r) => r.previsti || r.trasmessi || r.totaleSettimana);
+    return { centro, righe, totale: totaleRighe(righe) };
+  });
+  return { gruppi, totale: totaleRighe(gruppi.flatMap((g) => g.righe)) };
+}
+
+/* righe piatte nell'ordine dello schermo: una per centro e pasto, il totale
+   del centro quando i centri sono più di uno, il totale in fondo */
+function righeResocontoCentri({ gruppi, totale }) {
+  const righe = [];
+  gruppi.forEach((g) => {
+    if (!g.righe.length) {
+      righe.push({ tipo: "dettaglio", centro: g.centro, pasto: "Nessun pasto previsto", ...totaleRighe([]) });
+      return;
+    }
+    g.righe.forEach((r) => righe.push({ ...r, tipo: "dettaglio", centro: g.centro, pasto: NOME_PASTO[r.pasto] || r.pasto }));
+    if (gruppi.length > 1) righe.push({ tipo: "centro", centro: "Totale " + g.centro, pasto: "", ...g.totale });
+  });
+  righe.push({ tipo: "totale", centro: "Totale", pasto: gruppi.length > 1 ? "Tutti i centri" : "", ...totale });
+  return righe;
+}
+
+const intestazioneGiorno = (i) => (GIORNI[i] ? GIORNI[i].n.slice(0, 3) + " " + GIORNI[i].breve : GIORNI_SETT_DEMO[i]);
+const PERIODO_SETTIMANA = GIORNI.length
+  ? "dal " + GIORNI[0].d + " al " + GIORNI[GIORNI.length - 1].d + " " + GIORNI[GIORNI.length - 1].data.slice(0, 4)
+  : "";
+
+function ResocontiCentri({ reparto }) {
+  const st = usaStato();
+  const [vista, setVista] = React.useState("giorno");
+  const limitato = reparto !== null && reparto !== undefined;
+  const censiti = st.committenti.find((c) => c.id === "comunita")?.unita || [];
+  /* un paziente con un centro non più censito resta nel conteggio, in coda */
+  const centri = limitato
+    ? (reparto ? [reparto] : [])
+    : [...censiti, ...[...new Set(PAZIENTI_COMUNITA.map((p) => p.stanza))].filter((s) => s && !censiti.includes(s))];
+  const conteggio = contaPastiPerCentro(PAZIENTI_COMUNITA, centri, st.presenzeTrasmesse);
+  const righe = righeResocontoCentri(conteggio);
+  const { totale } = conteggio;
+  const perPasto = (pasto) => sommaNumeri(conteggio.gruppi.flatMap((g) => g.righe).filter((r) => r.pasto === pasto).map((r) => r.previsti));
+  const giornata = etichettaGiorno(INDICE_GIORNO_DEMO);
+  const intestazioni = GIORNI_SETT_DEMO.map((_, i) => intestazioneGiorno(i));
+  const perimetro = limitato ? (reparto || "Nessun centro assegnato") : "Tutti i centri";
+
+  const numeri = [
+    { etichetta: "Centri", valore: centri.length, nota: limitato ? perimetro : "di Comunità Il Ponte" },
+    { etichetta: "Pasti previsti, " + giornata.toLowerCase(), valore: totale.previsti, nota: perPasto("pranzo") + " pranzi e " + perPasto("cena") + " cene" },
+    { etichetta: "Presenti trasmessi a MAVI", valore: totale.trasmessi, nota: "confermati dai referenti dei centri" },
+    { etichetta: "Pasti previsti in settimana", valore: totale.totaleSettimana, nota: PERIODO_SETTIMANA },
+  ];
+
+  const nomeFile = "Resoconto_pasti_per_centro_Comunita_Il_Ponte" + (reparto ? "_" + reparto.replace(/[^a-zA-Z0-9]+/g, "_") : "") + ".xlsx";
+
+  async function esportaExcel() {
+    try {
+      const { scaricaExcel } = await import("../excel.js");
+      await scaricaExcel(nomeFile, [
+        {
+          nome: giornata,
+          dati: righe.map((r) => ({ centro: r.centro, pasto: r.pasto, previsti: r.previsti, trasmessi: r.trasmessi })),
+          colonne: [
+            { header: "Centro", key: "centro", width: 32 },
+            { header: "Pasto", key: "pasto", width: 22 },
+            { header: "Pasti previsti", key: "previsti", width: 16 },
+            { header: "Presenti trasmessi a MAVI", key: "trasmessi", width: 26 },
+          ],
+        },
+        {
+          nome: "Settimana",
+          dati: righe.map((r) => ({
+            centro: r.centro, pasto: r.pasto,
+            ...Object.fromEntries(r.settimana.map((n, i) => ["g" + i, n])),
+            totaleSettimana: r.totaleSettimana,
+          })),
+          colonne: [
+            { header: "Centro", key: "centro", width: 32 },
+            { header: "Pasto", key: "pasto", width: 22 },
+            ...intestazioni.map((titolo, i) => ({ header: titolo, key: "g" + i, width: 12 })),
+            { header: "Totale settimana", key: "totaleSettimana", width: 18 },
+          ],
+        },
+      ], { datiAziendali: st.datiAziendali });
+      st.avvisa("Resoconto Excel scaricato: pasti per centro, giornata e settimana");
+    } catch (e) {
+      console.error(e);
+      st.avvisa("Errore nell'export Excel, riprova");
+    }
+  }
+
+  function esportaPDF() {
+    try {
+      generaResocontoCentriPDF({
+        struttura: "Comunità Il Ponte",
+        perimetro,
+        giorno: DATA_DEMO,
+        periodo: PERIODO_SETTIMANA,
+        intestazioni,
+        righe,
+        numeri: numeri.map(({ etichetta, valore }) => ({ etichetta, valore })),
+        datiAziendali: st.datiAziendali,
+        avvisa: st.avvisa,
+      });
+    } catch (e) {
+      console.error(e);
+      st.avvisa("Errore nella generazione del PDF, riprova");
+    }
+  }
+
+  const classeRiga = (r) => (r.tipo === "totale" ? "riga-totale" : r.tipo === "centro" ? "riga-subtotale" : undefined);
+  const cellaCentro = (r) => (r.tipo === "dettaglio" ? r.centro : <b>{r.centro}</b>);
+
+  return (
+    <>
+      <Intestazione
+        occhiello={giornata + " 2026" + (reparto ? " · " + reparto : "")}
+        titolo="Resoconti"
+        sotto="Pasti per centro e per pasto, del giorno e della settimana: i numeri per controllare le fatture"
+        azioni={st.puo("resoconti.export") && <>
+          <button className="btn linea piccolo" onClick={esportaExcel}><Icone.scarica size={16} /> Excel</button>
+          <button className="btn linea piccolo" onClick={esportaPDF}><Icone.stampa size={16} /> PDF</button>
+        </>}
+      />
+      <div className="tela">
+        <div className="avviso info" style={{ marginBottom: 16 }}>
+          <Icone.lucchetto size={18} />
+          <span>
+            Nomi dei pazienti e diete non compaiono: sono dati sanitari e restano ai referenti dei centri.
+            Per controllare le fatture bastano i numeri dei pasti.
+          </span>
+        </div>
+        <BannerReparto reparto={reparto} margine />
+        <div className="commuta" style={{ marginBottom: 20 }}>
+          <button className={vista === "giorno" ? "on" : ""} onClick={() => setVista("giorno")}>Giorno</button>
+          <button className={vista === "settimana" ? "on" : ""} onClick={() => setVista("settimana")}>Settimana</button>
+        </div>
+        <div className="numeri">
+          {numeri.map((n) => (
+            <div className="numero" key={n.etichetta}>
+              <div className="n-lab">{n.etichetta}</div>
+              <div className="n-val">{n.valore}</div>
+              <div className="n-nota">{n.nota}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="pannello">
+          <div className="pannello-testa">
+            <h2>{vista === "giorno" ? "Pasti per centro, " + giornata.toLowerCase() : "Pasti previsti per centro, settimana " + PERIODO_SETTIMANA}</h2>
+            <span className="conta-piatti">{perimetro}</span>
+          </div>
+          <div className="scorri">
+            <table className="dati resoconto-centri">
+              <thead>
+                {vista === "giorno" ? (
+                  <tr><th>Centro</th><th>Pasto</th><th className="num">Pasti previsti</th><th className="num">Presenti trasmessi a MAVI</th></tr>
+                ) : (
+                  <tr>
+                    <th>Centro</th><th>Pasto</th>
+                    {intestazioni.map((t) => <th key={t} className="num">{t}</th>)}
+                    <th className="num">Totale settimana</th>
+                  </tr>
+                )}
+              </thead>
+              <tbody>
+                {righe.map((r, i) => (
+                  <tr key={r.tipo + "-" + r.centro + "-" + r.pasto + "-" + i} className={classeRiga(r)}>
+                    <td>{cellaCentro(r)}</td>
+                    <td>{r.tipo === "totale" ? <b>{r.pasto}</b> : r.pasto}</td>
+                    {vista === "giorno" ? (
+                      <>
+                        <td className="num quantita">{r.previsti}</td>
+                        <td className="num quantita">{r.trasmessi}</td>
+                      </>
+                    ) : (
+                      <>
+                        {r.settimana.map((n, g) => <td key={g} className="num cifra">{n}</td>)}
+                        <td className="num quantita">{r.totaleSettimana}</td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="pannello-piede">
+            {vista === "giorno"
+              ? "Pasti previsti: pazienti che hanno quel pasto nella dieta del giorno. Presenti trasmessi: quelli confermati a MAVI dal referente del centro; finché il centro non trasmette restano a zero. "
+              : "Pasti previsti giorno per giorno dalle diete dei pazienti, da lunedì a venerdì. "}
+            Il PDF e l'Excel riportano le stesse righe, giornata e settimana.
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 /* Export come oggetto per import singolo */
 const Comunita = {
   Pazienti,
   Presenze: PresenzeComunita,
+  Variazioni: VariazioniComunita,
   Etichette: EtichetteComunita,
   Resoconti: ResocontiComunita,
 };

@@ -16,8 +16,9 @@ Due tipi di committente attivi:
 
 - **Azienda** — Rossi Manifatture Spa. Il dipendente sceglie i piatti dal menu
   del giorno.
-- **Comunità** — Comunità Il Ponte. Dieta personalizzata per paziente, il
-  responsabile segna le presenze.
+- **Comunità** — Comunità Il Ponte. Dieta personalizzata per paziente; un
+  referente per ogni centro segna presenze e variazioni, un responsabile
+  segue solo la parte amministrativa.
 
 **RSA e scuole sono state rimosse dal flusso attivo.** Il codice però è ancora
 tutto lì:
@@ -62,6 +63,26 @@ dalla tabella senza bisogno di una decisione separata.
 
 ## Da valutare con MAVI
 
+- **Dal vocale del 15 settembre 2026** (vedi la sezione più sotto):
+  - Il modello "referente per centro + responsabile solo amministrativo" vale
+    anche per le aziende? Oggi il referente aziendale vede anche le fatture.
+  - Il responsabile amministrativo deve vedere le variazioni in sola lettura?
+  - Per controllare le fatture bastano pasti previsti e presenti per giorno e
+    settimana, o serve un riepilogo mensile con l'importo stimato?
+  - In cucina basta "presa in carico", o servono anche "rifiutata" e una
+    risposta scritta al referente?
+  - Gli ospiti in più segnalati con una variazione entrano nei conteggi di
+    presenze e fatture, o restano un avviso? Oggi le variazioni non cambiano
+    le quantità della distinta: vanno applicate a mano, e lo dice.
+  - Piatti quasi omonimi segnalati in Produzione: sono lo stesso piatto?
+    Risotto ai funghi / ai funghi porcini, Pasta al pomodoro / Penne al
+    pomodoro e basilico, Salmone al forno / con erbe, Pollo grigliato / Petto
+    di pollo alla griglia, Polpette al sugo / di manzo al sugo, Fagiolini a
+    vapore / al vapore; nelle diete Pasta alla norma / con ricotta, Pasta
+    zucchine / zucchine e pomodori, Pasta al pesto / integrale al pesto.
+  - Coperti previsti dell'azienda per giorno (26, 24, 28, 25, 22): sono il
+    numero giusto da cui togliere le prenotazioni confermate?
+  - In cucina serve davvero una scheda per centro su pagina separata?
 - Prezzi, quota aziendale, visibilità del prezzo al dipendente.
 - Reparti aziendali: come funzionano davvero.
 - Regola di scadenza "fine mese" (oggi: giorni contati dall'ultimo giorno del

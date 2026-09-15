@@ -609,11 +609,11 @@ export function schedaPdf(id, { datiAziendali, avvisa } = {}) {
    Voci di menu filtrate dai permessi del ruolo in sessione.
    `permessoDi` è la mappa chiave voce → chiave permesso; una voce senza
    permesso dichiarato resta sempre visibile (è il caso di RSA e scuola, fuori
-   dal perimetro attivo). La pagina di partenza è la prima permessa e, se la
-   pagina corrente perde il permesso mentre l'utente è dentro, si torna alla
-   prima disponibile senza rifare il login.
+   dal perimetro attivo). La pagina di partenza è `iniziale`, se il ruolo la
+   può aprire, altrimenti la prima permessa; se la pagina corrente perde il
+   permesso mentre l'utente è dentro, si torna lì senza rifare il login.
    ============================================================ */
-export function usaVociPermesse(voci, permessoDi) {
+export function usaVociPermesse(voci, permessoDi, iniziale) {
   const st = usaStato();
   const permesse = React.useMemo(
     () => voci.filter(([k]) => {
@@ -622,10 +622,13 @@ export function usaVociPermesse(voci, permessoDi) {
     }),
     [voci, permessoDi, st.puo]
   );
-  const [pagina, setPagina] = React.useState(() => (permesse[0] ? permesse[0][0] : ""));
+  const partenza = (elenco) =>
+    (iniziale && elenco.some(([k]) => k === iniziale) ? iniziale : elenco[0] ? elenco[0][0] : "");
+  const [pagina, setPagina] = React.useState(() => partenza(permesse));
   React.useEffect(() => {
     if (!permesse.length) return;
-    if (!permesse.some(([k]) => k === pagina)) setPagina(permesse[0][0]);
+    if (!permesse.some(([k]) => k === pagina)) setPagina(partenza(permesse));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [permesse, pagina]);
   return [permesse, pagina, setPagina];
 }
@@ -637,8 +640,8 @@ export function NessunPermesso({ onEsci }) {
       <div className="avviso info" style={{ alignItems: "flex-start" }}>
         <Icone.attenzione size={18} />
         <span>
-          Il tuo ruolo non ha nessuna pagina abilitata in questo portale. Chiedi al referente del
-          portale di rivedere i permessi in <b>Gestione portale › Ruoli e permessi</b>.
+          Il tuo ruolo non ha nessuna pagina abilitata in questo portale. Chiedi a chi amministra
+          il portale di rivedere i permessi in <b>Gestione portale › Ruoli e permessi</b>.
         </span>
       </div>
       {onEsci && (

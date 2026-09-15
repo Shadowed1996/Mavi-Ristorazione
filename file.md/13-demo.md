@@ -20,8 +20,9 @@ riga entra direttamente, senza digitare.
 |---|---|---|---|
 | `antonella.rossi` | Antonella Rossi | Rossi Manifatture Spa | Dipendente |
 | `roberto.manzi` | Roberto Manzi | Rossi Manifatture Spa | Referente |
-| `samuele.ferri` | Samuele Ferri | Comunità Il Ponte | Educatore, reparto "Spazio Giovani SGA" |
-| `ilaria.gatti` | Ilaria Gatti | Comunità Il Ponte | Responsabile |
+| `samuele.ferri` | Samuele Ferri | Comunità Il Ponte | Referente del centro "Spazio Giovani SGA" |
+| `marta.colli` | Marta Colli | Comunità Il Ponte | Referente del centro "CSS Sole Luna, Desio" |
+| `ilaria.gatti` | Ilaria Gatti | Comunità Il Ponte | Responsabile amministrativa (solo fatture e resoconti numerici) |
 | `cucina.mavi` | Cucina centrale | MAVI Ristorazione | Fornitore |
 
 La password non viene verificata: qualsiasi valore va bene, conta solo il nome
@@ -46,35 +47,47 @@ utente.
 7. **Resoconti** → espandere un dipendente per il dettaglio giornaliero →
    Excel → **PDF** (stessi numeri) → Export paghe. Poi **Fatture**: solo le
    proforma di Rossi, con scadenza e condizioni.
-8. Uscire → **Samuele Ferri** (educatore) → Pazienti: si vedono solo i due
-   pazienti di "Spazio Giovani SGA", con il banner che lo segnala. Aprire
-   Beatrice Comi → **Modifica dieta** funziona (per i pazienti del proprio
-   reparto); "Elimina" e "Modifica anagrafica" restano assenti.
-9. **Presenze** (filtrate allo stesso reparto) → segnare presenti e assenti →
-   "Trasmetti pranzo a MAVI" si attiva quando sono segnati i pazienti di quel
-   reparto. Passare a **Cena**: Beatrice e Zied non compaiono, fanno solo
-   pranzo.
-10. Uscire → **Ilaria Gatti** (responsabile) → Pazienti: vede tutti e quattro i
-    pazienti, di entrambe le strutture. Aprire Carmelo Aronica → **Modifica
-    anagrafica** (con le caselle Pranzo/Cena) ed **Elimina**, assenti per
-    l'educatore, compaiono qui.
-11. **Scarica template** → mostrare l'Excel pensato per il dietista.
-12. **Presenze** → trasmettere la cena: il pranzo trasmesso da Samuele resta.
-    **Resoconti** → vista Giorno con una tabella per pasto → Excel → **PDF**.
-    **Fatture**: solo le proforma del Ponte, senza IVA con la dicitura.
+8. Uscire → **Samuele Ferri** (referente del centro Spazio Giovani SGA) →
+   Pazienti: si vedono solo i due pazienti del suo centro, con il banner che
+   lo segnala. Aprire Beatrice Comi → **Modifica dieta**; poi **Nuovo
+   paziente**: il centro è già il suo e non si cambia. **Scarica template** →
+   l'Excel pensato per il dietista.
+9. **Presenze** (solo il suo centro) → segnare presenti e assenti →
+   "Trasmetti pranzo a MAVI" si attiva quando sono segnati tutti. Passare a
+   **Cena**: Beatrice e Zied non compaiono, fanno solo pranzo.
+10. **Variazioni** → una nuova variazione per mercoledì (es. dieta in bianco
+    per un paziente) → **Invia a MAVI**: compare in cima come "Inviata a MAVI".
+11. Uscire → **Marta Colli** (referente di CSS Sole Luna) → Pazienti: solo i
+    pazienti del suo centro. **Variazioni**: una delle sue è già "Presa in
+    carico" dalla cucina, con data, ora e chi l'ha presa.
+12. Uscire → **Ilaria Gatti** (responsabile amministrativa) → entra
+    direttamente in **Fatture**: da saldare, scaduto, prossima scadenza e
+    pagato, poi l'elenco delle proforma con PDF. Nel menu non ci sono né
+    pazienti, né presenze, né variazioni. **Resoconti**: pasti per centro e
+    per pasto, giorno e settimana, **senza nomi né diete** → Excel → **PDF**,
+    stessi numeri.
 13. Uscire → **Cucina MAVI** → Etichette pasto: pannelli separati Aziende e
     Comunità, pallino rosso lampeggiante su chi ha etichette arrivate. Aprire
     Rossi Manifatture Spa (anonime, per piatto), poi Comunità Il Ponte
     (nominative, per reparto e paziente) → provare la ricerca per nominativo
     → "Stampa etichette di Comunità Il Ponte" per la vista dedicata.
-14. **Produzione** → la giornata con la data in cima; cambiare giorno con
-    ‹ ›, poi vista **Settimana**; "Filtra questa" su Il Ponte e il filtro
-    Pranzo / Cena; **Stampa / PDF** riporta data e filtro, **Excel** si scarica.
+14. **Produzione** → la giornata con la data in cima. "Pasti per committente
+    e centro": l'azienda e sotto Il Ponte **una riga per centro**, ognuna con
+    il suo referente, confermato o stimato. Il pranzo trasmesso da Samuele
+    risulta confermato, Sole Luna resta in stima. Il pannello "Variazioni dai
+    centri" mostra quella appena inviata. "Filtra centro" su Sole Luna, filtro
+    Pranzo / Cena, cambiare giorno con ‹ ›, poi vista **Settimana**.
+    **Stampa / PDF**: riepilogo totale, variazioni, diete e poi **una scheda
+    per destinazione, ognuna su pagina nuova**, da mettere con il carico.
+    **Excel**: cinque fogli, stessi numeri.
 15. **Ordini in arrivo** → aprire il dettaglio di Rossi Manifatture Spa: quantità
     per piatto con "per il giorno"/"generato il", poi il **dettaglio
     nominativo riservato al fornitore**, scegliere la giornata e "Manifesto
-    PDF" di quel solo giorno. Aprire anche il dettaglio di Comunità Il Ponte:
-    elenco nominativo con reparto e pasto, pranzo e cena distinti.
+    PDF" di quel solo giorno. Sulla riga di Comunità Il Ponte la colonna
+    Variazioni dice quante sono da prendere in carico: aprire il dettaglio,
+    elenco nominativo con centro e pasto, poi "Variazioni dai centri" →
+    **Prendi in carico** sulla variazione di Samuele. Rientrando come Samuele
+    Ferri, in Variazioni la trova "Presa in carico".
 16. **Committenti** → "Nuovo committente": creare una struttura di prova e far
     notare che compare subito anche in Impostazioni, Fatturazione, Produzione
     e Ordini in arrivo.
@@ -90,7 +103,7 @@ utente.
     laterale, in qualsiasi portale) → cambiare foto e telefono.
 20. **Gestione portale** → Aspetto → provare il tema scuro. Utenti → aprire
     Samuele Ferri, far notare il campo Reparto. **Ruoli e permessi** → portale
-    Comunità, togliere "Trasmetti le presenze" a Educatore; poi "Nuovo ruolo"
+    Comunità, togliere "Trasmetti le presenze" a Referente del centro; poi "Nuovo ruolo"
     Cuoco su MAVI con solo Produzione ed Etichette e un nuovo utente con quel
     ruolo. Rientrare come Samuele Ferri: il bottone Trasmetti non c'è più,
     senza rifare nulla; entrare con il nuovo utente: solo due voci di menu.
@@ -113,13 +126,16 @@ utente.
    è comparso.
 5. **La griglia stampabile.** Sempre da Menu settimana, "Griglia settimana" poi
    "Stampa": esce il prospetto a cinque colonne pronto per la bacheca.
-6. **Le presenze condivise.** Educatore e responsabile vedono le stesse
-   presenze, in tempo reale.
+6. **Le presenze condivise.** Quello che il referente del centro trasmette
+   arriva alla cucina in tempo reale, pranzo e cena separati.
 7. **Le etichette diverse per contesto.** Anonime per l'azienda, nominative per
    la comunità. È una scelta di riservatezza, non un dettaglio grafico.
-8. **Il reparto che filtra tutto.** Da Samuele Ferri a Ilaria Gatti: stessi
-   pazienti nel database, vista completamente diversa. Nessuna configurazione
-   manuale in mezzo, solo il login.
+8. **Un referente per centro, un responsabile che paga.** È l'organizzazione
+   che MAVI ha descritto (vocale del 15 settembre 2026). Da Samuele Ferri a
+   Marta Colli: stessi pazienti nel database, ognuno vede solo il proprio
+   centro. Ilaria Gatti non vede nomi né diete: solo fatture e numeri dei
+   pasti per controllarle. Nessuna configurazione manuale in mezzo, solo il
+   login.
 9. **Un committente nuovo, ovunque.** "Nuovo committente" compila un solo
    modulo e la struttura compare subito in cinque pagine diverse.
 10. **Chi ha ordinato cosa, ma solo per chi deve saperlo.** Le etichette
@@ -128,6 +144,10 @@ utente.
 11. **Il pallino che sa che sono arrivate etichette nuove.** In Etichette
     pasto, un pallino rosso lampeggiante segnala quale struttura ha etichette
     da guardare: sparisce da solo appena si apre il dettaglio.
+12. **La variazione che torna indietro.** Il referente scrive "stasera 2
+    ospiti in più", la cucina la trova in Ordini in arrivo e in distinta, la
+    prende in carico, e il referente vede subito data, ora e chi l'ha presa.
+    Niente più messaggi persi su WhatsApp.
 
 ## Cose da sapere prima di mostrare
 

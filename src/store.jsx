@@ -1,7 +1,7 @@
 import React from "react";
 import {
   PIATTI, GIORNI, MENU_INIZIALE, COMMITTENTI, ORDINI_UNITA, PAZIENTI_COMUNITA,
-  ETICHETTE_AZIENDA_DEMO, PROFORME_INIZIALI, RUOLI_INIZIALI, UTENTI,
+  ETICHETTE_AZIENDA_DEMO, PROFORME_INIZIALI, RUOLI_INIZIALI, UTENTI, VARIAZIONI_INIZIALI,
   anagraficaAzienda, etichettaGiorno, regimeIva, scadenzaPagamento,
 } from "./data.js";
 
@@ -9,6 +9,10 @@ const Ctx = React.createContext(null);
 export const usaStato = () => React.useContext(Ctx);
 
 let contatore = 0;
+/* numerazione delle variazioni: prosegue dal seed (var-1, var-2, ...) */
+let contatoreVariazioni = VARIAZIONI_INIZIALI.length;
+const PASTI_AMMESSI = ["pranzo", "cena", "entrambi"];
+const TIPI_AMMESSI = ["dieta", "presenze", "altro"];
 
 function nowHM() {
   const d = new Date();
@@ -20,7 +24,7 @@ const ORDINI_IN_CODA = [
   { id: "o1", struttura: "azienda", strutturaNome: "Rossi Manifatture Spa", mittente: "Roberto Manzi", ruoloMittente: "Referente", unita: "Amministrazione", pasti: 28, note: "3 vegetariani, 2 senza glutine", stato: "approvato", ora: "13:42", oraApprov: "14:05" },
   { id: "o2", struttura: "rsa", strutturaNome: "RSA Villa Serena", mittente: "Marco Pallino", ruoloMittente: "Operatore", unita: "Nucleo Glicine", pasti: 34, note: "6 tritati, 3 frullati, 4 iposodica", stato: "in_attesa", ora: "07:18" },
   { id: "o3", struttura: "rsa", strutturaNome: "RSA Villa Serena", mittente: "Elena Vergani", ruoloMittente: "Operatore", unita: "Nucleo Magnolia", pasti: 27, note: "4 tritati, 2 frullati, 3 iposodica", stato: "approvato", ora: "07:22", oraApprov: "07:45" },
-  { id: "o4", struttura: "comunita", strutturaNome: "Comunità Il Ponte", mittente: "Samuele Ferri", ruoloMittente: "Educatore", unita: "Spazio Giovani SGA", pasti: 19, note: "1 senza glutine", stato: "in_attesa", ora: "08:31" },
+  { id: "o4", struttura: "comunita", strutturaNome: "Comunità Il Ponte", mittente: "Samuele Ferri", ruoloMittente: "Referente del centro", unita: "Spazio Giovani SGA", pasti: 19, note: "1 senza glutine", stato: "in_attesa", ora: "08:31" },
   { id: "o5", struttura: "scuola", strutturaNome: "Istituto Sant'Anna", mittente: "Chiara Beltrami", ruoloMittente: "Insegnante", unita: "Primaria 1", pasti: 24, note: "1 dieta certificata", stato: "approvato", ora: "09:12", oraApprov: "09:18" },
 ];
 
@@ -124,6 +128,9 @@ export function Provider({ children }) {
   const [assenti, setAssenti] = React.useState([]);
   const [ospitiExtra, setOspitiExtra] = React.useState([]);
   const [presenzeTrasmesse, setPresenzeTrasmesse] = React.useState([]);
+  const [trasmissioniCentri, setTrasmissioniCentri] = React.useState([]);
+  /* variazioni scritte dai referenti dei centri e prese in carico da MAVI */
+  const [variazioni, setVariazioni] = React.useState(VARIAZIONI_INIZIALI);
   /* quando (data/ora reale) è stato confermato l'ordine di ciascun giorno del
      menu: senza questo, "Ordini in arrivo" non può distinguere "generato il"
      da "per quando", che sono due date diverse (si ordina oggi per un giorno
@@ -186,7 +193,7 @@ export function Provider({ children }) {
     { id: "l0", ora: "07:18", utente: "Marco Pallino", ruolo: "Operatore RSA", azione: "Ordine trasmesso", dettaglio: "34 pasti, RSA Villa Serena, Nucleo Glicine", tipo: "ordine" },
     { id: "l1", ora: "07:22", utente: "Elena Vergani", ruolo: "Operatore RSA", azione: "Ordine trasmesso", dettaglio: "27 pasti, RSA Villa Serena, Nucleo Magnolia", tipo: "ordine" },
     { id: "l2", ora: "07:45", utente: "Cucina MAVI", ruolo: "Operatore", azione: "Ordine approvato", dettaglio: "RSA Villa Serena, Nucleo Magnolia", tipo: "approvazione" },
-    { id: "l3", ora: "08:31", utente: "Samuele Ferri", ruolo: "Educatore", azione: "Ordine trasmesso", dettaglio: "19 pasti, Comunità Il Ponte", tipo: "ordine" },
+    { id: "l3", ora: "08:31", utente: "Samuele Ferri", ruolo: "Referente del centro", azione: "Ordine trasmesso", dettaglio: "19 pasti, Comunità Il Ponte", tipo: "ordine" },
     { id: "s4", ora: "09:00", utente: "Sistema", ruolo: "Automatico", azione: "Promemoria prenotazione inviato", dettaglio: "3 dipendenti Rossi Manifatture non hanno prenotato", tipo: "sistema" },
     { id: "l4", ora: "09:12", utente: "Chiara Beltrami", ruolo: "Insegnante", azione: "Ordine trasmesso", dettaglio: "24 pasti, Istituto Sant'Anna", tipo: "ordine" },
     { id: "l5", ora: "09:18", utente: "Cucina MAVI", ruolo: "Operatore", azione: "Ordine approvato", dettaglio: "Istituto Sant'Anna", tipo: "approvazione" },
@@ -231,18 +238,32 @@ export function Provider({ children }) {
     logga(nome, ruolo, azione, dettaglio, tipo);
   }, [sessione, ruoloSessione, logga]);
 
-  /* aggiorna per id E pasto invece di sovrascrivere: un educatore trasmette
-     solo il proprio reparto, il responsabile può trasmettere il resto più
-     tardi, e la cena non deve far perdere il pranzo già trasmesso */
-  const trasmettiPresenze = React.useCallback((lista) => {
+  /* aggiorna per id E pasto invece di sovrascrivere: ogni referente trasmette
+     solo il proprio centro, gli altri centri arrivano più tardi, e la cena non
+     deve far perdere il pranzo già trasmesso.
+     `ambito` ({ centri, pasto, giorno }) dice cosa copre la trasmissione: le
+     righe già trasmesse di quei centri per quel pasto vengono sostituite, così
+     un paziente passato da presente ad assente sparisce dalla distinta, e ogni
+     centro resta registrato in `trasmissioniCentri` anche con zero presenti
+     (altrimenti la cucina tornerebbe alla stima dei pazienti). */
+  const trasmettiPresenze = React.useCallback((lista, ambito = {}) => {
     const generatoIl = new Date().toISOString();
     const listaTimbrata = lista.map((r) => ({ ...r, generatoIl }));
-    setPresenzeTrasmesse((prec) => {
-      const restanti = prec.filter((r) => !lista.some((n) => n.id === r.id && n.pasto === r.pasto));
-      return [...restanti, ...listaTimbrata];
-    });
-    const pasti = [...new Set(lista.map((r) => r.pasto).filter(Boolean))];
-    const dettaglio = lista.length + " pazienti presenti" + (pasti.length ? ", " + pasti.join(" e ") : "");
+    const { centri = [], pasto = null, giorno = null } = ambito;
+    const coperta = (r) => lista.some((n) => n.id === r.id && n.pasto === r.pasto)
+      || (pasto != null && r.pasto === pasto && (giorno == null || r.giorno === giorno) && centri.includes(r.stanza));
+    setPresenzeTrasmesse((prec) => [...prec.filter((r) => !coperta(r)), ...listaTimbrata]);
+    if (pasto != null && centri.length) {
+      setTrasmissioniCentri((prec) => [
+        ...prec.filter((t) => !(t.pasto === pasto && t.giorno === giorno && centri.includes(t.reparto))),
+        ...centri.map((reparto) => ({
+          reparto, pasto, giorno, generatoIl, presenti: lista.filter((r) => r.stanza === reparto).length,
+        })),
+      ]);
+    }
+    const pasti = [...new Set(lista.map((r) => r.pasto).concat(pasto).filter(Boolean))];
+    const dettaglio = lista.length + " pazienti presenti" + (pasti.length ? ", " + pasti.join(" e ") : "")
+      + (centri.length ? " · " + centri.join(", ") : "");
     loggaSessione("Presenze trasmesse", dettaglio, "presenze");
   }, [loggaSessione]);
 
@@ -288,6 +309,66 @@ export function Provider({ children }) {
     setMessaggi((m) => [...m, { id, testo }]);
     setTimeout(() => setMessaggi((m) => m.filter((x) => x.id !== id)), 3200);
   }, []);
+
+  /* ---------- variazioni dai centri della comunità ---------- */
+
+  /* dal referente del centro a MAVI. Restituisce l'id, oppure null se manca il
+     testo. L'id si genera fuori dall'aggiornamento di stato, che in
+     StrictMode può essere eseguito due volte. */
+  const inviaVariazione = React.useCallback((dati = {}) => {
+    const testo = String(dati.testo || "").trim();
+    if (!testo) {
+      avvisa("Scrivi il testo della variazione prima di inviarla");
+      return null;
+    }
+    const id = "var-" + (++contatoreVariazioni);
+    const indice = Number(dati.indiceGiorno);
+    const record = {
+      id,
+      committenteId: dati.committenteId || "comunita",
+      reparto: String(dati.reparto || ""),
+      autore: dati.autore || (sessione ? sessione.nome : "—"),
+      ruoloAutore: dati.ruoloAutore || (ruoloSessione ? ruoloSessione.nome : ""),
+      indiceGiorno: Number.isInteger(indice) && indice >= 0 && indice < GIORNI.length ? indice : 0,
+      pasto: PASTI_AMMESSI.includes(dati.pasto) ? dati.pasto : "entrambi",
+      pazienteId: dati.pazienteId || null,
+      pazienteNome: dati.pazienteId ? dati.pazienteNome || null : null,
+      tipo: TIPI_AMMESSI.includes(dati.tipo) ? dati.tipo : "altro",
+      testo,
+      creataIl: new Date().toISOString(),
+      stato: "inviata",
+      presaInCaricoIl: null,
+      presaInCaricoDa: null,
+    };
+    setVariazioni((prec) => [record, ...prec]);
+    const pasto = record.pasto === "entrambi" ? "pranzo e cena" : record.pasto;
+    loggaSessione("Variazione inviata a MAVI",
+      [record.reparto, etichettaGiorno(record.indiceGiorno) + ", " + pasto, record.pazienteNome || "tutto il centro"].filter(Boolean).join(" · "),
+      "ordine");
+    avvisa("Variazione inviata a MAVI");
+    return id;
+  }, [sessione, ruoloSessione, loggaSessione, avvisa]);
+
+  /* lato MAVI. Legge da una ref, come `conferma`: due clic ravvicinati non
+     devono prendere in carico (e loggare) due volte la stessa variazione */
+  const variazioniRef = React.useRef(variazioni);
+  variazioniRef.current = variazioni;
+  const prendiInCaricoVariazione = React.useCallback((id) => {
+    const v = variazioniRef.current.find((x) => x.id === id);
+    if (!v || v.stato === "presa_in_carico") return false;
+    const aggiornata = {
+      ...v, stato: "presa_in_carico",
+      presaInCaricoIl: new Date().toISOString(),
+      presaInCaricoDa: sessione ? sessione.nome : "Cucina MAVI",
+    };
+    variazioniRef.current = variazioniRef.current.map((x) => (x.id === id ? aggiornata : x));
+    setVariazioni((prec) => prec.map((x) => (x.id === id ? aggiornata : x)));
+    loggaSessione("Variazione presa in carico",
+      [v.reparto, etichettaGiorno(v.indiceGiorno), v.pazienteNome || "tutto il centro"].filter(Boolean).join(" · "),
+      "approvazione");
+    avvisa("Variazione presa in carico: il referente del centro vede lo stato aggiornato");
+    return true;
+  }, [sessione, loggaSessione, avvisa]);
 
   /* ---------- ruoli, permessi e utenti gestiti ---------- */
 
@@ -732,8 +813,9 @@ export function Provider({ children }) {
     versione, riordinaMenu, salvaPiatto, eliminaPiatto,
     documenti, aggiungiDocumento, rimuoviDocumento,
     proforme, emettiProforma, annullaProforma,
-    committente, setCommittente, committenti, aggiungiCommittente, aggiornaCommittente, unita, cambiaUnita, aggiungiOspitePresente, presenze, cambiaPresenze, assenti, commutaAssente, ospitiExtra, aggiungiOspite, presenzeTrasmesse, trasmettiPresenze,
+    committente, setCommittente, committenti, aggiungiCommittente, aggiornaCommittente, unita, cambiaUnita, aggiungiOspitePresente, presenze, cambiaPresenze, assenti, commutaAssente, ospitiExtra, aggiungiOspite, presenzeTrasmesse, trasmissioniCentri, trasmettiPresenze,
     oraConferma, nominativiAzienda,
+    variazioni, inviaVariazione, prendiInCaricoVariazione,
     presenzeComunita, setPresenzeComunita, logOperazioni, logga,
     tema, setTema, datiAziendali, setDatiAziendali, notifiche, setNotifiche, profili, aggiornaProfilo,
     sessione, ruoloSessione, entra, esci, puo, loggaSessione, trovaUtente,

@@ -12,7 +12,7 @@
 
 import {
   apriDocumento, blocco, cellaConNota, dataIt, giornoDataIt, paginaDocumento,
-  paragrafo, riepilogoTotali, tabellaHtml,
+  paragrafo, riepilogoTotali, tabellaHtml, testoHtml,
 } from "./documento.js";
 
 const oraIt = () => new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
@@ -141,7 +141,7 @@ export function generaResocontoComunitaPDF({ struttura, reparto, giorno, pasti =
     sottotitolo: unisci([struttura, reparto, etichettaGiorno, generatoIl()]),
     meta: [
       { etichetta: "Struttura", valore: struttura },
-      { etichetta: reparto ? "Reparto" : "Perimetro", valore: reparto || "Tutti i reparti" },
+      { etichetta: reparto ? "Centro" : "Perimetro", valore: reparto || "Tutti i centri" },
       { etichetta: "Giornata", valore: etichettaGiorno },
       { etichetta: "Pazienti", valore: pazienti.size },
     ],
@@ -152,6 +152,71 @@ export function generaResocontoComunitaPDF({ struttura, reparto, giorno, pasti =
   });
 
   apriDocumento(html, { nomeFile: "Resoconto_comunita.html", avvisa });
+}
+
+/* ==================== comunità, pasti per centro senza nominativi ==================== */
+
+/* Il resoconto del responsabile amministrativo: nessun nome, nessuna dieta.
+   righe:        [{ tipo: "dettaglio" | "centro" | "totale", centro, pasto,
+                    previsti, trasmessi, settimana: [n, ...], totaleSettimana }]
+                 le stesse di ResocontiCentri in Comunita.jsx e dei due fogli Excel
+   intestazioni: [etichetta, ...] le colonne dei giorni della settimana
+   numeri:       [{ etichetta, valore }] gli stessi riquadri dello schermo */
+export function generaResocontoCentriPDF({
+  struttura, perimetro, giorno, periodo, intestazioni = [], righe = [], numeri = [], datiAziendali, avvisa,
+}) {
+  const etichettaGiorno = giorno ? giornoDataIt(giorno) : "";
+  /* totali del centro e totale generale in grassetto dentro il corpo della
+     tabella: la riga `totale` di tabellaHtml, quando cade in posizione pari,
+     prende lo sfondo chiaro delle righe alterne e il testo bianco sparisce */
+  const forte = (v) => ({ html: "<b>" + testoHtml(v) + "</b>" });
+  const cella = (r, v) => (r.tipo === "dettaglio" ? v : forte(v));
+  const testa = (r) => [cella(r, r.centro), cella(r, r.pasto)];
+
+  const tabellaGiorno = tabellaHtml({
+    colonne: [
+      { titolo: "Centro" },
+      { titolo: "Pasto" },
+      { titolo: "Pasti previsti", allinea: "dx" },
+      { titolo: "Presenti trasmessi a MAVI", allinea: "dx" },
+    ],
+    righe: righe.map((r) => [...testa(r), cella(r, r.previsti), cella(r, r.trasmessi)]),
+    vuota: "Nessun centro nel perimetro.",
+  });
+
+  const tabellaSettimana = tabellaHtml({
+    colonne: [
+      { titolo: "Centro" },
+      { titolo: "Pasto" },
+      ...intestazioni.map((titolo) => ({ titolo, allinea: "dx" })),
+      { titolo: "Totale settimana", allinea: "dx" },
+    ],
+    righe: righe.map((r) => [...testa(r), ...(r.settimana || []).map((n) => cella(r, n)), cella(r, r.totaleSettimana)]),
+    vuota: "Nessun centro nel perimetro.",
+  });
+
+  const html = paginaDocumento({
+    titolo: "Resoconto dei pasti per centro",
+    badge: "Resoconto",
+    sottotitolo: unisci([struttura, perimetro, etichettaGiorno, generatoIl()]),
+    meta: [
+      { etichetta: "Perimetro", valore: perimetro || "Tutti i centri" },
+      ...numeri,
+    ],
+    blocchi: [
+      blocco("Pasti per centro, " + (etichettaGiorno || "giornata"), tabellaGiorno),
+      blocco("Pasti previsti per centro, settimana " + (periodo || ""), tabellaSettimana),
+    ],
+    note: [
+      "Il resoconto non riporta nomi dei pazienti né diete: sono dati sanitari e restano ai referenti "
+        + "dei centri. Per controllare le fatture bastano i numeri dei pasti.",
+      "Pasti previsti: pazienti che hanno quel pasto nella dieta del giorno. Presenti trasmessi: quelli "
+        + "confermati a MAVI dal referente del centro; finché il centro non trasmette restano a zero.",
+    ],
+    datiAziendali,
+  });
+
+  apriDocumento(html, { nomeFile: "Resoconto_pasti_per_centro.html", avvisa });
 }
 
 /* ==================== struttura, resoconto mensile per unità ==================== */
@@ -208,19 +273,129 @@ export function generaResocontoUnitaPDF({
 
 const SPAZIO_FIRMA = "&nbsp;<br>&nbsp;<br>&nbsp;<br>&nbsp;";
 
-/* diete: [{ nome, reparto, tipoDieta, note }] — le note di preparazione delle
-   persone in elenco, quelle che la cucina deve avere sotto gli occhi */
-function bloccoDiete(diete = []) {
-  return blocco("Diete particolari e consistenze", tabellaHtml({
+/* diete: [{ nome, committenteNome, reparto, pastiTesto, tipoDieta, note }] — le
+   note di preparazione delle persone in elenco, quelle che la cucina deve avere
+   sotto gli occhi */
+function bloccoDiete(diete = [], titolo = "Diete particolari e consistenze") {
+  return blocco(titolo, tabellaHtml({
     colonne: [
       { titolo: "Nominativo" },
-      { titolo: "Struttura o reparto" },
+      { titolo: "Committente e centro" },
+      { titolo: "Pasti" },
       { titolo: "Tipo di dieta" },
       { titolo: "Note di preparazione" },
     ],
-    righe: diete.map((d) => [d.nome, d.reparto, d.tipoDieta, d.note]),
+    righe: diete.map((d) => [
+      d.nome, cellaConNota(d.reparto || "—", d.committenteNome), d.pastiTesto || "—", d.tipoDieta, d.note || "—",
+    ]),
     vuota: "Nessuna dieta particolare fra le persone comprese nel perimetro.",
   }));
+}
+
+/* variazioni: [{ giorno, committente, centro, pasto, paziente, tipo, testo, autore, inviata, stato }]
+   scritte dai referenti dei centri; non sono conteggiate nelle quantità */
+function bloccoVariazioni(variazioni = [], { conGiorno = false, titolo = "Variazioni dai centri" } = {}) {
+  return blocco(titolo, tabellaHtml({
+    colonne: [
+      ...(conGiorno ? [{ titolo: "Giorno" }] : []),
+      { titolo: "Centro" },
+      { titolo: "Pasto" },
+      { titolo: "Paziente" },
+      { titolo: "Variazione" },
+      { titolo: "Stato" },
+    ],
+    righe: variazioni.map((v) => [
+      ...(conGiorno ? [v.giorno] : []),
+      cellaConNota(v.centro, v.committente),
+      v.pasto,
+      v.paziente,
+      cellaConNota(v.tipo + ": " + v.testo, "Inviata da " + v.autore + " il " + v.inviata),
+      v.stato,
+    ]),
+    vuota: "Nessuna variazione dai centri per il periodo, il perimetro e il pasto scelti.",
+  }) + (variazioni.length
+    ? paragrafo("Le variazioni non sono già conteggiate nelle quantità: vanno applicate a mano.", { piccolo: true })
+    : ""));
+}
+
+/* pastiPerCentro: { colonnePasto: ["Pranzo", ...], righe: [riga], totale: riga }
+   riga: { committente, centro, referente, perPasto: [n, ...], pasti, confermati, stimati, porzioni, stato } */
+function bloccoPastiPerCentro(pastiPerCentro) {
+  if (!pastiPerCentro) return "";
+  const { colonnePasto = [], righe = [], totale } = pastiPerCentro;
+  /* lo stato è già detto da confermati e stimati: una colonna in meno perché la
+     tabella stia nella larghezza di un A4 */
+  const riga = (r) => [
+    r.committente, r.centro, r.referente, ...(r.perPasto || []), r.pasti, r.confermati, r.stimati, r.porzioni,
+  ];
+  return blocco("Pasti per committente e centro", tabellaHtml({
+    colonne: [
+      { titolo: "Committente" },
+      { titolo: "Centro" },
+      { titolo: "Referente" },
+      ...colonnePasto.map((titolo) => ({ titolo, allinea: "centro" })),
+      { titolo: "Pasti", allinea: "centro" },
+      { titolo: "Confermati", allinea: "centro" },
+      { titolo: "Stimati", allinea: "centro" },
+      { titolo: "Porzioni", allinea: "centro" },
+    ],
+    righe: righe.map(riga),
+    totale: righe.length && totale ? riga(totale) : undefined,
+    vuota: "Nessuna destinazione nel perimetro scelto.",
+  }));
+}
+
+/* Una scheda per destinazione di consegna (l'azienda, oppure un centro della
+   comunità), ognuna su una pagina nuova: si stacca e va con il carico.
+   destinazione: { titolo, centro, tipo, referente, pasti, confermati, stimati,
+     porzioni, perPasto: [{ pasto, pasti }], stato, colonnePasto: ["Pranzo", ...],
+     righe: [{ categoria, piatto, colore, nota, perPasto: [n, ...], totale }],
+     diete, variazioni } */
+function schedaDestinazione(d, etichettaPeriodo) {
+  const intestazione = d.centro ? "Centro " + d.centro : d.tipo === "Azienda" ? "Consegna unica" : d.titolo;
+  const riquadri = [
+    { etichetta: "Periodo", valore: etichettaPeriodo },
+    { etichetta: "Referente", valore: d.referente || "—" },
+    {
+      etichetta: "Pasti",
+      valore: (d.colonnePasto || []).length
+        ? unisci([d.pasti + " in tutto", ...(d.perPasto || []).map((p) => p.pasto.toLowerCase() + " " + p.pasti)])
+        : d.pasti,
+    },
+    { etichetta: "Porzioni", valore: d.porzioni },
+    { etichetta: "Stato", valore: d.stimati > 0 ? d.stato + " (" + d.confermati + " confermati, " + d.stimati + " stimati)" : d.stato },
+  ];
+  const colonnePasto = d.colonnePasto || [];
+  const righe = d.righe || [];
+  const tabella = tabellaHtml({
+    colonne: [
+      { titolo: "Portata" },
+      { titolo: "Piatto" },
+      { titolo: "Colore" },
+      ...colonnePasto.map((titolo) => ({ titolo, allinea: "centro" })),
+      { titolo: "Porzioni", allinea: "centro" },
+    ],
+    righe: righe.map((r) => [
+      r.categoria,
+      r.nota ? cellaConNota(r.piatto, r.nota) : r.piatto,
+      r.colore || "—",
+      ...colonnePasto.map((_, i) => (r.perPasto || [])[i] || 0),
+      r.totale,
+    ]),
+    totale: righe.length
+      ? ["TOTALE", "", "", ...colonnePasto.map((_, i) => righe.reduce((s, r) => s + ((r.perPasto || [])[i] || 0), 0)),
+        righe.reduce((s, r) => s + (Number(r.totale) || 0), 0)]
+      : undefined,
+    vuota: "Nessun pasto per questa destinazione nel periodo e nel pasto scelti.",
+  });
+  return `<div style="break-before:page;page-break-before:always"></div>`
+    + `<section class="doc-blocco"><h2>Scheda di consegna · ${testoHtml(d.titolo)}</h2>`
+    + `<p class="doc-titolo">${testoHtml(intestazione)}</p>`
+    + `<div class="doc-meta">${riquadri.map((m) =>
+      `<div class="doc-meta-voce"><label>${testoHtml(m.etichetta)}</label><span>${testoHtml(m.valore)}</span></div>`).join("")}</div>`
+    + tabella + `</section>`
+    + ((d.diete || []).length ? bloccoDiete(d.diete, "Diete particolari di questa destinazione") : "")
+    + ((d.variazioni || []).length ? bloccoVariazioni(d.variazioni, { titolo: "Variazioni di questo centro" }) : "");
 }
 
 function bloccoFirma() {
@@ -262,14 +437,20 @@ const porzioniDi = (sezioni) => sezioni.reduce((s, sez) =>
   s + (sez.righe || []).reduce((x, r) => x + (Number(r.totale) || 0), 0), 0);
 
 /* Distinta di una sola giornata.
-   giorno:     data ISO o Date della giornata guardata, finisce nel titolo
-   perimetro:  testo del filtro applicato (struttura, tipo, pasto)
-   strutture:  [nome, ...] — le colonne per committente, [] con un filtro singolo
-   sezioni:    [{ categoria, righe: [{ piatto, colore, nota, perStruttura: [n, ...], totale }] }]
-   totali:     [{ etichetta, valore }] — riquadri dopo giornata e perimetro
-   diete:      [{ nome, reparto, tipoDieta, note }] */
+   giorno:         data ISO o Date della giornata guardata, finisce nel titolo
+   perimetro:      testo del filtro applicato (struttura, tipo, pasto)
+   strutture:      [nome, ...] — le colonne per committente, [] con un filtro singolo
+   sezioni:        [{ categoria, righe: [{ piatto, colore, nota, perStruttura: [n, ...], totale }] }]
+   totali:         [{ etichetta, valore }] — riquadri dopo giornata e perimetro
+   pastiPerCentro: vedi bloccoPastiPerCentro
+   destinazioni:   una scheda per destinazione, vedi schedaDestinazione
+   variazioni:     vedi bloccoVariazioni
+   diete:          vedi bloccoDiete
+   Ordine: riepilogo totale per piatto, pasti per committente e centro,
+   variazioni, diete, firma; poi le schede per destinazione, una per pagina. */
 export function generaDistintaPDF({
-  giorno, perimetro, strutture = [], sezioni = [], totali = [], diete = [], datiAziendali, avvisa,
+  giorno, perimetro, strutture = [], sezioni = [], totali = [], pastiPerCentro, destinazioni = [], variazioni = [],
+  diete = [], datiAziendali, avvisa,
 }) {
   const etichettaGiorno = giorno ? giornoDataIt(giorno) : "";
   const complessivo = porzioniDi(sezioni);
@@ -285,14 +466,19 @@ export function generaDistintaPDF({
       ...totali,
     ],
     blocchi: [
+      paragrafo("Riepilogo totale per piatto: quanto produrre in tutto. Il dettaglio per committente e centro è nelle schede di consegna in fondo, una per pagina.", { piccolo: true }),
       ...(blocchi.length ? blocchi : [paragrafo("Nessuna porzione da produrre in questa giornata con il perimetro scelto.")]),
       riepilogoTotali([{ etichetta: "Porzioni totali da produrre", valore: complessivo, forte: true }]),
+      bloccoPastiPerCentro(pastiPerCentro),
+      bloccoVariazioni(variazioni),
       bloccoDiete(diete),
       bloccoFirma(),
+      ...destinazioni.map((d) => schedaDestinazione(d, etichettaGiorno)),
     ],
     note: "Documento di lavoro della cucina, valido per la sola giornata indicata in testa. Le "
       + "quantità sommano i contributi delle strutture comprese nel perimetro: quelle ancora non "
-      + "trasmesse sono stime del portale e vanno confermate dal committente prima della produzione.",
+      + "confermate sono stime del portale e vanno confermate dal committente prima della produzione. "
+      + "Le variazioni dai centri non sono già conteggiate nelle quantità.",
     datiAziendali,
   });
 
@@ -303,9 +489,12 @@ export function generaDistintaPDF({
    intermedie sono le giornate invece dei committenti.
    periodo:  "Settimana dal 14/09 al 18/09/2026", finisce nel titolo
    giorni:   [etichetta, ...] — le colonne, di norma lunedì-venerdì
-   sezioni:  [{ categoria, righe: [{ piatto, colore, nota, perGiorno: [n, ...], totale }] }] */
+   sezioni:  [{ categoria, righe: [{ piatto, colore, nota, perGiorno: [n, ...], totale }] }]
+   pastiPerCentro, destinazioni, variazioni, diete: come la distinta del giorno,
+   sommati sulla settimana */
 export function generaDistintaSettimanaPDF({
-  periodo, perimetro, giorni = [], sezioni = [], totali = [], diete = [], datiAziendali, avvisa,
+  periodo, perimetro, giorni = [], sezioni = [], totali = [], pastiPerCentro, destinazioni = [], variazioni = [],
+  diete = [], datiAziendali, avvisa,
 }) {
   const complessivo = porzioniDi(sezioni);
   const blocchi = sezioniDistinta(sezioni, giorni, "perGiorno");
@@ -320,14 +509,19 @@ export function generaDistintaSettimanaPDF({
       ...totali,
     ],
     blocchi: [
+      paragrafo("Riepilogo totale per piatto, giornata per giornata. Il dettaglio per committente e centro è nelle schede di consegna in fondo, con i totali della settimana.", { piccolo: true }),
       ...(blocchi.length ? blocchi : [paragrafo("Nessuna porzione da produrre in questa settimana con il perimetro scelto.")]),
       riepilogoTotali([{ etichetta: "Porzioni totali della settimana", valore: complessivo, forte: true }]),
+      bloccoPastiPerCentro(pastiPerCentro),
+      bloccoVariazioni(variazioni, { conGiorno: true }),
       bloccoDiete(diete),
       bloccoFirma(),
+      ...destinazioni.map((d) => schedaDestinazione(d, periodo)),
     ],
     note: "Prospetto settimanale della cucina: serve a programmare acquisti e lavorazioni, non "
       + "sostituisce la distinta del giorno, che resta il documento da portare in produzione. Le "
-      + "giornate non ancora trasmesse dai committenti sono stime del portale.",
+      + "giornate non ancora confermate dai committenti sono stime del portale. Le variazioni dai "
+      + "centri non sono già conteggiate nelle quantità.",
     datiAziendali,
   });
 

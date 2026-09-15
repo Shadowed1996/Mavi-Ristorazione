@@ -5778,3 +5778,158 @@ tr.pz-neutro td:first-child { border-left: 3px solid var(--linea); }
   --mp-ruolo: var(--carta);
 }
 [data-tema="scuro"] .matrice-permessi .mp-elimina { color: #e08b84; }
+
+/* ==== vocale 15/09 · comunità ==== */
+.modulo-variazione {
+  padding: 20px 22px 18px;
+}
+.modulo-variazione .modulo-riga.due {
+  gap: 0 20px;
+}
+.modulo-variazione select:disabled {
+  background: var(--carta);
+  color: var(--inchiostro-2);
+  cursor: default;
+}
+.modulo-variazione textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1.5px solid var(--linea);
+  border-radius: 12px;
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.5;
+  background: #fff;
+  color: var(--inchiostro);
+  resize: vertical;
+}
+.modulo-variazione textarea:focus {
+  outline: none;
+  border-color: var(--acc);
+  box-shadow: 0 0 0 3px var(--acc-tenue);
+}
+.variazione-piede {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.resoconto-centri th.num,
+.resoconto-centri td.num {
+  text-align: right;
+}
+.dati tr.riga-subtotale td {
+  border-top: 1px solid var(--linea-forte);
+  font-weight: 600;
+}
+@media (max-width: 640px) {
+  .modulo-variazione .modulo-riga.due { grid-template-columns: 1fr; }
+}
+[data-tema="scuro"] .modulo-variazione textarea {
+  background: var(--carta);
+  color: var(--inchiostro);
+  border-color: var(--linea-forte);
+}
+[data-tema="scuro"] .modulo-variazione select:disabled { background: var(--foglio); }
+
+/* ==== vocale 15/09 · produzione e variazioni MAVI ==== */
+/* righe dei centri sotto il committente, righe fuori dal filtro attenuate */
+.dati tr.dist-riga-centro td { background: var(--carta); font-size: 13.5px; }
+.dati tr.dist-riga-centro td:first-child { padding-left: 40px; }
+.dist-freccia { color: var(--muto); margin-right: 4px; }
+.dati tr.dist-fuori td { opacity: 0.55; }
+.dati tr.dist-fuori td:last-child { opacity: 1; }
+.dati tfoot tr.dist-riga-totale td {
+  border-top: 2px solid var(--linea-forte);
+  background: var(--carta);
+}
+.dist-avviso { margin: 0 22px 16px; }
+.dist-simile {
+  display: block;
+  margin-top: 4px;
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--muto);
+  line-height: 1.4;
+}
+.dist-simile .pastiglia { margin-right: 4px; }
+
+/* dettaglio per committente e centro: una scheda per destinazione */
+.dist-dest-griglia {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 16px;
+  padding: 0 22px 22px;
+}
+.dist-dest {
+  border: 1px solid var(--linea);
+  border-radius: var(--r-m);
+  background: var(--foglio);
+  overflow: hidden;
+  align-self: start;
+}
+.dist-dest-testa {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--linea);
+  background: var(--carta);
+}
+.dist-dest-testa h3 { font-size: 17px; font-weight: 600; margin: 2px 0; }
+.dist-dest-committente {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muto);
+}
+.dist-dest-referente { font-size: 12.5px; color: var(--muto); }
+.dist-dest-numeri {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  font-size: 12.5px;
+  color: var(--muto);
+  text-align: right;
+  white-space: nowrap;
+}
+.dist-dest-numeri small { font-size: 11.5px; }
+.dist-dest-tabella { font-size: 13px; }
+.dist-dest-tabella th,
+.dist-dest-tabella td { padding: 8px 16px; }
+.dist-dest-tabella th.cifra,
+.dist-dest-tabella td.cifra { text-align: right; }
+.dist-dest-portata {
+  display: block;
+  font-size: 11px;
+  color: var(--muto);
+}
+.dist-dest-note {
+  padding: 10px 16px;
+  border-top: 1px solid var(--linea);
+  font-size: 12.5px;
+  color: var(--inchiostro-2);
+  line-height: 1.5;
+}
+.dist-dest-vuoto { padding: 16px 22px; font-size: 13px; color: var(--muto); }
+.dist-testo-variazione { min-width: 260px; max-width: 460px; white-space: normal; line-height: 1.45; }
+
+/* Ordini in arrivo: variazioni dai centri nel dettaglio comunità */
+.flussi-variazioni { margin-top: 18px; }
+.flussi-variazioni h3 { font-size: 15px; font-weight: 600; margin: 0 0 8px; }
+.flussi-variazioni td:first-child { min-width: 150px; }
+.flussi-variazioni td:nth-child(2) { min-width: 140px; }
+.flussi-variazioni td:nth-child(3) { white-space: nowrap; }
+.dist-dest-numeri .pastiglia { margin-top: 2px; }
+
+@media (max-width: 760px) {
+  .dist-dest-griglia { grid-template-columns: 1fr; padding: 0 14px 14px; }
+  .dati tr.dist-riga-centro td:first-child { padding-left: 26px; }
+}
+[data-tema="scuro"] .dist-dest { background: var(--foglio); border-color: var(--linea); }
+[data-tema="scuro"] .dist-dest-testa,
+[data-tema="scuro"] .dati tr.dist-riga-centro td,
+[data-tema="scuro"] .dati tfoot tr.dist-riga-totale td { background: var(--carta); border-color: var(--linea); }

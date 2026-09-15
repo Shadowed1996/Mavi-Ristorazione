@@ -170,8 +170,9 @@ Login unico, password `dimostrazione` per tutti.
 |---|---|---|
 | Antonella Rossi | azienda | dipendente |
 | Roberto Manzi | azienda | referente |
-| Samuele Ferri | comunità | educatore (solo il proprio reparto, ruolo configurabile) |
-| Ilaria Gatti | comunità | responsabile |
+| Samuele Ferri | comunità | referente del centro Spazio Giovani SGA (diete, presenze, variazioni del proprio centro) |
+| Marta Colli | comunità | referente del centro CSS Sole Luna, Desio |
+| Ilaria Gatti | comunità | responsabile amministrativa (solo fatture e resoconti senza nominativi) |
 | Cucina MAVI | mavi | fornitore (ruolo bloccato, non può chiudersi fuori) |
 
 Ruoli e permessi si configurano da Cucina MAVI › Gestione portale › Ruoli e

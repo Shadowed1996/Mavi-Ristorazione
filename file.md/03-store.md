@@ -98,13 +98,30 @@ inizializzato: la funzione esce subito. Resta per quando il modulo RSA tornerà.
 | `presenzeComunita` | `{ [idPaziente]: { pranzo: true \| false \| null, cena: true \| false \| null } }`, tutto a `null` all'avvio (dal 14 settembre 2026 la presenza è **per pasto**) |
 | `setPresenzeComunita(v)` | aggiorna la mappa |
 | `presenzeTrasmesse` | lista trasmessa a MAVI, **una riga per paziente e pasto**, ogni riga timbrata con `generatoIl` |
-| `trasmettiPresenze(lista)` | timbra `generatoIl` e **aggiorna per `id` + `pasto`** (non sovrascrive): reparti e pasti trasmessi in momenti diversi si sommano, la cena non cancella il pranzo; il log riporta anche il pasto |
+| `trasmettiPresenze(lista, ambito)` | timbra `generatoIl` e **aggiorna per `id` + `pasto`** (non sovrascrive): centri e pasti trasmessi in momenti diversi si sommano, la cena non cancella il pranzo. `ambito = { centri, pasto, giorno }` (15 settembre 2026) dice cosa copre la trasmissione: le righe già trasmesse di quei centri per quel pasto vengono **sostituite**, così un paziente ritrasmesso assente sparisce, e ogni centro viene registrato in `trasmissioniCentri`. Il log riporta pasto e centri |
+| `trasmissioniCentri` | `[{ reparto, pasto, giorno, generatoIl, presenti }]`, una voce per centro e pasto trasmessi: serve a sapere che un centro **ha trasmesso anche con zero presenti** (senza, la distinta tornerebbe alla stima dei suoi pazienti) |
 | `assenti`, `commutaAssente(id)` | assenze, modello a lista |
 | `ospitiExtra`, `aggiungiOspite(ospite)` | ospiti aggiunti in demo, ritorna l'id |
 
 `null` significa "non ancora segnato": tiene disattivato il bottone "Trasmetti"
 **solo per il pasto corrente**, finché non sono stati segnati tutti i pazienti
 che prevedono quel pasto (`pastiDi(p)` in `data.js`).
+
+### Variazioni dai centri (15 settembre 2026, contratto con il portale MAVI)
+
+| Nome | Cosa |
+|---|---|
+| `variazioni` | seed `VARIAZIONI_INIZIALI`, forma sotto; le nuove in testa |
+| `inviaVariazione(dati)` | `dati` = campi tranne `id`, `creataIl`, `stato`, `presaInCarico*`. Senza testo avvisa e ritorna `null`; altrimenti numera `var-N`, normalizza pasto/tipo/giorno, completa autore e ruolo dalla sessione, logga (`ordine`), avvisa e **ritorna l'id** |
+| `prendiInCaricoVariazione(id)` | lato MAVI: `stato: "presa_in_carico"`, `presaInCaricoIl` (ISO) e `presaInCaricoDa` (nome della sessione), logga (`approvazione`), avvisa; ritorna `false` se l'id non c'è o è già presa in carico (legge da una ref, niente doppioni con due clic) |
+
+```js
+{ id, committenteId, reparto /* il centro */, autore, ruoloAutore,
+  indiceGiorno /* in GIORNI */, pasto: "pranzo" | "cena" | "entrambi",
+  pazienteId, pazienteNome /* null = tutto il centro */,
+  tipo: "dieta" | "presenze" | "altro", testo, creataIl /* ISO */,
+  stato: "inviata" | "presa_in_carico", presaInCaricoIl, presaInCaricoDa }
+```
 
 ## Proforma (dal 14 settembre 2026)
 

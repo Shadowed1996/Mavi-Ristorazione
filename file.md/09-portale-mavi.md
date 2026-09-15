@@ -22,36 +22,57 @@ visibile**: occhiello, titolo, banner del filtro e ogni documento.
 - **Vista Settimana**: "Settimana dal 14/09 al 18/09/2026", tabella piatto ×
   lun–ven con il totale.
 - **Filtro**: Tutte / Aziende / Comunità / singolo committente ("Filtra
-  questa" nella tabella dei contributi, con banner che lo segnala); per le
-  comunità anche Pranzo / Cena / Entrambi.
+  questa") / **singolo centro** ("Filtra centro", `filtro = "centro:<chiave>"`),
+  con banner che lo segnala; Pranzo / Cena / Entrambi. L'azienda serve solo il
+  pranzo: con Cena restano le sole comunità.
 
-Fonti dei numeri, per giornata:
+**Destinazioni** (vocale MAVI del 15/09/2026: resoconto cucina diversificato
+per committente e per centro). `destinazioniDi(c)`: l'azienda è una consegna
+unica (`chiave = c.id`), la comunità una destinazione per centro
+(`chiave = c.id + "|" + centro`, da `c.unita` più i centri trovati in pazienti e
+presenze). `distintaDelGiorno` calcola sempre pranzo e cena, con
+`voce.per[destinazione][pasto]` e i coperti di ogni destinazione divisi in
+`confermati` e `stimati`; il filtro del pasto si applica in lettura.
 
 - **Azienda** — le righe di `st.nominativiAzienda` con quell'`indiceGiorno`
-  (conferme reali del portale dipendente e "Prenota per lui"), più una **stima
-  deterministica** ripartita sul `menuDelGiorno` di quella giornata
-  (`COPERTI_STIMA_AZIENDA`, `PESI_SCELTA`, funzione `ripartisci`), marcata
-  "stima" e sommata alle conferme. `AGGREGATO` non è più usato: prima la
-  pagina sommava tutti i giorni confermati insieme.
-- **Comunità** — `st.presenzeTrasmesse` per giorno e pasto (piatti reali delle
-  diete); se per quel giorno e pasto non è stato trasmesso nulla, stima da
-  `PAZIENTI_COMUNITA` con `pastiDi` e `portateServite`, marcata "stima". Il
-  colore WHP compare quando il nome del piatto corrisponde al catalogo.
+  (conferme reali), più una **stima** sul `menuDelGiorno` (`ripartisci`) che
+  copre solo i coperti **mancanti**: `COPERTI_STIMA_AZIENDA[i] - confermati`
+  (prima si sommava la stima intera alle conferme: 7 + 28 invece di 28).
+- **Comunità** — centro per centro e pasto per pasto: `st.presenzeTrasmesse`
+  di quel centro (`stanza`); se quel centro non ha trasmesso, stima dalle diete
+  dei suoi pazienti (`pastiDi`, `portateServite`). Prima bastava che un centro
+  trasmettesse per azzerare la stima degli altri. Un centro che ha trasmesso
+  tutti assenti non ha righe ma compare in `st.trasmissioniCentri`: conta come
+  trasmesso (campo `trasmessi` del contributo) e ha stato **"trasmesso, nessun
+  pasto"**, a schermo, nel PDF e nell'Excel.
 
-Quattro riquadri calcolati sulla vista scelta: pasti, porzioni, diete
-particolari (persone del periodo con `tipo_dieta` diverso da Standard), "Hanno
-trasmesso N su M". Niente più consistenze da `st.unita` né "ultima chiusura"
-delle scuole, fuori perimetro. La tabella "Contributi per struttura" elenca
-`st.committenti` con stato trasmesso / stima / in attesa: un committente nuovo
-compare a zero, in attesa. Il pannello "Diete particolari e consistenze" mostra
-le note di preparazione reali dei presenti.
+Riquadri: pasti (azienda, comunità, quanti stimati), porzioni, diete
+particolari, variazioni dai centri (da prendere in carico, non incluse nelle
+quantità), "Destinazioni confermate N su M". Pannelli, nell'ordine:
 
-**Stampa / PDF** apre `generaDistintaPDF` o `generaDistintaSettimanaPDF` di
-`resoconto.js` (data o settimana, perimetro, quantità per piatto con colore
-WHP, diete e consistenze, spazio note e firma); **Excel** scarica due fogli
-("Quantità per piatto" con colonne per struttura o per giornata, "Diete
-particolari"). Non c'è più `window.print()`, che nascondeva l'intestazione con
-la data.
+1. **Pasti per committente e centro** — riga per committente e, sotto, una riga
+   per centro con referente (`st.utenti` con `struttura` e `reparto`), pasti per
+   pasto, porzioni e stato (`statoContributo`: confermato, in parte stimato,
+   stima, in attesa). Righe fuori filtro attenuate (`.dist-fuori`).
+2. **Quantità da produrre** — riepilogo totale per piatto, colonne per
+   committente (giorno) o per giornata (settimana, "Lunedì 14 set" come nel PDF
+   e nell'Excel), riga di totale. I **piatti quasi omonimi** con almeno un nome
+   fuori catalogo (`piattiSimili`, radici delle parole senza preposizioni) sono
+   segnalati "da verificare", mai sommati: i dati non si correggono.
+3. **Dettaglio per committente e centro** — una scheda per destinazione
+   (`.dist-dest`) con piatti, pranzo/cena, diete e variazioni del centro.
+4. **Variazioni dai centri** — `st.variazioni` del periodo, del perimetro e del
+   pasto (una variazione "entrambi" vale per tutti e due).
+5. **Diete particolari e consistenze** — con committente, centro e pasti.
+
+**Stampa / PDF** (`generaDistintaPDF` / `generaDistintaSettimanaPDF`): riepilogo
+per piatto, pasti per committente e centro, variazioni, diete, firma, poi una
+**scheda di consegna per destinazione, ognuna su pagina nuova**. **Excel**:
+fogli "Quantità per piatto", "Pasti per centro", "Per committente e centro"
+(righe piatte filtrabili), "Variazioni dai centri", "Diete particolari"; ogni
+foglio riporta giornata e perimetro in riga 3, il nome file anche filtro e
+pasto. PDF ed Excel ricevono gli stessi array della pagina: verificato numero per
+numero con lo strumento di prova per ogni filtro, pasto, giorno e settimana.
 
 ## Ordini in arrivo — `FlussiOrdine`
 
@@ -72,11 +93,15 @@ Una riga per committente (`st.committenti`), con pasti dichiarati e stato
   conteggio dei nominativi) e il bottone genera il **manifesto PDF** di quel
   solo giorno (`manifesto.js`, `generaManifestoConsegna` con `indiceGiorno`)
   da stampare e mettere nel cassone termico.
-- **Comunità** — elenco nominativo da `st.presenzeTrasmesse`, con reparto
+- **Comunità** — elenco nominativo da `st.presenzeTrasmesse`, con centro
   (`stanza`), **pasto** (pranzo e cena sono righe distinte, trasmesse
   separatamente), portate, "per il giorno" e "generato il" (`generatoIl`,
   timbrato da `st.trasmettiPresenze` alla trasmissione). Il conteggio è di
-  pasti, non di pazienti, e il dettaglio lo dichiara.
+  pasti, non di pazienti, e il dettaglio lo dichiara. Sotto, **Variazioni dai
+  centri** (`st.variazioni || []`): centro, autore, giorno, pasto, paziente,
+  tipo, testo e stato; "Prendi in carico" chiama `st.prendiInCaricoVariazione`
+  e compare solo se la funzione esiste e il ruolo ha `flussi.variazioni`. La
+  riga del committente ha la colonna Variazioni con "N da prendere in carico".
 - **Altro committente** (aggiunto da "Nuovo committente") — nessuna fonte reale
   ancora collegata, mostrato onestamente come tale.
 
@@ -115,7 +140,7 @@ kcal e riscaldamento. Nessun nome di dipendente: in cucina non serve e sarebbe
 un dato inutile da far circolare. Si generano solo quando un dipendente
 conferma la prenotazione.
 
-**Comunità** — etichette **nominative**, raggruppate prima per **reparto**
+**Comunità** — etichette **nominative**, raggruppate prima per **centro** (`stanza`)
 poi per paziente e infine per Pranzo/Cena (`raggruppaComunita`) — senza il
 livello reparto, una comunità con molti pazienti torna a essere uno scroll
 enorme, lo stesso problema di partenza. La chiave di ogni etichetta include il

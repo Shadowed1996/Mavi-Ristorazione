@@ -30,12 +30,12 @@ export default function AccessoUnico({ avviso, onAvvisoLetto }) {
     if (!utente) {
       const disattivato = st.utenti.some((x) => x.u === pulito && x.attivo === false);
       setErrore(disattivato
-        ? "Utenza disattivata. Chiedi al referente del portale di riattivarla."
+        ? "Utenza disattivata. Chiedi a chi amministra il portale di riattivarla."
         : "Nome utente non riconosciuto. Verifica di averlo scritto per intero.");
       return;
     }
     if (!st.ruoli.some((r) => r.id === utente.ruolo)) {
-      setErrore("A questa utenza non è assegnato un ruolo valido. Chiedi al referente del portale.");
+      setErrore("A questa utenza non è assegnato un ruolo valido. Chiedi a chi amministra il portale.");
       return;
     }
     pulisci();

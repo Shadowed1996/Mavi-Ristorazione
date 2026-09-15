@@ -2,9 +2,9 @@
 
 Documento vivo. Va riletto all'inizio di ogni nuova sessione e aggiornato alla fine di ogni task.
 
-**Ultimo aggiornamento**: 14 settembre 2026 — TO DO MAVI in nove punti, lavorati da agenti paralleli su un clone git: `documento.js` e PDF veri ovunque, pranzo e cena indipendenti, fatturazione per committente con proforma a mano, piatti fissi, riepilogo del giorno del referente, Produzione per giorno e settimana, permessi e ruoli applicati (sezione 21).
+**Ultimo aggiornamento**: 15 settembre 2026 — vocale della referente MAVI: un referente per ogni centro (diete, presenze, variazioni), un responsabile solo amministrativo, resoconto per la cucina diviso per committente e centro. Nuova pagina Variazioni con presa in carico in cucina, Produzione verificata cifra per cifra con PDF ed Excel (sezione 22).
 
-**Precedente**: 12 settembre 2026 — Etichette pasto riscritta per reggere molte strutture: raggruppata per Aziende/Comunità, una struttura alla volta con ricerca e stampa dedicata, pallino "etichette arrivate" (sezione 20).
+**Precedente**: 14 settembre 2026 — TO DO MAVI in nove punti, lavorati da agenti paralleli su un clone git: `documento.js` e PDF veri ovunque, pranzo e cena indipendenti, fatturazione per committente con proforma a mano, piatti fissi, riepilogo del giorno del referente, Produzione per giorno e settimana, permessi e ruoli applicati (sezione 21).
 
 ---
 
@@ -20,7 +20,7 @@ Cifra prevista: 3.500 EUR lordi come prestazione occasionale per il modulo azien
 
 Due tipi di committente:
 - **AZIENDA** (Rossi Manifatture Spa) — il dipendente sceglie i piatti dal menu del giorno
-- **COMUNITÀ** (Comunità Il Ponte) — dieta personalizzata per paziente, il responsabile segna le presenze
+- **COMUNITÀ** (Comunità Il Ponte) — dieta personalizzata per paziente; un referente per ogni centro segna presenze e variazioni, un responsabile segue solo la parte amministrativa (dal 15 settembre 2026)
 
 RSA e scuole rimossi dal flusso attivo. Possono tornare come moduli separati.
 
@@ -60,8 +60,9 @@ React 19 + Vite 8. Font Fraunces (serif, titoli) + Inter (sans). Sistema visivo 
 Login unico per tutti, password `dimostrazione`. Profili demo:
 - **Antonella Rossi** → azienda, dipendente
 - **Roberto Manzi** → azienda, referente
-- **Samuele Ferri** → comunità, educatore (solo il proprio reparto; dal 14 settembre 2026 i ruoli sono configurabili da Gestione portale)
-- **Ilaria Gatti** → comunità, responsabile (può modificare diete e anagrafica)
+- **Samuele Ferri** → comunità, referente del centro Spazio Giovani SGA (dal 14 settembre 2026 i ruoli sono configurabili da Gestione portale)
+- **Marta Colli** → comunità, referente del centro CSS Sole Luna, Desio (dal 15 settembre 2026)
+- **Ilaria Gatti** → comunità, responsabile amministrativa: solo fatture e resoconti senza nominativi (dal 15 settembre 2026)
 - **Cucina MAVI** → fornitore
 
 ---
@@ -910,5 +911,89 @@ comunità restano trasmesse solo per mercoledì (`GIORNO_DEMO`), negli altri
 giorni la comunità è per forza in stima; i quattro numeri in cima al cruscotto
 del referente restano fissi; il "Resoconto mensile" della struttura riporta la
 situazione corrente del cruscotto, lo dichiara in nota.
+
+---
+
+## 22. Il vocale di MAVI — 15 settembre 2026
+
+La referente di MAVI ha mandato a Filippo un vocale di 43 secondi, trascritto
+in locale con Whisper large-v3. Il passaggio che conta:
+
+> «Noi abbiamo un referente per ogni centro, che è quello che si occupa di
+> gestire le diete, mandarmi le presenze, scrivermi delle variazioni, cose di
+> questo tipo. E poi abbiamo il responsabile di tutti i centri, che si occupa
+> solo della parte amministrativa, quindi di quello che poi bisogna pagare.
+> Questa è la cosa principale. Poi l'importante è sicuramente un resoconto per
+> la cucina, e che sia diversificato per le varie comunità o aziende.»
+
+**Decisioni prese con Filippo prima di partire**: centro = reparto/unità della
+comunità (Spazio Giovani SGA, CSS Sole Luna); il responsabile ha solo fatture,
+pagamenti e resoconti per controllarle, mentre pazienti, diete, presenze e
+variazioni passano al referente del centro (supera la TO DO del 12 settembre,
+dove il responsabile accettava anche i pazienti); la pagina Produzione va
+verificata e rifinita, non rifatta. Il modello vale per ora **solo per le
+comunità**: per le aziende è una domanda aperta.
+
+Prima di iniziare, `main` locale aveva modifiche del 12 settembre mai
+committate (condizioni di pagamento nella proforma), già superate dal lavoro
+del 14: messe da parte in `git stash` e in
+`.git/backup-modifiche-locali-2026-09-12.patch`, poi `pull` a `c0502d9`.
+
+Lavoro diviso fra due agenti Opus in parallelo sulla stessa cartella, con un
+contratto scritto e proprietà dei file rigida (A: portale comunità, store e
+dati; B: portale MAVI, distinta, export), e uno strumento di prova comune
+fuori dal repo (puppeteer-core sul Chrome installato, un solo Chrome alla
+volta). Entrambi gli agenti si sono bloccati una volta e sono stati ripresi.
+
+**Portale comunità (agente A)**
+- Ruoli: `operatore` → "Referente del centro", `responsabile` →
+  "Responsabile amministrativo", che vede solo Resoconti, Fatture e Documenti
+  e parte da Fatture (`usaVociPermesse` accetta la pagina iniziale).
+  Etichetta dell'unità della comunità: "Centro".
+- Utenti: nuova **Marta Colli** (`u6`), referente di CSS Sole Luna, così la
+  demo ha davvero un referente per centro.
+- Permessi nuovi: `variazioni.vedi`, `variazioni.invia`,
+  `resoconti.nominativi`, `flussi.variazioni` (MAVI).
+- **Variazioni**: `st.variazioni`, `inviaVariazione`,
+  `prendiInCaricoVariazione`, seed `VARIAZIONI_INIZIALI`; pagina con modulo
+  (giorno, centro bloccato, pasto, tipo, paziente facoltativo, testo) ed
+  elenco con lo stato "Inviata a MAVI" / "Presa in carico il … da …".
+- **Resoconti senza nominativi** per chi non ha `resoconti.nominativi`: pasti
+  per centro e per pasto, giorno e settimana, un solo calcolo per schermo,
+  Excel e il nuovo `generaResocontoCentriPDF`.
+- **Fatture**: da saldare, scaduto, prossima scadenza, pagato; colonna "Da
+  pagare" e riga di totale.
+
+**Portale MAVI (agente B)**
+- Confronto automatico schermo / PDF / Excel su tutti i filtri, giorno e
+  settimana: le cifre per piatto combaciavano, ma sei difetti di logica ed
+  etichette sono stati corretti. I più gravi: il filtro Cena contava i pasti
+  del pranzo dell'azienda; la stima dell'azienda si sommava intera alle
+  conferme (7 + 28 invece di 28); il primo centro che trasmetteva azzerava la
+  stima degli altri; l'Excel non riportava né giornata né perimetro.
+- "Pasti per committente e centro" con una riga per centro e il suo
+  referente, schede per destinazione a schermo e **una pagina per
+  destinazione nel PDF**, Excel in cinque fogli, piatti quasi omonimi
+  segnalati "da verificare" senza sommarli.
+- Variazioni in Ordini in arrivo (colonna e "Prendi in carico") e in
+  Produzione, nel PDF e nell'Excel, dichiarate "non già conteggiate nelle
+  quantità".
+- `documento.js`: la riga di totale in posizione pari diventava invisibile
+  (specificità CSS).
+
+**Coordinatore**: `trasmettiPresenze(lista, { centri, pasto, giorno })` e
+`st.trasmissioniCentri`. Prima un paziente ritrasmesso assente restava in
+distinta (la sostituzione era per id dei soli presenti) e un centro con tutti
+assenti tornava alla stima; ora il centro risulta "trasmesso, nessun pasto".
+Nomi dei file Excel senza accenti troncati ("Comunita", non "Comunit_").
+
+**Verifiche nel browser**: agente A 29 controlli su 29; agente B confronto a 0
+discrepanze e prova end-to-end delle variazioni 12 su 12; prova integrata
+finale 12 su 12 (presenze ritrasmesse, centro tutto assente anche nel PDF,
+variazione di Marta presa in carico, responsabile senza nomi, portali azienda
+aperti) e confronto di B rilanciato dopo la correzione, ancora 0 discrepanze.
+
+**Domande aperte per MAVI**: vedi `file.md/12-stato-e-todo.md`, sezione "Da
+valutare con MAVI".
 
 ---

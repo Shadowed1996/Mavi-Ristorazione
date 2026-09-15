@@ -4,7 +4,7 @@
  * Crea un workbook, aggiunge fogli da array di oggetti, scarica il file.
  *
  * fogli = [
- *   { nome: "Riepilogo", dati: [{...}, ...], colonne: [{ header, key, width }] },
+ *   { nome: "Riepilogo", titolo: "facoltativo", dati: [{...}, ...], colonne: [{ header, key, width }] },
  *   ...
  * ]
  *
@@ -56,7 +56,10 @@ export async function scaricaExcel(nomefile, fogli, { datiAziendali } = {}) {
 
     ws.mergeCells(3, 1, 3, nCol);
     const docTitolo = ws.getCell("A3");
-    docTitolo.value = foglio.nome + " — generato il " + new Date().toLocaleDateString("it-IT", { day: "2-digit", month: "long", year: "numeric" });
+    /* `titolo` facoltativo: dice a cosa si riferisce il foglio (giornata, perimetro),
+       perché il file circola staccato dalla pagina che lo ha generato */
+    docTitolo.value = [foglio.nome, foglio.titolo].filter(Boolean).join(" · ")
+      + " — generato il " + new Date().toLocaleDateString("it-IT", { day: "2-digit", month: "long", year: "numeric" });
     docTitolo.font = { name: "Calibri", size: 11, bold: true, color: { argb: SCURO } };
     ws.getRow(3).height = 24;
 
