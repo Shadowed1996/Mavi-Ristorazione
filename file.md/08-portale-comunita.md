@@ -45,9 +45,9 @@ chiavi del portale `comunita` in `PERMESSI` (`04-dati.md`). Ruoli iniziali:
 Pagina di partenza: il campo `home` del ruolo in `STRUTTURE.comunita.ruoli`
 (`pazienti` per il referente, `fatture` per il responsabile), passato come
 terzo argomento a `usaVociPermesse`; se il ruolo non la può aprire, la prima
-voce permessa. Utenti demo: Samuele Ferri e Marta Colli (referenti; il campo
-`reparto` resta come centro di appartenenza ma non filtra), Ilaria Gatti
-(responsabile).
+voce permessa. Utenti demo: un solo referente, Samuele Ferri, senza centro
+assegnato perché li segue tutti (una seconda referente è stata tolta su
+richiesta di Filippo: "troppo confusionario"), e Ilaria Gatti (responsabile).
 
 Il **centro** è il campo `stanza` del paziente. Il filtro per centro resta
 per i ruoli creati dalla matrice senza `pazienti.tuttiReparti`: il centro

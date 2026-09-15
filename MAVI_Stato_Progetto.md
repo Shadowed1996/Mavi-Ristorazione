@@ -60,8 +60,7 @@ React 19 + Vite 8. Font Fraunces (serif, titoli) + Inter (sans). Sistema visivo 
 Login unico per tutti, password `dimostrazione`. Profili demo:
 - **Antonella Rossi** → azienda, dipendente
 - **Roberto Manzi** → azienda, referente
-- **Samuele Ferri** → comunità, referente di tutti i centri (dal 14 settembre 2026 i ruoli sono configurabili da Gestione portale)
-- **Marta Colli** → comunità, seconda referente con gli stessi permessi (dal 15 settembre 2026)
+- **Samuele Ferri** → comunità, unico referente, per tutti i centri (dal 14 settembre 2026 i ruoli sono configurabili da Gestione portale)
 - **Ilaria Gatti** → comunità, responsabile amministrativa: solo fatture e resoconti senza nominativi (dal 15 settembre 2026)
 - **Cucina MAVI** → fornitore
 
@@ -1005,8 +1004,10 @@ referente limitato al proprio centro" era sbagliata. Correzioni:
   e i reparti, centro a scelta in Nuovo paziente e Variazioni;
 - il **responsabile** tiene solo **Fatture e Resoconti numerici** (tolti
   `documenti.vedi` e `documenti.riservati`, scelta di Filippo);
-- Samuele Ferri e Marta Colli restano entrambi referenti, con il campo
-  `reparto` come centro di appartenenza che non filtra; in Produzione la
+- **un solo referente**, Samuele Ferri, senza centro assegnato: Marta Colli
+  (`u6`, aggiunta poche ore prima) è stata tolta su richiesta di Filippo
+  ("lascia un solo referente sennò è troppo confusionario") e le sue due
+  variazioni di esempio ora sono firmate da Samuele; in Produzione la
   colonna Referente elenca chi trasmette le presenze e vede quel centro;
 - corretto un difetto emerso nella prova: in Presenze più pazienti segnati in
   rapida successione si perdevano, perché `setPresenzeComunita` riceveva un

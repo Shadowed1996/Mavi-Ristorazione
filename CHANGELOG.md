@@ -17,8 +17,8 @@ e il progetto adotta il [Versionamento Semantico](https://semver.org/lang/it/).
 - **Referente e responsabile amministrativo**: nel portale comunità i ruoli
   diventano "Referente" (pazienti, diete, presenze e variazioni di tutte le
   strutture e i reparti) e "Responsabile amministrativo" (solo Fatture e
-  Resoconti numerici, entra in Fatture). Nuovo profilo di prova
-  `marta.colli`, seconda referente.
+  Resoconti numerici, entra in Fatture). Un solo referente di prova,
+  `samuele.ferri`.
 - **Variazioni**: il referente scrive alla cucina cambi di dieta, ospiti in
   più o in meno, uscite; la cucina le trova in Ordini in arrivo e in
   Produzione (schermo, PDF, Excel) e le prende in carico, il referente vede

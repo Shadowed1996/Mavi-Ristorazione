@@ -736,8 +736,7 @@ export const PRESENZE_SCUOLA = [
 export const UTENTI = [
   { id: "u1", u: "antonella.rossi", nome: "Antonella Rossi", iniziali: "AR", struttura: "azienda", ruolo: "dipendente", committente: "Rossi Manifatture Spa", mansione: "Amministrazione", email: "antonella.rossi@rossimanifatture.it", telefono: "", attivo: true },
   { id: "u2", u: "roberto.manzi", nome: "Roberto Manzi", iniziali: "RM", struttura: "azienda", ruolo: "referente", committente: "Rossi Manifatture Spa", mansione: "Ufficio del personale", email: "roberto.manzi@rossimanifatture.it", telefono: "", attivo: true },
-  { id: "u3", u: "samuele.ferri", nome: "Samuele Ferri", iniziali: "SF", struttura: "comunita", ruolo: "operatore", committente: "Comunità Il Ponte", mansione: "Educatore, referente", reparto: "Spazio Giovani SGA", email: "samuele.ferri@ilponte.it", telefono: "", attivo: true },
-  { id: "u6", u: "marta.colli", nome: "Marta Colli", iniziali: "MC", struttura: "comunita", ruolo: "operatore", committente: "Comunità Il Ponte", mansione: "Educatrice, referente", reparto: "CSS Sole Luna, Desio", email: "marta.colli@ilponte.it", telefono: "", attivo: true },
+  { id: "u3", u: "samuele.ferri", nome: "Samuele Ferri", iniziali: "SF", struttura: "comunita", ruolo: "operatore", committente: "Comunità Il Ponte", mansione: "Educatore, referente di tutti i centri", email: "samuele.ferri@ilponte.it", telefono: "", attivo: true },
   { id: "u4", u: "ilaria.gatti", nome: "Ilaria Gatti", iniziali: "IG", struttura: "comunita", ruolo: "responsabile", committente: "Comunità Il Ponte", mansione: "Responsabile amministrativa", email: "ilaria.gatti@ilponte.it", telefono: "", attivo: true },
   { id: "u5", u: "cucina.mavi", nome: "Cucina centrale", iniziali: "MV", struttura: "mavi", ruolo: "fornitore", committente: "MAVI Ristorazione", mansione: "Produzione e amministrazione", email: "cucina@maviristorazione.it", telefono: "", attivo: true },
 ];
@@ -1131,7 +1130,7 @@ export const VARIAZIONI_INIZIALI = [
   },
   {
     id: "var-2", committenteId: "comunita", reparto: "CSS Sole Luna, Desio",
-    autore: "Marta Colli", ruoloAutore: "Referente",
+    autore: "Samuele Ferri", ruoloAutore: "Referente",
     indiceGiorno: 2, pasto: "cena", pazienteId: null, pazienteNome: null, tipo: "presenze",
     testo: "Mercoledì sera 2 ospiti in più a cena, rientrano dal soggiorno estivo: dieta standard, nessuna allergia.",
     creataIl: oraLocale(15, 11, 25), stato: "inviata",
@@ -1139,7 +1138,7 @@ export const VARIAZIONI_INIZIALI = [
   },
   {
     id: "var-3", committenteId: "comunita", reparto: "CSS Sole Luna, Desio",
-    autore: "Marta Colli", ruoloAutore: "Referente",
+    autore: "Samuele Ferri", ruoloAutore: "Referente",
     indiceGiorno: 2, pasto: "pranzo", pazienteId: "p03", pazienteNome: "Carmelo Aronica", tipo: "presenze",
     testo: "Carmelo Aronica mercoledì pranza fuori con la famiglia: niente pranzo, la cena resta confermata.",
     creataIl: oraLocale(15, 12, 5), stato: "inviata",

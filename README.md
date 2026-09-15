@@ -113,7 +113,6 @@ Accesso unico. La password è precompilata e non viene verificata: conta solo il
 | `antonella.rossi` | Rossi Manifatture Spa | dipendente |
 | `roberto.manzi` | Rossi Manifatture Spa | referente |
 | `samuele.ferri` | Comunità Il Ponte | referente, tutti i centri |
-| `marta.colli` | Comunità Il Ponte | referente, tutti i centri |
 | `ilaria.gatti` | Comunità Il Ponte | responsabile amministrativa |
 | `cucina.mavi` | MAVI Ristorazione | cucina |
 

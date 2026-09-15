@@ -21,7 +21,6 @@ riga entra direttamente, senza digitare.
 | `antonella.rossi` | Antonella Rossi | Rossi Manifatture Spa | Dipendente |
 | `roberto.manzi` | Roberto Manzi | Rossi Manifatture Spa | Referente |
 | `samuele.ferri` | Samuele Ferri | Comunità Il Ponte | Referente (tutti i centri) |
-| `marta.colli` | Marta Colli | Comunità Il Ponte | Referente (tutti i centri) |
 | `ilaria.gatti` | Ilaria Gatti | Comunità Il Ponte | Responsabile amministrativa (solo fatture e resoconti numerici) |
 | `cucina.mavi` | Cucina centrale | MAVI Ristorazione | Fornitore |
 
@@ -63,23 +62,21 @@ utente.
     pagato, poi l'elenco delle proforma con PDF. Nel menu ci sono solo
     Resoconti e Fatture. **Resoconti**: pasti per centro e per pasto, giorno
     e settimana, **senza nomi né diete** → Excel → **PDF**, stessi numeri.
-12. (Facoltativo) **Marta Colli** è una seconda referente con gli stessi
-    permessi: utile per mostrare due persone che lavorano sugli stessi dati.
-13. Uscire → **Cucina MAVI** → Etichette pasto: pannelli separati Aziende e
+12. Uscire → **Cucina MAVI** → Etichette pasto: pannelli separati Aziende e
     Comunità, pallino rosso lampeggiante su chi ha etichette arrivate. Aprire
     Rossi Manifatture Spa (anonime, per piatto), poi Comunità Il Ponte
     (nominative, per reparto e paziente) → provare la ricerca per nominativo
     → "Stampa etichette di Comunità Il Ponte" per la vista dedicata.
-14. **Produzione** → la giornata con la data in cima. "Pasti per committente
-    e centro": l'azienda e sotto Il Ponte **una riga per centro**, con i
-    referenti e lo stato. Il pranzo trasmesso da Samuele risulta confermato
+13. **Produzione** → la giornata con la data in cima. "Pasti per committente
+    e centro": l'azienda e sotto Il Ponte **una riga per centro**, con il
+    referente e lo stato. Il pranzo trasmesso da Samuele risulta confermato
     per entrambi i centri, la cena di Sole Luna resta in stima. Il pannello "Variazioni dai
     centri" mostra quella appena inviata. "Filtra centro" su Sole Luna, filtro
     Pranzo / Cena, cambiare giorno con ‹ ›, poi vista **Settimana**.
     **Stampa / PDF**: riepilogo totale, variazioni, diete e poi **una scheda
     per destinazione, ognuna su pagina nuova**, da mettere con il carico.
     **Excel**: cinque fogli, stessi numeri.
-15. **Ordini in arrivo** → aprire il dettaglio di Rossi Manifatture Spa: quantità
+14. **Ordini in arrivo** → aprire il dettaglio di Rossi Manifatture Spa: quantità
     per piatto con "per il giorno"/"generato il", poi il **dettaglio
     nominativo riservato al fornitore**, scegliere la giornata e "Manifesto
     PDF" di quel solo giorno. Sulla riga di Comunità Il Ponte la colonna
@@ -87,27 +84,27 @@ utente.
     elenco nominativo con centro e pasto, poi "Variazioni dai centri" →
     **Prendi in carico** sulla variazione di Samuele. Rientrando come Samuele
     Ferri, in Variazioni la trova "Presa in carico".
-16. **Committenti** → "Nuovo committente": creare una struttura di prova e far
+15. **Committenti** → "Nuovo committente": creare una struttura di prova e far
     notare che compare subito anche in Impostazioni, Fatturazione, Produzione
     e Ordini in arrivo.
-17. **Impostazioni** → prezzo unitario e IVA, **Condizioni di fatturazione**
+16. **Impostazioni** → prezzo unitario e IVA, **Condizioni di fatturazione**
     (Il Ponte a 60 gg d.f.f.m. senza IVA, Rossi a 30 gg d.f.), e il pannello
     Reparti (aggiungere un reparto, farlo comparire subito nella tendina di
     "Nuovo paziente").
-18. **Fatturazione** → tab per struttura, **Nuova proforma**: aggiungere una
+17. **Fatturazione** → tab per struttura, **Nuova proforma**: aggiungere una
     riga, cambiare i termini solo per quel documento, "Emetti e apri PDF";
     sotto l'elenco delle proforma emesse con PDF e Annulla. **Menu settimana**:
     "Rendi fisso" su un piatto qualsiasi, poi Griglia settimana.
-19. **Modifica profilo** (icona matita accanto al nome, in fondo alla barra
+18. **Modifica profilo** (icona matita accanto al nome, in fondo alla barra
     laterale, in qualsiasi portale) → cambiare foto e telefono.
-20. **Gestione portale** → Aspetto → provare il tema scuro. Utenti → aprire
-    Samuele Ferri, far notare il campo Reparto. **Ruoli e permessi** → portale
+19. **Gestione portale** → Aspetto → provare il tema scuro. Utenti → aprire
+    Samuele Ferri: nessun reparto assegnato, perché segue tutti i centri. **Ruoli e permessi** → portale
     Comunità, togliere "Trasmetti le presenze" a Referente; poi "Nuovo ruolo"
     Cuoco su MAVI con solo Produzione ed Etichette e un nuovo utente con quel
     ruolo. Rientrare come Samuele Ferri: il bottone Trasmetti non c'è più,
     senza rifare nulla; entrare con il nuovo utente: solo due voci di menu.
     Provare a disattivare Cucina MAVI: rifiutato.
-21. **Log operazioni** → filtrare per Sistema.
+20. **Log operazioni** → filtrare per Sistema.
 
 ## I momenti che colpiscono di più
 
