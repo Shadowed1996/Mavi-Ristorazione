@@ -32,7 +32,7 @@ function BannerReparto({ reparto, margine }) {
   return (
     <div className="banner-dieta" style={{ background: "#eef3fa", borderColor: "#b8cce0", color: "#2c4a6c", ...stile }}>
       <Icone.attenzione size={15} />
-      <span>Stai vedendo solo il centro <b>{reparto}</b>, di cui sei referente. Gli altri centri li segue il loro referente.</span>
+      <span>Stai vedendo solo il centro <b>{reparto}</b>, quello assegnato alla tua utenza in Gestione portale.</span>
     </div>
   );
 }
@@ -94,7 +94,7 @@ function Pazienti({ soloLettura, puoDieta, reparto }) {
       <Intestazione
         occhiello="Comunità Il Ponte"
         titolo="Pazienti"
-        sotto="Anagrafica e dieta settimanale di ogni paziente. La dieta la scrive il dietista, il referente del centro la carica"
+        sotto="Anagrafica e dieta settimanale di ogni paziente. La dieta la scrive il dietista, il referente la carica"
         azioni={
           !soloLettura && <button className="btn piccolo" onClick={() => setModulo("nuovo")}>
             <Icone.piu size={14} /> Nuovo paziente
@@ -455,7 +455,7 @@ function PresenzeComunita({ reparto }) {
   const puoTrasmettere = st.puo("presenze.trasmetti");
   const statoDi = (id) => presenti[id]?.[pasto] ?? null;
   const segna = (id, valore) =>
-    st.setPresenzeComunita({ ...presenti, [id]: { ...(presenti[id] || {}), [pasto]: valore } });
+    st.setPresenzeComunita((prec) => ({ ...prec, [id]: { ...(prec[id] || {}), [pasto]: valore } }));
   const totPresenti = paz.filter((p) => statoDi(p.id) === true).length;
   const totAssenti = paz.filter((p) => statoDi(p.id) === false).length;
   const totNonSegnati = paz.filter((p) => statoDi(p.id) == null).length;
@@ -964,7 +964,7 @@ function TabellaGiornoPasto({ pasto, inviato, pazienti }) {
 const GIORNI_SETT_DEMO = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì"];
 
 /* Nomi e diete sono dati sanitari: li vede solo chi ha resoconti.nominativi
-   (il referente del centro). Il responsabile amministrativo vede i numeri
+   (il referente). Il responsabile amministrativo vede i numeri
    dei pasti per centro, che bastano a controllare le fatture. Due componenti
    distinti, così togliere il permesso dalla matrice cambia vista senza
    mescolare gli hook. */
@@ -1233,7 +1233,7 @@ function ResocontiCentri({ reparto }) {
   const numeri = [
     { etichetta: "Centri", valore: centri.length, nota: limitato ? perimetro : "di Comunità Il Ponte" },
     { etichetta: "Pasti previsti, " + giornata.toLowerCase(), valore: totale.previsti, nota: perPasto("pranzo") + " pranzi e " + perPasto("cena") + " cene" },
-    { etichetta: "Presenti trasmessi a MAVI", valore: totale.trasmessi, nota: "confermati dai referenti dei centri" },
+    { etichetta: "Presenti trasmessi a MAVI", valore: totale.trasmessi, nota: "confermati dai referenti" },
     { etichetta: "Pasti previsti in settimana", valore: totale.totaleSettimana, nota: PERIODO_SETTIMANA },
   ];
 
@@ -1312,7 +1312,7 @@ function ResocontiCentri({ reparto }) {
         <div className="avviso info" style={{ marginBottom: 16 }}>
           <Icone.lucchetto size={18} />
           <span>
-            Nomi dei pazienti e diete non compaiono: sono dati sanitari e restano ai referenti dei centri.
+            Nomi dei pazienti e diete non compaiono: sono dati sanitari e restano ai referenti.
             Per controllare le fatture bastano i numeri dei pasti.
           </span>
         </div>
@@ -1372,7 +1372,7 @@ function ResocontiCentri({ reparto }) {
           </div>
           <div className="pannello-piede">
             {vista === "giorno"
-              ? "Pasti previsti: pazienti che hanno quel pasto nella dieta del giorno. Presenti trasmessi: quelli confermati a MAVI dal referente del centro; finché il centro non trasmette restano a zero. "
+              ? "Pasti previsti: pazienti che hanno quel pasto nella dieta del giorno. Presenti trasmessi: quelli confermati a MAVI dal referente; finché le presenze del centro non sono trasmesse restano a zero. "
               : "Pasti previsti giorno per giorno dalle diete dei pazienti, da lunedì a venerdì. "}
             Il PDF e l'Excel riportano le stesse righe, giornata e settimana.
           </div>

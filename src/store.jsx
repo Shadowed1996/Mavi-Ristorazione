@@ -24,7 +24,7 @@ const ORDINI_IN_CODA = [
   { id: "o1", struttura: "azienda", strutturaNome: "Rossi Manifatture Spa", mittente: "Roberto Manzi", ruoloMittente: "Referente", unita: "Amministrazione", pasti: 28, note: "3 vegetariani, 2 senza glutine", stato: "approvato", ora: "13:42", oraApprov: "14:05" },
   { id: "o2", struttura: "rsa", strutturaNome: "RSA Villa Serena", mittente: "Marco Pallino", ruoloMittente: "Operatore", unita: "Nucleo Glicine", pasti: 34, note: "6 tritati, 3 frullati, 4 iposodica", stato: "in_attesa", ora: "07:18" },
   { id: "o3", struttura: "rsa", strutturaNome: "RSA Villa Serena", mittente: "Elena Vergani", ruoloMittente: "Operatore", unita: "Nucleo Magnolia", pasti: 27, note: "4 tritati, 2 frullati, 3 iposodica", stato: "approvato", ora: "07:22", oraApprov: "07:45" },
-  { id: "o4", struttura: "comunita", strutturaNome: "Comunità Il Ponte", mittente: "Samuele Ferri", ruoloMittente: "Referente del centro", unita: "Spazio Giovani SGA", pasti: 19, note: "1 senza glutine", stato: "in_attesa", ora: "08:31" },
+  { id: "o4", struttura: "comunita", strutturaNome: "Comunità Il Ponte", mittente: "Samuele Ferri", ruoloMittente: "Referente", unita: "Spazio Giovani SGA", pasti: 19, note: "1 senza glutine", stato: "in_attesa", ora: "08:31" },
   { id: "o5", struttura: "scuola", strutturaNome: "Istituto Sant'Anna", mittente: "Chiara Beltrami", ruoloMittente: "Insegnante", unita: "Primaria 1", pasti: 24, note: "1 dieta certificata", stato: "approvato", ora: "09:12", oraApprov: "09:18" },
 ];
 
@@ -129,7 +129,7 @@ export function Provider({ children }) {
   const [ospitiExtra, setOspitiExtra] = React.useState([]);
   const [presenzeTrasmesse, setPresenzeTrasmesse] = React.useState([]);
   const [trasmissioniCentri, setTrasmissioniCentri] = React.useState([]);
-  /* variazioni scritte dai referenti dei centri e prese in carico da MAVI */
+  /* variazioni scritte dai referenti e prese in carico da MAVI */
   const [variazioni, setVariazioni] = React.useState(VARIAZIONI_INIZIALI);
   /* quando (data/ora reale) è stato confermato l'ordine di ciascun giorno del
      menu: senza questo, "Ordini in arrivo" non può distinguere "generato il"
@@ -193,7 +193,7 @@ export function Provider({ children }) {
     { id: "l0", ora: "07:18", utente: "Marco Pallino", ruolo: "Operatore RSA", azione: "Ordine trasmesso", dettaglio: "34 pasti, RSA Villa Serena, Nucleo Glicine", tipo: "ordine" },
     { id: "l1", ora: "07:22", utente: "Elena Vergani", ruolo: "Operatore RSA", azione: "Ordine trasmesso", dettaglio: "27 pasti, RSA Villa Serena, Nucleo Magnolia", tipo: "ordine" },
     { id: "l2", ora: "07:45", utente: "Cucina MAVI", ruolo: "Operatore", azione: "Ordine approvato", dettaglio: "RSA Villa Serena, Nucleo Magnolia", tipo: "approvazione" },
-    { id: "l3", ora: "08:31", utente: "Samuele Ferri", ruolo: "Referente del centro", azione: "Ordine trasmesso", dettaglio: "19 pasti, Comunità Il Ponte", tipo: "ordine" },
+    { id: "l3", ora: "08:31", utente: "Samuele Ferri", ruolo: "Referente", azione: "Ordine trasmesso", dettaglio: "19 pasti, Comunità Il Ponte", tipo: "ordine" },
     { id: "s4", ora: "09:00", utente: "Sistema", ruolo: "Automatico", azione: "Promemoria prenotazione inviato", dettaglio: "3 dipendenti Rossi Manifatture non hanno prenotato", tipo: "sistema" },
     { id: "l4", ora: "09:12", utente: "Chiara Beltrami", ruolo: "Insegnante", azione: "Ordine trasmesso", dettaglio: "24 pasti, Istituto Sant'Anna", tipo: "ordine" },
     { id: "l5", ora: "09:18", utente: "Cucina MAVI", ruolo: "Operatore", azione: "Ordine approvato", dettaglio: "Istituto Sant'Anna", tipo: "approvazione" },
@@ -238,9 +238,9 @@ export function Provider({ children }) {
     logga(nome, ruolo, azione, dettaglio, tipo);
   }, [sessione, ruoloSessione, logga]);
 
-  /* aggiorna per id E pasto invece di sovrascrivere: ogni referente trasmette
-     solo il proprio centro, gli altri centri arrivano più tardi, e la cena non
-     deve far perdere il pranzo già trasmesso.
+  /* aggiorna per id E pasto invece di sovrascrivere: un utente limitato a un
+     centro trasmette solo quello, gli altri centri arrivano più tardi, e la
+     cena non deve far perdere il pranzo già trasmesso.
      `ambito` ({ centri, pasto, giorno }) dice cosa copre la trasmissione: le
      righe già trasmesse di quei centri per quel pasto vengono sostituite, così
      un paziente passato da presente ad assente sparisce dalla distinta, e ogni
@@ -312,7 +312,7 @@ export function Provider({ children }) {
 
   /* ---------- variazioni dai centri della comunità ---------- */
 
-  /* dal referente del centro a MAVI. Restituisce l'id, oppure null se manca il
+  /* dal referente a MAVI. Restituisce l'id, oppure null se manca il
      testo. L'id si genera fuori dall'aggiornamento di stato, che in
      StrictMode può essere eseguito due volte. */
   const inviaVariazione = React.useCallback((dati = {}) => {
@@ -366,7 +366,7 @@ export function Provider({ children }) {
     loggaSessione("Variazione presa in carico",
       [v.reparto, etichettaGiorno(v.indiceGiorno), v.pazienteNome || "tutto il centro"].filter(Boolean).join(" · "),
       "approvazione");
-    avvisa("Variazione presa in carico: il referente del centro vede lo stato aggiornato");
+    avvisa("Variazione presa in carico: il referente vede lo stato aggiornato");
     return true;
   }, [sessione, loggaSessione, avvisa]);
 

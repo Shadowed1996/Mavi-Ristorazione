@@ -20,34 +20,38 @@ const DATA_DEMO   = "2026-09-16";   // per i titoli dei documenti stampabili
 
 ## Ruoli e permessi
 
-Dal vocale MAVI del 15 settembre 2026: **un referente per ogni centro** (diete,
-presenze, variazioni, pazienti) e **un responsabile per tutti i centri che fa
-solo la parte amministrativa** (fatture e resoconti per controllarle). Nell'
-interfaccia si dice **centro**; nel codice restano `reparto`, `stanza`,
-`unita`. I permessi vengono dalla matrice **Ruoli e permessi** di Gestione
-portale (`09b-portale-mavi-gestione.md`), chiavi del portale `comunita` in
-`PERMESSI` (`04-dati.md`). Ruoli iniziali:
+Dal vocale MAVI del 15 settembre 2026, come chiarito da Filippo lo stesso
+giorno: **il referente gestisce pazienti, diete, presenze e variazioni di
+tutte le strutture e i reparti**, e **il responsabile fa solo la parte
+amministrativa** (fatture e resoconti numerici per controllarle). La prima
+versione del 15 settembre limitava ogni referente al proprio centro: era una
+lettura sbagliata del vocale. Nell'interfaccia si dice **centro**; nel codice
+restano `reparto`, `stanza`, `unita`. I permessi vengono dalla matrice
+**Ruoli e permessi** di Gestione portale (`09b-portale-mavi-gestione.md`),
+chiavi del portale `comunita` in `PERMESSI` (`04-dati.md`). Ruoli iniziali:
 
-| Permesso | Referente del centro (`operatore`) | Responsabile amministrativo |
+| Permesso | Referente (`operatore`) | Responsabile amministrativo |
 |---|---|---|
-| `pazienti.vedi`, `pazienti.anagrafica`, `pazienti.dieta` | sì, solo il proprio centro | no |
+| `pazienti.vedi`, `pazienti.anagrafica`, `pazienti.dieta` | sì | no |
+| `pazienti.tuttiReparti` (tutti i centri) | sì | sì (per i resoconti) |
 | `presenze.vedi`, `presenze.segna`, `presenze.trasmetti` | sì | no |
 | `variazioni.vedi`, `variazioni.invia` | sì | no |
 | `resoconti.vedi`, `resoconti.export` | sì | sì |
 | `resoconti.nominativi` (nomi e diete nei resoconti) | sì | no: numeri per centro |
-| `pazienti.tuttiReparti` (tutti i centri) | no | sì |
-| `fatture.vedi`, `fatture.pdf`, `documenti.riservati` | no | sì |
-| `documenti.vedi` | sì | sì |
-| `cruscotto.vedi` | no | no |
+| `fatture.vedi`, `fatture.pdf` | no | sì |
+| `documenti.vedi` | sì | no |
+| `documenti.riservati`, `cruscotto.vedi` | no | no |
 
 Pagina di partenza: il campo `home` del ruolo in `STRUTTURE.comunita.ruoli`
 (`pazienti` per il referente, `fatture` per il responsabile), passato come
 terzo argomento a `usaVociPermesse`; se il ruolo non la può aprire, la prima
-voce permessa. Utenti demo: Samuele Ferri (Spazio Giovani SGA), Marta Colli
-(CSS Sole Luna, Desio), Ilaria Gatti (responsabile).
+voce permessa. Utenti demo: Samuele Ferri e Marta Colli (referenti; il campo
+`reparto` resta come centro di appartenenza ma non filtra), Ilaria Gatti
+(responsabile).
 
-Il **centro** è il campo `stanza` del paziente. Chi non ha
-`pazienti.tuttiReparti` lo riceve dal proprio record utente (`st.utenti`,
+Il **centro** è il campo `stanza` del paziente. Il filtro per centro resta
+per i ruoli creati dalla matrice senza `pazienti.tuttiReparti`: il centro
+arriva dal record utente (`st.utenti`,
 campo `reparto`, dal modale Utenti di Gestione portale) e `Struttura.jsx` lo
 passa come prop `reparto` a `Pazienti`, `Presenze`, `Variazioni` e
 `Resoconti`: `null` = tutti i centri, stringa = solo quello, stringa vuota =
@@ -90,7 +94,7 @@ una nota di preparazione mostrata con il triangolo di attenzione.
 
 ### Modifica dieta
 
-Con `pazienti.dieta` (il referente del centro). Il bottone "Modifica dieta" accende `modalitaModifica`:
+Con `pazienti.dieta` (il referente). Il bottone "Modifica dieta" accende `modalitaModifica`:
 i campi diventano cliccabili con bordo tratteggiato, al clic si aprono in input
 inline. Si salva con Invio o uscendo dal campo, si annulla con Esc.
 
@@ -151,10 +155,11 @@ assente sparisce dalla distinta) e il centro resta registrato in
 `st.trasmissioniCentri` anche se erano tutti assenti, così la cucina lo vede
 "trasmesso, nessun pasto" invece di tornare alla stima.
 
-Lo stato vive in `st.presenzeComunita`, condiviso fra tutti gli utenti. La
-pagina si filtra per centro quando c'è un `reparto`: numeri e bottone contano
-solo i pazienti del proprio centro, così ogni referente trasmette senza
-aspettare gli altri. `st.trasmettiPresenze` **aggiorna per id e pasto, non
+Lo stato vive in `st.presenzeComunita`, condiviso fra tutti gli utenti, e si
+aggiorna in forma funzionale (più pazienti segnati in rapida successione non
+si perdono). Il referente vede tutti i centri in una sola pagina; con un
+`reparto` (ruolo limitato) numeri e bottone contano solo quel centro.
+`st.trasmettiPresenze` **aggiorna per id e pasto, non
 sovrascrive**: centri e pasti trasmessi in momenti diversi si sommano, e MAVI
 vede pranzo e cena come righe distinte.
 
@@ -172,7 +177,7 @@ qualche giorno, ospiti in più, un paziente che esce. Dati e API in
   Altro), paziente facoltativo del centro scelto ("Tutto il centro" di
   default), testo obbligatorio. "Invia a MAVI" chiama `st.inviaVariazione`.
 - **Numeri**: in attesa di MAVI, prese in carico, totale.
-- **Elenco** delle variazioni del proprio centro (o di tutti con
+- **Elenco** delle variazioni di tutti i centri (solo del proprio senza
   `pazienti.tuttiReparti`), più recenti in alto: per quando, riguarda, testo
   con autore e ora di invio, stato "Inviata a MAVI" oppure "Presa in carico il
   … da …". La presa in carico la fa MAVI (`flussi.variazioni`) e si vede qui

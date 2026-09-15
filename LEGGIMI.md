@@ -34,9 +34,10 @@ gli altri.
 
 1. Portale azienda, accento terracotta. Due ruoli, il dipendente che
    compone il proprio pasto e il referente che amministra.
-2. Portale comunità, accento prugna. Un referente per ogni centro, che
-   gestisce diete, presenze e variazioni, e un responsabile che segue solo
-   la parte amministrativa: fatture, scadenze e numeri dei pasti.
+2. Portale comunità, accento prugna. Il referente, che gestisce pazienti,
+   diete, presenze e variazioni di tutte le strutture e i reparti, e il
+   responsabile, che segue solo la parte amministrativa: fatture, scadenze e
+   numeri dei pasti.
 3. Portale MAVI, accento verde bosco. Composizione dei menu, distinte di
    produzione da tutte le strutture, catalogo, documenti e fatturazione.
 

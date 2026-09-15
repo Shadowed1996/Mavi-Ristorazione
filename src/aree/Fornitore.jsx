@@ -165,7 +165,7 @@ function dietaDipendente(nome) {
 }
 
 /* Destinazioni di consegna: l'azienda riceve un solo carico, la comunità uno
-   per centro, perché ogni centro ha il suo referente e riceve i suoi pasti.
+   per centro, perché ogni centro riceve i suoi pasti.
    `centriExtra` raccoglie i centri che compaiono nei pazienti o nelle presenze
    ma non ancora nell'anagrafica del committente. */
 function destinazioniDi(c, centriExtra = []) {
@@ -390,9 +390,16 @@ function Produzione() {
     return d.committente.id === filtro;
   };
 
+  /* chi segue il centro: gli utenti che trasmettono le presenze e vedono tutti i
+     centri, oppure sono assegnati proprio a quello */
   const referentiDi = (d) => (d.committente.tipo === "Comunità"
     ? (st.utenti || [])
-      .filter((u) => u.attivo !== false && u.struttura === d.committente.id && d.centro && u.reparto === d.centro)
+      .filter((u) => {
+        if (u.attivo === false || u.struttura !== d.committente.id || !d.centro) return false;
+        const permessi = ((st.ruoli || []).find((r) => r.id === u.ruolo) || {}).permessi || [];
+        return permessi.includes("presenze.trasmetti")
+          && (permessi.includes("pazienti.tuttiReparti") || u.reparto === d.centro);
+      })
       .map((u) => u.nome)
     : [d.committente.referente].filter(Boolean));
 
@@ -977,9 +984,9 @@ function Produzione() {
           <div className="pannello-piede">
             I numeri sono quelli del periodo e del pasto scelti qui sopra; le righe in grigio sono fuori dal
             filtro. <b>Confermato</b>: i pasti arrivano da prenotazioni dei dipendenti o da presenze
-            trasmesse dal referente del centro. <b>Stima</b>: il centro o l'azienda non ha ancora
-            confermato e il portale propone un ordine di grandezza. Ogni centro della comunità ha il suo
-            referente e riceve i suoi pasti: si conferma e si stima centro per centro.
+            trasmesse dal referente. <b>Stima</b>: il centro o l'azienda non ha ancora
+            confermato e il portale propone un ordine di grandezza. Ogni centro della comunità riceve i
+            suoi pasti: si conferma e si stima centro per centro.
           </div>
         </div>
 
@@ -2486,7 +2493,7 @@ function OrdiniComunita({ righe, variazioni = [], onPrendiInCarico }) {
         </div>
         {variazioni.length === 0 ? (
           <p style={{ fontSize: 12.5, color: "var(--muto)", margin: 0 }}>
-            Nessuna variazione inviata dai referenti dei centri.
+            Nessuna variazione inviata dai referenti.
           </p>
         ) : (
           <div className="scorri">
@@ -2590,7 +2597,7 @@ function FlussiOrdine() {
     })),
   [st.confermati, st.oraConferma]);
 
-  /* variazioni scritte dai referenti dei centri: il bottone compare solo se lo
+  /* variazioni scritte dai referenti: il bottone compare solo se lo
      store sa prenderle in carico e il ruolo ha il permesso */
   const variazioni = st.variazioni || [];
   const puoPrendere = typeof st.prendiInCaricoVariazione === "function" && st.puo("flussi.variazioni");
@@ -2726,7 +2733,7 @@ function FlussiOrdine() {
             Per l'azienda il dettaglio somma i piatti confermati dai dipendenti. Per la comunità
             elenca i pazienti trasmessi, con centro, pasto e portate, perché il pasto è nominativo:
             pranzo e cena arrivano da due trasmissioni distinte e contano come due pasti. Sotto ci sono
-            le variazioni scritte dai referenti dei centri: prenderle in carico le segna come lette e il
+            le variazioni scritte dai referenti: prenderle in carico le segna come lette e il
             referente vede subito lo stato aggiornato.
           </div>
         </div>

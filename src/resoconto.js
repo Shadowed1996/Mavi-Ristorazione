@@ -211,7 +211,7 @@ export function generaResocontoCentriPDF({
       "Il resoconto non riporta nomi dei pazienti né diete: sono dati sanitari e restano ai referenti "
         + "dei centri. Per controllare le fatture bastano i numeri dei pasti.",
       "Pasti previsti: pazienti che hanno quel pasto nella dieta del giorno. Presenti trasmessi: quelli "
-        + "confermati a MAVI dal referente del centro; finché il centro non trasmette restano a zero.",
+        + "confermati a MAVI dal referente; finché le presenze del centro non sono trasmesse restano a zero.",
     ],
     datiAziendali,
   });

@@ -55,7 +55,7 @@ export const STRUTTURE = {
     titolo: "Portale comunità",
     claim: "Poche voci, <em>ordinate in un minuto</em>.",
     punti: [
-      "Un referente per ogni centro: diete, presenze e variazioni",
+      "Il referente segue tutti i centri: diete, presenze e variazioni",
       "Menu fisso con diete personalizzate per paziente",
       "Resoconti per centro e fatture per il responsabile amministrativo",
     ],
@@ -63,8 +63,8 @@ export const STRUTTURE = {
     ruoli: [
       {
         id: "operatore",
-        nome: "Referente del centro",
-        cosa: "Gestisce diete e presenze del proprio centro e scrive le variazioni a MAVI.",
+        nome: "Referente",
+        cosa: "Gestisce pazienti, diete e presenze di tutte le strutture e i reparti e scrive le variazioni a MAVI.",
         utente: "samuele.ferri",
         icona: "gente",
         home: "pazienti",

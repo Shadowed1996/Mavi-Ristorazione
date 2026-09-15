@@ -16,9 +16,9 @@ Due tipi di committente attivi:
 
 - **Azienda** — Rossi Manifatture Spa. Il dipendente sceglie i piatti dal menu
   del giorno.
-- **Comunità** — Comunità Il Ponte. Dieta personalizzata per paziente; un
-  referente per ogni centro segna presenze e variazioni, un responsabile
-  segue solo la parte amministrativa.
+- **Comunità** — Comunità Il Ponte. Dieta personalizzata per paziente; il
+  referente segue pazienti, presenze e variazioni di tutti i centri, il
+  responsabile solo la parte amministrativa.
 
 **RSA e scuole sono state rimosse dal flusso attivo.** Il codice però è ancora
 tutto lì:
@@ -64,7 +64,7 @@ dalla tabella senza bisogno di una decisione separata.
 ## Da valutare con MAVI
 
 - **Dal vocale del 15 settembre 2026** (vedi la sezione più sotto):
-  - Il modello "referente per centro + responsabile solo amministrativo" vale
+  - Il modello "referente di tutti i centri + responsabile solo amministrativo" vale
     anche per le aziende? Oggi il referente aziendale vede anche le fatture.
   - Il responsabile amministrativo deve vedere le variazioni in sola lettura?
   - Per controllare le fatture bastano pasti previsti e presenti per giorno e

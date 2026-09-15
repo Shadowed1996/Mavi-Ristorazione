@@ -20,8 +20,8 @@ riga entra direttamente, senza digitare.
 |---|---|---|---|
 | `antonella.rossi` | Antonella Rossi | Rossi Manifatture Spa | Dipendente |
 | `roberto.manzi` | Roberto Manzi | Rossi Manifatture Spa | Referente |
-| `samuele.ferri` | Samuele Ferri | Comunità Il Ponte | Referente del centro "Spazio Giovani SGA" |
-| `marta.colli` | Marta Colli | Comunità Il Ponte | Referente del centro "CSS Sole Luna, Desio" |
+| `samuele.ferri` | Samuele Ferri | Comunità Il Ponte | Referente (tutti i centri) |
+| `marta.colli` | Marta Colli | Comunità Il Ponte | Referente (tutti i centri) |
 | `ilaria.gatti` | Ilaria Gatti | Comunità Il Ponte | Responsabile amministrativa (solo fatture e resoconti numerici) |
 | `cucina.mavi` | Cucina centrale | MAVI Ristorazione | Fornitore |
 
@@ -47,34 +47,33 @@ utente.
 7. **Resoconti** → espandere un dipendente per il dettaglio giornaliero →
    Excel → **PDF** (stessi numeri) → Export paghe. Poi **Fatture**: solo le
    proforma di Rossi, con scadenza e condizioni.
-8. Uscire → **Samuele Ferri** (referente del centro Spazio Giovani SGA) →
-   Pazienti: si vedono solo i due pazienti del suo centro, con il banner che
-   lo segnala. Aprire Beatrice Comi → **Modifica dieta**; poi **Nuovo
-   paziente**: il centro è già il suo e non si cambia. **Scarica template** →
-   l'Excel pensato per il dietista.
-9. **Presenze** (solo il suo centro) → segnare presenti e assenti →
+8. Uscire → **Samuele Ferri** (referente) → Pazienti: i pazienti di tutte le
+   strutture e i reparti, Spazio Giovani SGA e CSS Sole Luna insieme. Aprire
+   Beatrice Comi → **Modifica dieta**; poi **Nuovo paziente**: si sceglie il
+   centro. **Scarica template** → l'Excel pensato per il dietista.
+9. **Presenze** (tutti i centri in una pagina) → segnare presenti e assenti →
    "Trasmetti pranzo a MAVI" si attiva quando sono segnati tutti. Passare a
    **Cena**: Beatrice e Zied non compaiono, fanno solo pranzo.
-10. **Variazioni** → una nuova variazione per mercoledì (es. dieta in bianco
-    per un paziente) → **Invia a MAVI**: compare in cima come "Inviata a MAVI".
-11. Uscire → **Marta Colli** (referente di CSS Sole Luna) → Pazienti: solo i
-    pazienti del suo centro. **Variazioni**: una delle sue è già "Presa in
-    carico" dalla cucina, con data, ora e chi l'ha presa.
-12. Uscire → **Ilaria Gatti** (responsabile amministrativa) → entra
+10. **Variazioni** → una nuova variazione per mercoledì, scegliendo centro e
+    paziente (es. dieta in bianco) → **Invia a MAVI**: compare in cima come
+    "Inviata a MAVI". Nell'elenco ce n'è già una "Presa in carico" dalla
+    cucina, con data, ora e chi l'ha presa.
+11. Uscire → **Ilaria Gatti** (responsabile amministrativa) → entra
     direttamente in **Fatture**: da saldare, scaduto, prossima scadenza e
-    pagato, poi l'elenco delle proforma con PDF. Nel menu non ci sono né
-    pazienti, né presenze, né variazioni. **Resoconti**: pasti per centro e
-    per pasto, giorno e settimana, **senza nomi né diete** → Excel → **PDF**,
-    stessi numeri.
+    pagato, poi l'elenco delle proforma con PDF. Nel menu ci sono solo
+    Resoconti e Fatture. **Resoconti**: pasti per centro e per pasto, giorno
+    e settimana, **senza nomi né diete** → Excel → **PDF**, stessi numeri.
+12. (Facoltativo) **Marta Colli** è una seconda referente con gli stessi
+    permessi: utile per mostrare due persone che lavorano sugli stessi dati.
 13. Uscire → **Cucina MAVI** → Etichette pasto: pannelli separati Aziende e
     Comunità, pallino rosso lampeggiante su chi ha etichette arrivate. Aprire
     Rossi Manifatture Spa (anonime, per piatto), poi Comunità Il Ponte
     (nominative, per reparto e paziente) → provare la ricerca per nominativo
     → "Stampa etichette di Comunità Il Ponte" per la vista dedicata.
 14. **Produzione** → la giornata con la data in cima. "Pasti per committente
-    e centro": l'azienda e sotto Il Ponte **una riga per centro**, ognuna con
-    il suo referente, confermato o stimato. Il pranzo trasmesso da Samuele
-    risulta confermato, Sole Luna resta in stima. Il pannello "Variazioni dai
+    e centro": l'azienda e sotto Il Ponte **una riga per centro**, con i
+    referenti e lo stato. Il pranzo trasmesso da Samuele risulta confermato
+    per entrambi i centri, la cena di Sole Luna resta in stima. Il pannello "Variazioni dai
     centri" mostra quella appena inviata. "Filtra centro" su Sole Luna, filtro
     Pranzo / Cena, cambiare giorno con ‹ ›, poi vista **Settimana**.
     **Stampa / PDF**: riepilogo totale, variazioni, diete e poi **una scheda
@@ -103,7 +102,7 @@ utente.
     laterale, in qualsiasi portale) → cambiare foto e telefono.
 20. **Gestione portale** → Aspetto → provare il tema scuro. Utenti → aprire
     Samuele Ferri, far notare il campo Reparto. **Ruoli e permessi** → portale
-    Comunità, togliere "Trasmetti le presenze" a Referente del centro; poi "Nuovo ruolo"
+    Comunità, togliere "Trasmetti le presenze" a Referente; poi "Nuovo ruolo"
     Cuoco su MAVI con solo Produzione ed Etichette e un nuovo utente con quel
     ruolo. Rientrare come Samuele Ferri: il bottone Trasmetti non c'è più,
     senza rifare nulla; entrare con il nuovo utente: solo due voci di menu.
@@ -126,14 +125,15 @@ utente.
    è comparso.
 5. **La griglia stampabile.** Sempre da Menu settimana, "Griglia settimana" poi
    "Stampa": esce il prospetto a cinque colonne pronto per la bacheca.
-6. **Le presenze condivise.** Quello che il referente del centro trasmette
-   arriva alla cucina in tempo reale, pranzo e cena separati.
+6. **Le presenze condivise.** Quello che il referente trasmette arriva alla
+   cucina in tempo reale, pranzo e cena separati, centro per centro.
 7. **Le etichette diverse per contesto.** Anonime per l'azienda, nominative per
    la comunità. È una scelta di riservatezza, non un dettaglio grafico.
-8. **Un referente per centro, un responsabile che paga.** È l'organizzazione
-   che MAVI ha descritto (vocale del 15 settembre 2026). Da Samuele Ferri a
-   Marta Colli: stessi pazienti nel database, ognuno vede solo il proprio
-   centro. Ilaria Gatti non vede nomi né diete: solo fatture e numeri dei
+8. **Un referente che segue tutto, un responsabile che paga.** È
+   l'organizzazione che MAVI ha descritto (vocale del 15 settembre 2026). Da
+   Samuele Ferri a Ilaria Gatti: stessi pazienti nel database, vista
+   completamente diversa. Il referente gestisce tutte le strutture e i
+   reparti; la responsabile non vede nomi né diete, solo fatture e numeri dei
    pasti per controllarle. Nessuna configurazione manuale in mezzo, solo il
    login.
 9. **Un committente nuovo, ovunque.** "Nuovo committente" compila un solo

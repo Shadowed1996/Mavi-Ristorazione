@@ -38,11 +38,11 @@ stesso impianto e li fa confluire nella cucina, che vede una sola distinta di pr
   settimana.
 - **Portale azienda, referente** — cruscotto con chi non ha prenotato e «Prenota per lui»,
   resoconti per dipendente con export Excel ed export per le paghe, fatture con proforma.
-- **Portale comunità** — un referente per ogni centro e un responsabile amministrativo. Il
-  referente gestisce anagrafica dei pazienti del proprio centro, dieta settimanale su cinque
-  giorni con pranzo e cena, modifica in linea, template Excel per il dietista e import con
-  anteprima, presenze del giorno e variazioni per la cucina. Il responsabile vede solo fatture
-  e scadenze e i resoconti numerici per centro, senza nomi né diete.
+- **Portale comunità** — referente e responsabile amministrativo. Il referente gestisce, per
+  tutte le strutture e i reparti, anagrafica dei pazienti, dieta settimanale su cinque giorni
+  con pranzo e cena, modifica in linea, template Excel per il dietista e import con anteprima,
+  presenze del giorno e variazioni per la cucina. Il responsabile vede solo fatture e scadenze
+  e i resoconti numerici per centro, senza nomi né diete.
 - **Portale MAVI (cucina)** — distinta di produzione da tutte le strutture, ordini in arrivo,
   giri di consegna, etichette pasto (anonime per l'azienda, nominative per la comunità),
   committenti, menu della settimana, catalogo piatti con fotografie, impostazioni e rotazione
@@ -112,8 +112,8 @@ Accesso unico. La password è precompilata e non viene verificata: conta solo il
 |---|---|---|
 | `antonella.rossi` | Rossi Manifatture Spa | dipendente |
 | `roberto.manzi` | Rossi Manifatture Spa | referente |
-| `samuele.ferri` | Comunità Il Ponte | referente del centro Spazio Giovani SGA |
-| `marta.colli` | Comunità Il Ponte | referente del centro CSS Sole Luna, Desio |
+| `samuele.ferri` | Comunità Il Ponte | referente, tutti i centri |
+| `marta.colli` | Comunità Il Ponte | referente, tutti i centri |
 | `ilaria.gatti` | Comunità Il Ponte | responsabile amministrativa |
 | `cucina.mavi` | MAVI Ristorazione | cucina |
 

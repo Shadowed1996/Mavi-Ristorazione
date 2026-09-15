@@ -170,8 +170,8 @@ Login unico, password `dimostrazione` per tutti.
 |---|---|---|
 | Antonella Rossi | azienda | dipendente |
 | Roberto Manzi | azienda | referente |
-| Samuele Ferri | comunità | referente del centro Spazio Giovani SGA (diete, presenze, variazioni del proprio centro) |
-| Marta Colli | comunità | referente del centro CSS Sole Luna, Desio |
+| Samuele Ferri | comunità | referente (pazienti, diete, presenze e variazioni di tutti i centri) |
+| Marta Colli | comunità | referente, come Samuele Ferri |
 | Ilaria Gatti | comunità | responsabile amministrativa (solo fatture e resoconti senza nominativi) |
 | Cucina MAVI | mavi | fornitore (ruolo bloccato, non può chiudersi fuori) |
 

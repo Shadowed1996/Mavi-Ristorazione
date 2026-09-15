@@ -2,7 +2,7 @@
 
 Documento vivo. Va riletto all'inizio di ogni nuova sessione e aggiornato alla fine di ogni task.
 
-**Ultimo aggiornamento**: 15 settembre 2026 — vocale della referente MAVI: un referente per ogni centro (diete, presenze, variazioni), un responsabile solo amministrativo, resoconto per la cucina diviso per committente e centro. Nuova pagina Variazioni con presa in carico in cucina, Produzione verificata cifra per cifra con PDF ed Excel (sezione 22).
+**Ultimo aggiornamento**: 15 settembre 2026 — vocale della referente MAVI: il referente gestisce pazienti, diete, presenze e variazioni di tutti i centri, il responsabile solo la parte amministrativa, resoconto per la cucina diviso per committente e centro. Nuova pagina Variazioni con presa in carico in cucina, Produzione verificata cifra per cifra con PDF ed Excel (sezione 22, con il chiarimento finale sui centri).
 
 **Precedente**: 14 settembre 2026 — TO DO MAVI in nove punti, lavorati da agenti paralleli su un clone git: `documento.js` e PDF veri ovunque, pranzo e cena indipendenti, fatturazione per committente con proforma a mano, piatti fissi, riepilogo del giorno del referente, Produzione per giorno e settimana, permessi e ruoli applicati (sezione 21).
 
@@ -20,7 +20,7 @@ Cifra prevista: 3.500 EUR lordi come prestazione occasionale per il modulo azien
 
 Due tipi di committente:
 - **AZIENDA** (Rossi Manifatture Spa) — il dipendente sceglie i piatti dal menu del giorno
-- **COMUNITÀ** (Comunità Il Ponte) — dieta personalizzata per paziente; un referente per ogni centro segna presenze e variazioni, un responsabile segue solo la parte amministrativa (dal 15 settembre 2026)
+- **COMUNITÀ** (Comunità Il Ponte) — dieta personalizzata per paziente; il referente segue pazienti, presenze e variazioni di tutti i centri, il responsabile solo la parte amministrativa (dal 15 settembre 2026)
 
 RSA e scuole rimossi dal flusso attivo. Possono tornare come moduli separati.
 
@@ -60,8 +60,8 @@ React 19 + Vite 8. Font Fraunces (serif, titoli) + Inter (sans). Sistema visivo 
 Login unico per tutti, password `dimostrazione`. Profili demo:
 - **Antonella Rossi** → azienda, dipendente
 - **Roberto Manzi** → azienda, referente
-- **Samuele Ferri** → comunità, referente del centro Spazio Giovani SGA (dal 14 settembre 2026 i ruoli sono configurabili da Gestione portale)
-- **Marta Colli** → comunità, referente del centro CSS Sole Luna, Desio (dal 15 settembre 2026)
+- **Samuele Ferri** → comunità, referente di tutti i centri (dal 14 settembre 2026 i ruoli sono configurabili da Gestione portale)
+- **Marta Colli** → comunità, seconda referente con gli stessi permessi (dal 15 settembre 2026)
 - **Ilaria Gatti** → comunità, responsabile amministrativa: solo fatture e resoconti senza nominativi (dal 15 settembre 2026)
 - **Cucina MAVI** → fornitore
 
@@ -995,5 +995,24 @@ aperti) e confronto di B rilanciato dopo la correzione, ancora 0 discrepanze.
 
 **Domande aperte per MAVI**: vedi `file.md/12-stato-e-todo.md`, sezione "Da
 valutare con MAVI".
+
+**Chiarimento di Filippo, stesso giorno, dopo il push di `7017b90`**: "penso
+che la mia amica intendesse che l'educatore vedesse tutte le strutture / tutti
+i reparti e il responsabile SOLO la parte amministrativa". La lettura "un
+referente limitato al proprio centro" era sbagliata. Correzioni:
+- il ruolo `operatore` si chiama **"Referente"** e ha `pazienti.tuttiReparti`:
+  pazienti, presenze, variazioni e resoconti nominativi di tutte le strutture
+  e i reparti, centro a scelta in Nuovo paziente e Variazioni;
+- il **responsabile** tiene solo **Fatture e Resoconti numerici** (tolti
+  `documenti.vedi` e `documenti.riservati`, scelta di Filippo);
+- Samuele Ferri e Marta Colli restano entrambi referenti, con il campo
+  `reparto` come centro di appartenenza che non filtra; in Produzione la
+  colonna Referente elenca chi trasmette le presenze e vede quel centro;
+- corretto un difetto emerso nella prova: in Presenze più pazienti segnati in
+  rapida successione si perdevano, perché `setPresenzeComunita` riceveva un
+  oggetto costruito sullo stato vecchio; ora l'aggiornamento è funzionale.
+
+Verificato nel browser (15 controlli su 15, matrice ruoli compresa) e
+confronto schermo / PDF / Excel della distinta ancora a 0 discrepanze.
 
 ---

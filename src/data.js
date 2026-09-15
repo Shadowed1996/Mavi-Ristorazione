@@ -736,8 +736,8 @@ export const PRESENZE_SCUOLA = [
 export const UTENTI = [
   { id: "u1", u: "antonella.rossi", nome: "Antonella Rossi", iniziali: "AR", struttura: "azienda", ruolo: "dipendente", committente: "Rossi Manifatture Spa", mansione: "Amministrazione", email: "antonella.rossi@rossimanifatture.it", telefono: "", attivo: true },
   { id: "u2", u: "roberto.manzi", nome: "Roberto Manzi", iniziali: "RM", struttura: "azienda", ruolo: "referente", committente: "Rossi Manifatture Spa", mansione: "Ufficio del personale", email: "roberto.manzi@rossimanifatture.it", telefono: "", attivo: true },
-  { id: "u3", u: "samuele.ferri", nome: "Samuele Ferri", iniziali: "SF", struttura: "comunita", ruolo: "operatore", committente: "Comunità Il Ponte", mansione: "Educatore, referente del centro", reparto: "Spazio Giovani SGA", email: "samuele.ferri@ilponte.it", telefono: "", attivo: true },
-  { id: "u6", u: "marta.colli", nome: "Marta Colli", iniziali: "MC", struttura: "comunita", ruolo: "operatore", committente: "Comunità Il Ponte", mansione: "Educatrice, referente del centro", reparto: "CSS Sole Luna, Desio", email: "marta.colli@ilponte.it", telefono: "", attivo: true },
+  { id: "u3", u: "samuele.ferri", nome: "Samuele Ferri", iniziali: "SF", struttura: "comunita", ruolo: "operatore", committente: "Comunità Il Ponte", mansione: "Educatore, referente", reparto: "Spazio Giovani SGA", email: "samuele.ferri@ilponte.it", telefono: "", attivo: true },
+  { id: "u6", u: "marta.colli", nome: "Marta Colli", iniziali: "MC", struttura: "comunita", ruolo: "operatore", committente: "Comunità Il Ponte", mansione: "Educatrice, referente", reparto: "CSS Sole Luna, Desio", email: "marta.colli@ilponte.it", telefono: "", attivo: true },
   { id: "u4", u: "ilaria.gatti", nome: "Ilaria Gatti", iniziali: "IG", struttura: "comunita", ruolo: "responsabile", committente: "Comunità Il Ponte", mansione: "Responsabile amministrativa", email: "ilaria.gatti@ilponte.it", telefono: "", attivo: true },
   { id: "u5", u: "cucina.mavi", nome: "Cucina centrale", iniziali: "MV", struttura: "mavi", ruolo: "fornitore", committente: "MAVI Ristorazione", mansione: "Produzione e amministrazione", email: "cucina@maviristorazione.it", telefono: "", attivo: true },
 ];
@@ -863,19 +863,19 @@ export const RUOLI_INIZIALI = [
     permessi: ["cruscotto.vedi", "prenota.perConto", "riepilogo.stampa", "dipendenti.vedi", "dipendenti.modifica",
       "resoconti.vedi", "resoconti.export", "fatture.vedi", "fatture.pdf", "documenti.vedi", "documenti.riservati"],
   },
-  /* comunità: un referente per ogni centro (diete, presenze, variazioni) e un
-     responsabile per tutti i centri che segue solo la parte amministrativa
-     (vocale MAVI del 15 settembre 2026) */
+  /* comunità (vocale MAVI del 15 settembre 2026, chiarito da Filippo lo stesso
+     giorno): il referente gestisce pazienti, diete, presenze e variazioni di
+     tutte le strutture e i reparti; il responsabile segue solo la parte
+     amministrativa, fatture e resoconti numerici per controllarle */
   {
-    id: "operatore", nome: "Referente del centro", portale: "comunita",
-    permessi: ["pazienti.vedi", "pazienti.anagrafica", "pazienti.dieta",
+    id: "operatore", nome: "Referente", portale: "comunita",
+    permessi: ["pazienti.vedi", "pazienti.tuttiReparti", "pazienti.anagrafica", "pazienti.dieta",
       "presenze.vedi", "presenze.segna", "presenze.trasmetti", "variazioni.vedi", "variazioni.invia",
       "resoconti.vedi", "resoconti.export", "resoconti.nominativi", "documenti.vedi"],
   },
   {
     id: "responsabile", nome: "Responsabile amministrativo", portale: "comunita",
-    permessi: ["fatture.vedi", "fatture.pdf", "resoconti.vedi", "resoconti.export", "pazienti.tuttiReparti",
-      "documenti.vedi", "documenti.riservati"],
+    permessi: ["fatture.vedi", "fatture.pdf", "resoconti.vedi", "resoconti.export", "pazienti.tuttiReparti"],
   },
   { id: "fornitore", nome: "Cucina MAVI", portale: "mavi", bloccato: true, permessi: tutti("mavi") },
 ];
@@ -908,7 +908,7 @@ export const ETICHETTE_STRUTTURA = {
 export const ETICHETTE_RUOLO = {
   dipendente: "Dipendente",
   referente: "Referente",
-  operatore: "Referente del centro",
+  operatore: "Referente",
   responsabile: "Responsabile amministrativo",
   fornitore: "Cucina MAVI",
 };
@@ -1101,7 +1101,7 @@ export function splitPiatto(testo) {
 
 /* ============================================================
    Variazioni dai centri della comunità — seed di st.variazioni.
-   Le scrive il referente del centro (cambi di dieta, ospiti in più o in
+   Le scrive il referente (cambi di dieta, ospiti in più o in
    meno, uscite), MAVI le prende in carico da Ordini in arrivo. Tutte per
    mercoledì 16 settembre, la giornata della demo. Le date sono locali, come
    quelle timbrate da inviaVariazione con new Date().
@@ -1123,7 +1123,7 @@ export const PASTI_VARIAZIONE = [
 export const VARIAZIONI_INIZIALI = [
   {
     id: "var-1", committenteId: "comunita", reparto: "Spazio Giovani SGA",
-    autore: "Samuele Ferri", ruoloAutore: "Referente del centro",
+    autore: "Samuele Ferri", ruoloAutore: "Referente",
     indiceGiorno: 2, pasto: "pranzo", pazienteId: "p02", pazienteNome: "Zied Dridi", tipo: "dieta",
     testo: "Da mercoledì a venerdì dieta in bianco per Zied Dridi: pasta o riso all'olio, carne bianca ai ferri, verdure lesse. Niente sughi né fritti.",
     creataIl: oraLocale(15, 9, 40), stato: "presa_in_carico",
@@ -1131,7 +1131,7 @@ export const VARIAZIONI_INIZIALI = [
   },
   {
     id: "var-2", committenteId: "comunita", reparto: "CSS Sole Luna, Desio",
-    autore: "Marta Colli", ruoloAutore: "Referente del centro",
+    autore: "Marta Colli", ruoloAutore: "Referente",
     indiceGiorno: 2, pasto: "cena", pazienteId: null, pazienteNome: null, tipo: "presenze",
     testo: "Mercoledì sera 2 ospiti in più a cena, rientrano dal soggiorno estivo: dieta standard, nessuna allergia.",
     creataIl: oraLocale(15, 11, 25), stato: "inviata",
@@ -1139,7 +1139,7 @@ export const VARIAZIONI_INIZIALI = [
   },
   {
     id: "var-3", committenteId: "comunita", reparto: "CSS Sole Luna, Desio",
-    autore: "Marta Colli", ruoloAutore: "Referente del centro",
+    autore: "Marta Colli", ruoloAutore: "Referente",
     indiceGiorno: 2, pasto: "pranzo", pazienteId: "p03", pazienteNome: "Carmelo Aronica", tipo: "presenze",
     testo: "Carmelo Aronica mercoledì pranza fuori con la famiglia: niente pranzo, la cena resta confermata.",
     creataIl: oraLocale(15, 12, 5), stato: "inviata",
