@@ -98,6 +98,14 @@ attuale è interamente futura rispetto a "oggi", quindi nessun giorno è
 `GIORNI` a una settimana già iniziata. `etichettaGiorno(indice)` dà l'etichetta
 leggibile ("Martedì 15 settembre"), la stessa ovunque: non comporla a mano.
 
+**Le comunità mangiano sette giorni su sette** (Filippo, 15 settembre 2026):
+`GIORNI_COMUNITA` è `GIORNI` più sabato 19 e domenica 20, con gli stessi indici
+0-4, e l'indice vale anche per `GIORNI_SETT` (le chiavi delle diete). Lo usano
+Variazioni, Resoconti della comunità e la distinta di Produzione; il menu, le
+prenotazioni e le etichette dell'azienda restano su `GIORNI`.
+`etichettaGiorno` legge `GIORNI_COMUNITA`, quindi copre anche il fine settimana.
+`INDICE_DEMO_COMUNITA = 2` è la giornata in cui la demo segna le presenze.
+
 ## Anagrafiche e committenti
 
 | Costante | Cosa contiene |
@@ -105,7 +113,9 @@ leggibile ("Martedì 15 settembre"), la stessa ovunque: non comporla a mano.
 | `UTENTI` | seed di `st.utenti`: i cinque profili di prova con `id`, `attivo`, email, struttura e `ruolo` (id di un ruolo). In comunità un solo referente, Samuele Ferri, per tutti i centri (senza `reparto`), e Ilaria Gatti responsabile amministrativa. Un ruolo senza `pazienti.tuttiReparti` usa `reparto` (il centro) per vedere solo quei pazienti, vedi `08-portale-comunita.md` |
 | `PERMESSI` | 72 voci `{ k, portale, gruppo, n }`: chiave (`<pagina>.vedi` per la voce di menu, `<pagina>.<azione>` per le azioni), portale `mavi` / `azienda` / `comunita`, gruppo = pagina (la matrice raggruppa voci **consecutive**), nome leggibile. Le chiavi sono uniche dentro un portale, non fra portali. `permessiDelPortale(p)` filtra. Dal 15 settembre 2026: `variazioni.vedi`, `variazioni.invia`, `resoconti.nominativi` (comunità) e `flussi.variazioni` (MAVI, prende in carico le variazioni) |
 | `RUOLI_INIZIALI` | `{ id, nome, portale, vista?, bloccato?, permessi }`: `dipendente` e `referente` (portale `azienda`, `vista` sceglie il telaio), `operatore` ("Referente": pazienti, diete, presenze, variazioni e resoconti nominativi di tutti i centri), `responsabile` ("Responsabile amministrativo": solo fatture e resoconti senza nominativi, tutti i centri), `fornitore` (`bloccato: true`, tutti i permessi MAVI) |
-| `VARIAZIONI_INIZIALI` | tre variazioni demo per mercoledì (`indiceGiorno: 2`) sui due centri, una già presa in carico: seed di `st.variazioni` (forma in `03-store.md`). `TIPI_VARIAZIONE` e `PASTI_VARIAZIONE` danno le etichette di `tipo` e `pasto` |
+| `VARIAZIONI_INIZIALI` | tre variazioni demo per mercoledì (`indiceGiorno: 2`): dieta di Zied Dridi a pranzo (presa in carico), 2 ospiti in più a cena a Sole Luna (Altro), Carmelo Aronica assente a pranzo (Presenze). Seed di `st.variazioni` (forma in `03-store.md`). `TIPI_VARIAZIONE`, `PASTI_VARIAZIONE` e `PORTATE_DIETA` danno le etichette |
+| `ultimaVariazione`, `presenzaVariata`, `dietaEffettiva` | l'ultima variazione di presenza o dieta per paziente, giorno e pasto; `dietaEffettiva(p, indice, pasto, variazioni)` è la dieta del giorno con la variazione applicata. Le usano Presenze del giorno, Variazioni e la stima di Produzione |
+| `testoVariazionePresenza`, `testoVariazioneDieta`, `daA` | il testo generato delle variazioni strutturate ("Pranzo: da presente ad assente.") |
 | `ETICHETTE_STRUTTURA`, `ETICHETTE_RUOLO`, `ETICHETTE_PORTALE` | nomi leggibili; i nomi veri dei ruoli arrivano da `st.ruoli` |
 
 `trovaUtente` non è più qui: sta nello store, perché lavora su `st.utenti`.

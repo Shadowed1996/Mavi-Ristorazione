@@ -1,7 +1,8 @@
 import React from "react";
 import {
-  PAZIENTI_COMUNITA, GIORNI, GIORNI_SETT, PASTI_TIPO, PASTI_VARIAZIONE, TIPI_VARIAZIONE,
-  etichettaGiorno, splitPiatto, pastiDi, portateServite,
+  PAZIENTI_COMUNITA, GIORNI_COMUNITA, GIORNI_SETT, PASTI_TIPO, PASTI_VARIAZIONE, PORTATE_DIETA, TIPI_VARIAZIONE,
+  daA, dietaEffettiva, etichettaGiorno, presenzaVariata, splitPiatto, pastiDi, portateServite,
+  testoVariazioneDieta, testoVariazionePresenza,
 } from "../data.js";
 import { Icone, Intestazione, Velo } from "../ui.jsx";
 import { usaStato } from "../store.jsx";
@@ -166,7 +167,7 @@ function SchedaPaziente({ paziente, onChiudi, onModifica, onElimina, soloLettura
   const [importError, setImportError] = React.useState("");
   const fileRef = React.useRef(null);
   const st = usaStato();
-  const NOMI_GIORNI = { "lunedì": "Lunedì", "martedì": "Martedì", "mercoledì": "Mercoledì", "giovedì": "Giovedì", "venerdì": "Venerdì" };
+  const NOMI_GIORNI = { "lunedì": "Lunedì", "martedì": "Martedì", "mercoledì": "Mercoledì", "giovedì": "Giovedì", "venerdì": "Venerdì", "sabato": "Sabato", "domenica": "Domenica" };
   const pastiPrevisti = pastiDi(paziente);
 
   function salvaOverride(giorno, pasto, portata) {
@@ -336,7 +337,7 @@ function SchedaPaziente({ paziente, onChiudi, onModifica, onElimina, soloLettura
             <button className="btn" onClick={() => {
               Object.assign(paziente.dieta, importPreview.dieta);
               st.avvisa("Dieta aggiornata per " + paziente.nome + " — tutti i giorni importati dal file");
-              st.loggaSessione("Dieta caricata da file Excel", paziente.nome + ", 5 giorni, pranzo e cena", "modifica");
+              st.loggaSessione("Dieta caricata da file Excel", paziente.nome + ", settimana da lunedì a domenica, pranzo e cena", "modifica");
               setImportPreview(null);
             }}>
               Approva e applica
@@ -459,9 +460,11 @@ function PresenzeComunita({ reparto }) {
   const totPresenti = paz.filter((p) => statoDi(p.id) === true).length;
   const totAssenti = paz.filter((p) => statoDi(p.id) === false).length;
   const totNonSegnati = paz.filter((p) => statoDi(p.id) == null).length;
+  /* la dieta del giorno con applicate le variazioni di dieta inviate */
+  const dietaDi = (p) => dietaEffettiva(p, INDICE_GIORNO_DEMO, pasto, st.variazioni);
   const totEtichette = paz
     .filter((p) => statoDi(p.id) === true)
-    .reduce((somma, p) => somma + portateServite(p.dieta[GIORNO_DEMO]?.[pasto]).length, 0);
+    .reduce((somma, p) => somma + portateServite(dietaDi(p)).length, 0);
   const esclusi = tuttiPaz.length - paz.length;
 
   return (
@@ -474,16 +477,7 @@ function PresenzeComunita({ reparto }) {
           <button className="btn piccolo" disabled={totNonSegnati > 0 || paz.length === 0} onClick={() => {
             const trasmessi = paz
               .filter((p) => statoDi(p.id) === true)
-              .map((p) => ({
-                id: p.id,
-                nome: p.nome,
-                stanza: p.stanza,
-                tipo_dieta: p.tipo_dieta,
-                note: p.note,
-                pasto: pasto,
-                giorno: GIORNO_DEMO,
-                dieta: p.dieta[GIORNO_DEMO]?.[pasto] || {},
-              }));
+              .map((p) => rigaTrasmessa(p, pasto, dietaDi(p)));
             st.trasmettiPresenze(trasmessi, {
               centri: [...new Set(paz.map((p) => p.stanza).filter(Boolean))], pasto, giorno: GIORNO_DEMO,
             });
@@ -533,7 +527,7 @@ function PresenzeComunita({ reparto }) {
               </thead>
               <tbody>
                 {paz.map((p) => {
-                  const dieta = p.dieta[GIORNO_DEMO]?.[pasto];
+                  const dieta = dietaDi(p);
                   const stato = statoDi(p.id); // null, true, false
                   const cls = stato === true ? "pz-presente" : stato === false ? "pz-assente" : "pz-neutro";
                   return (
@@ -577,8 +571,15 @@ function PresenzeComunita({ reparto }) {
 /* ==================== pagina Variazioni ==================== */
 const NOME_PASTO_VARIAZIONE = Object.fromEntries(PASTI_VARIAZIONE.map((p) => [p.id, p.nome]));
 const NOME_TIPO_VARIAZIONE = Object.fromEntries(TIPI_VARIAZIONE.map((t) => [t.id, t.nome]));
-/* la giornata della demo nell'elenco GIORNI del menu */
-const INDICE_GIORNO_DEMO = Math.max(0, GIORNI.findIndex((g) => g.data === DATA_DEMO));
+/* la giornata della demo nel calendario delle comunità, da lunedì a domenica */
+const INDICE_GIORNO_DEMO = Math.max(0, GIORNI_COMUNITA.findIndex((g) => g.data === DATA_DEMO));
+
+/* riga trasmessa a MAVI per un paziente presente: la stessa per Presenze del
+   giorno e per una variazione su un pasto già trasmesso */
+function rigaTrasmessa(p, pasto, dieta) {
+  return { id: p.id, nome: p.nome, stanza: p.stanza, tipo_dieta: p.tipo_dieta, note: p.note, pasto, giorno: GIORNO_DEMO, dieta: dieta || {} };
+}
+const NOME_STATO_PRESENZA = (v) => (v === true ? "presente" : v === false ? "assente" : "non ancora segnato");
 
 function VariazioniComunita({ reparto }) {
   const st = usaStato();
@@ -586,7 +587,7 @@ function VariazioniComunita({ reparto }) {
   const limitato = reparto !== null && reparto !== undefined;
   const censiti = st.committenti.find((c) => c.id === "comunita")?.unita || [];
   const centri = limitato ? (reparto ? [reparto] : []) : censiti;
-  const giorniAperti = GIORNI.map((g, i) => ({ ...g, i })).filter((g) => !g.chiuso);
+  const giorniAperti = GIORNI_COMUNITA.map((g, i) => ({ ...g, i })).filter((g) => !g.chiuso);
 
   const [giorno, setGiorno] = React.useState(() =>
     giorniAperti.some((g) => g.i === INDICE_GIORNO_DEMO) ? INDICE_GIORNO_DEMO : (giorniAperti[0] ? giorniAperti[0].i : 0));
@@ -595,19 +596,83 @@ function VariazioniComunita({ reparto }) {
   const [tipo, setTipo] = React.useState("dieta");
   const [pazienteId, setPazienteId] = React.useState("");
   const [testo, setTesto] = React.useState("");
+  /* scelte in corso sul paziente: presenza per pasto e piatti riscritti */
+  const [presenzaScelta, setPresenzaScelta] = React.useState({});
+  const [dietaScelta, setDietaScelta] = React.useState({});
+  React.useEffect(() => {
+    setPresenzaScelta({});
+    setDietaScelta({});
+  }, [pazienteId, giorno, pasto, tipo, centro]);
 
   const pazientiCentro = PAZIENTI_COMUNITA.filter((p) => p.stanza === centro);
+  const paziente = tipo === "altro" && !pazienteId ? null : pazientiCentro.find((p) => p.id === pazienteId) || null;
+  const pastiScelti = pasto === "entrambi" ? PASTI_TIPO : [pasto];
   const elenco = (st.variazioni || [])
     .filter((v) => v.committenteId === "comunita" && (!limitato || v.reparto === reparto))
     .sort((a, b) => String(b.creataIl).localeCompare(String(a.creataIl)));
   const inAttesa = elenco.filter((v) => v.stato !== "presa_in_carico").length;
-  const pronto = !!testo.trim() && !!centro && giorniAperti.length > 0;
+
+  /* com'è adesso: nella giornata della demo vale quanto segnato in Presenze del
+     giorno, negli altri giorni l'ultima variazione; la dieta è quella del
+     giorno con applicata l'ultima variazione di dieta */
+  const prevede = (p, ps) => pastiDi(p).includes(ps);
+  const presenzaAttuale = (p, ps) => (giorno === INDICE_GIORNO_DEMO
+    ? st.presenzeComunita[p.id]?.[ps] ?? null
+    : presenzaVariata(st.variazioni, p.id, giorno, ps));
+  const dietaAttuale = (p, ps) => dietaEffettiva(p, giorno, ps, st.variazioni) || {};
+
+  const presenzeCambiate = tipo === "presenze" && paziente
+    ? Object.fromEntries(pastiScelti
+      .filter((ps) => prevede(paziente, ps) && typeof presenzaScelta[ps] === "boolean"
+        && presenzaScelta[ps] !== presenzaAttuale(paziente, ps))
+      .map((ps) => [ps, presenzaScelta[ps]]))
+    : {};
+  const dieteCambiate = tipo === "dieta" && paziente
+    ? Object.fromEntries(pastiScelti
+      .filter((ps) => prevede(paziente, ps))
+      .map((ps) => {
+        const attuale = dietaAttuale(paziente, ps);
+        return [ps, Object.fromEntries(PORTATE_DIETA
+          .map((c) => [c.id, String(dietaScelta[ps]?.[c.id] ?? "").trim()])
+          .filter(([portata, valore]) => valore && valore !== (attuale[portata] || "")))];
+      })
+      .filter(([, cambi]) => Object.keys(cambi).length > 0))
+    : {};
+
+  const pronto = !!centro && giorniAperti.length > 0 && (
+    tipo === "altro" ? !!testo.trim()
+      : tipo === "presenze" ? Object.keys(presenzeCambiate).length > 0
+        : Object.keys(dieteCambiate).length > 0);
+
+  /* nella giornata della demo la variazione si applica subito: Presenze del
+     giorno e, se quel pasto è già partito, la riga arrivata alla cucina */
+  const pastoTrasmesso = (p, ps) =>
+    st.trasmissioniCentri.some((t) => t.reparto === p.stanza && t.pasto === ps && t.giorno === GIORNO_DEMO)
+    || st.presenzeTrasmesse.some((r) => r.stanza === p.stanza && r.pasto === ps && r.giorno === GIORNO_DEMO);
+
+  function applicaPresenze(p, cambi) {
+    if (giorno !== INDICE_GIORNO_DEMO) return;
+    st.setPresenzeComunita((prec) => ({ ...prec, [p.id]: { ...(prec[p.id] || {}), ...cambi } }));
+    Object.entries(cambi).forEach(([ps, presente]) => {
+      if (pastoTrasmesso(p, ps)) {
+        st.sostituisciRigaTrasmessa(p.id, ps, GIORNO_DEMO, presente ? rigaTrasmessa(p, ps, dietaAttuale(p, ps)) : null);
+      }
+    });
+  }
+
+  function applicaDieta(p, cambi, prima) {
+    if (giorno !== INDICE_GIORNO_DEMO) return;
+    Object.entries(cambi).forEach(([ps, nuove]) => {
+      if (st.presenzeTrasmesse.some((r) => r.id === p.id && r.pasto === ps && r.giorno === GIORNO_DEMO)) {
+        st.sostituisciRigaTrasmessa(p.id, ps, GIORNO_DEMO, rigaTrasmessa(p, ps, { ...prima[ps], ...nuove }));
+      }
+    });
+  }
 
   function invia(e) {
     e.preventDefault();
     if (!pronto) return;
-    const paziente = pazientiCentro.find((p) => p.id === pazienteId);
-    const id = st.inviaVariazione({
+    const base = {
       committenteId: "comunita",
       reparto: centro,
       autore: st.sessione ? st.sessione.nome : undefined,
@@ -617,11 +682,29 @@ function VariazioniComunita({ reparto }) {
       pazienteId: paziente ? paziente.id : null,
       pazienteNome: paziente ? paziente.nome : null,
       tipo,
-      testo,
-    });
+    };
+    let id = null;
+    if (tipo === "presenze") {
+      const presenzaPrima = Object.fromEntries(Object.keys(presenzeCambiate).map((ps) => [ps, presenzaAttuale(paziente, ps)]));
+      id = st.inviaVariazione({
+        ...base, presenza: presenzeCambiate, presenzaPrima,
+        testo: testoVariazionePresenza(presenzaPrima, presenzeCambiate),
+      });
+      if (id) applicaPresenze(paziente, presenzeCambiate);
+    } else if (tipo === "dieta") {
+      const dietaPrima = Object.fromEntries(Object.keys(dieteCambiate).map((ps) => [ps, { ...dietaAttuale(paziente, ps) }]));
+      id = st.inviaVariazione({
+        ...base, dieta: dieteCambiate, dietaPrima,
+        testo: testoVariazioneDieta(dietaPrima, dieteCambiate),
+      });
+      if (id) applicaDieta(paziente, dieteCambiate, dietaPrima);
+    } else {
+      id = st.inviaVariazione({ ...base, testo });
+    }
     if (id) {
       setTesto("");
-      setPazienteId("");
+      setPresenzaScelta({});
+      setDietaScelta({});
     }
   }
 
@@ -668,17 +751,6 @@ function VariazioniComunita({ reparto }) {
               </div>
               <div className="modulo-riga due">
                 <div className="campo">
-                  <label>Pasto</label>
-                  <div className="pasti-scelta">
-                    {PASTI_VARIAZIONE.map((p) => (
-                      <label key={p.id} className={pasto === p.id ? "on" : ""}>
-                        <input type="radio" name="var-pasto" checked={pasto === p.id} onChange={() => setPasto(p.id)} />
-                        {p.nome}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <div className="campo">
                   <label>Tipo</label>
                   <div className="pasti-scelta">
                     {TIPI_VARIAZIONE.map((t) => (
@@ -689,25 +761,120 @@ function VariazioniComunita({ reparto }) {
                     ))}
                   </div>
                 </div>
+                <div className="campo">
+                  <label>Pasto</label>
+                  <div className="pasti-scelta">
+                    {PASTI_VARIAZIONE.map((p) => (
+                      <label key={p.id} className={pasto === p.id ? "on" : ""}>
+                        <input type="radio" name="var-pasto" checked={pasto === p.id} onChange={() => setPasto(p.id)} />
+                        {p.nome}
+                      </label>
+                    ))}
+                  </div>
+                </div>
               </div>
               <div className="modulo-riga due">
                 <div className="campo">
                   <label htmlFor="var-paziente">Paziente</label>
                   <select id="var-paziente" value={pazienteId} onChange={(e) => setPazienteId(e.target.value)}>
-                    <option value="">Tutto il centro</option>
+                    <option value="">{tipo === "altro" ? "Tutto il centro" : "Scegli il paziente"}</option>
                     {pazientiCentro.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
                   </select>
-                  <p style={piccolo}>Facoltativo: lascia "Tutto il centro" per ospiti in più, uscite di gruppo o avvisi generali.</p>
+                  <p style={piccolo}>
+                    {tipo === "altro"
+                      ? "Facoltativo: lascia \"Tutto il centro\" per ospiti in più, uscite di gruppo o avvisi generali."
+                      : "Presenze e dieta si cambiano per un paziente alla volta."}
+                  </p>
                 </div>
               </div>
-              <div className="campo">
-                <label htmlFor="var-testo">Variazione</label>
-                <textarea id="var-testo" rows={3} value={testo} onChange={(e) => setTesto(e.target.value)}
-                  placeholder="es. Da mercoledì a venerdì dieta in bianco: pasta all'olio, carne ai ferri, niente sughi né fritti" />
-              </div>
+
+              {tipo !== "altro" && !paziente && (
+                <div className="var-vuoto">
+                  Scegli il paziente: si apre {tipo === "dieta" ? "la sua dieta" : "la sua presenza"} di {etichettaGiorno(giorno).toLowerCase()}, da cambiare.
+                </div>
+              )}
+
+              {tipo === "presenze" && paziente && (
+                <div className="var-dettaglio">
+                  <div className="var-dettaglio-testa">Presenza di {paziente.nome} · {etichettaGiorno(giorno)}</div>
+                  {pastiScelti.map((ps) => {
+                    const attuale = presenzaAttuale(paziente, ps);
+                    const scelta = typeof presenzaScelta[ps] === "boolean" ? presenzaScelta[ps] : attuale;
+                    const previsto = prevede(paziente, ps);
+                    return (
+                      <div className="var-riga" key={ps}>
+                        <div>
+                          <b>{NOME_PASTO[ps]}</b>
+                          <div style={piccolo}>
+                            {!previsto ? "Non previsto nella dieta del paziente"
+                              : scelta !== attuale ? "Cambia " + daA(NOME_STATO_PRESENZA(attuale), NOME_STATO_PRESENZA(scelta))
+                                : "Adesso: " + NOME_STATO_PRESENZA(attuale)}
+                          </div>
+                        </div>
+                        <div className="toggle-presenza">
+                          <button type="button" className={scelta === true ? "on-verde" : ""} disabled={!previsto}
+                            onClick={() => setPresenzaScelta((s) => ({ ...s, [ps]: true }))}>✓ Presente</button>
+                          <button type="button" className={scelta === false ? "on-rosso" : ""} disabled={!previsto}
+                            onClick={() => setPresenzaScelta((s) => ({ ...s, [ps]: false }))}>✕ Assente</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {tipo === "dieta" && paziente && (
+                <div className="var-dettaglio">
+                  <div className="var-dettaglio-testa">Dieta di {paziente.nome} · {etichettaGiorno(giorno)}</div>
+                  <p style={{ ...piccolo, marginTop: 0 }}>
+                    Riscrivi solo i piatti da cambiare. Vale per questo giorno: la dieta settimanale nella scheda del paziente resta com'è.
+                  </p>
+                  {pastiScelti.map((ps) => {
+                    if (!prevede(paziente, ps)) {
+                      return (
+                        <div className="var-riga" key={ps}>
+                          <b>{NOME_PASTO[ps]}</b>
+                          <span style={piccolo}>Non previsto nella dieta del paziente</span>
+                        </div>
+                      );
+                    }
+                    const attuale = dietaAttuale(paziente, ps);
+                    return (
+                      <div className="var-pasto" key={ps}>
+                        <b>{NOME_PASTO[ps]}</b>
+                        <div className="var-portate">
+                          {PORTATE_DIETA.map((c) => {
+                            const valore = dietaScelta[ps]?.[c.id] ?? (attuale[c.id] || "");
+                            const cambiata = !!valore.trim() && valore.trim() !== (attuale[c.id] || "");
+                            return (
+                              <div className="campo" key={c.id}>
+                                <label htmlFor={"var-" + ps + "-" + c.id}>{c.nome}</label>
+                                <input id={"var-" + ps + "-" + c.id} type="text" className={cambiata ? "var-cambiata" : ""} value={valore}
+                                  onChange={(e) => setDietaScelta((s) => ({ ...s, [ps]: { ...(s[ps] || {}), [c.id]: e.target.value } }))} />
+                                {cambiata && <p style={piccolo}>Era: {splitPiatto(attuale[c.id]).nome}</p>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {tipo === "altro" && (
+                <div className="campo">
+                  <label htmlFor="var-testo">Variazione</label>
+                  <textarea id="var-testo" rows={3} value={testo} onChange={(e) => setTesto(e.target.value)}
+                    placeholder="es. Stasera 2 ospiti in più a cena, dieta standard, nessuna allergia" />
+                </div>
+              )}
+
               <div className="variazione-piede">
                 <span style={{ fontSize: 12, color: "var(--muto)" }}>
-                  La cucina la trova in Ordini in arrivo e nella distinta di Produzione del giorno indicato.
+                  {tipo === "altro"
+                    ? "La cucina la trova in Ordini in arrivo e nella distinta di Produzione del giorno indicato."
+                    : "Si applica subito: presenze e quantità della cucina per quel giorno, e la cucina la trova anche in Ordini in arrivo."}
                 </span>
                 <button type="submit" className="btn" disabled={!pronto}>
                   <Icone.ok size={15} /> Invia a MAVI
@@ -771,9 +938,9 @@ function VariazioniComunita({ reparto }) {
             </table>
           </div>
           <div className="pannello-piede">
-            Le variazioni sono avvisi per la cucina e non cambiano da sole diete e presenze: un cambio di
-            dieta stabile va riportato anche nella scheda del paziente, le presenze del giorno si segnano
-            come sempre in Presenze del giorno.
+            Le variazioni di presenza e di dieta valgono per quel giorno e pasto: aggiornano le presenze e le
+            quantità della cucina, anche se il pasto era già stato trasmesso. La dieta settimanale nella scheda
+            del paziente non cambia. Le variazioni Altro sono avvisi che la cucina applica a mano.
           </div>
         </div>
       </div>
@@ -961,7 +1128,8 @@ function TabellaGiornoPasto({ pasto, inviato, pazienti }) {
 }
 
 /* ==================== resoconti ==================== */
-const GIORNI_SETT_DEMO = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì"];
+/* le comunità mangiano tutta la settimana, da lunedì a domenica */
+const GIORNI_SETT_DEMO = GIORNI_SETT;
 
 /* Nomi e diete sono dati sanitari: li vede solo chi ha resoconti.nominativi
    (il referente). Il responsabile amministrativo vede i numeri
@@ -1208,9 +1376,9 @@ function righeResocontoCentri({ gruppi, totale }) {
   return righe;
 }
 
-const intestazioneGiorno = (i) => (GIORNI[i] ? GIORNI[i].n.slice(0, 3) + " " + GIORNI[i].breve : GIORNI_SETT_DEMO[i]);
-const PERIODO_SETTIMANA = GIORNI.length
-  ? "dal " + GIORNI[0].d + " al " + GIORNI[GIORNI.length - 1].d + " " + GIORNI[GIORNI.length - 1].data.slice(0, 4)
+const intestazioneGiorno = (i) => (GIORNI_COMUNITA[i] ? GIORNI_COMUNITA[i].n.slice(0, 3) + " " + GIORNI_COMUNITA[i].breve : GIORNI_SETT_DEMO[i]);
+const PERIODO_SETTIMANA = GIORNI_COMUNITA.length
+  ? "dal " + GIORNI_COMUNITA[0].d + " al " + GIORNI_COMUNITA[GIORNI_COMUNITA.length - 1].d + " " + GIORNI_COMUNITA[GIORNI_COMUNITA.length - 1].data.slice(0, 4)
   : "";
 
 function ResocontiCentri({ reparto }) {
@@ -1373,7 +1541,7 @@ function ResocontiCentri({ reparto }) {
           <div className="pannello-piede">
             {vista === "giorno"
               ? "Pasti previsti: pazienti che hanno quel pasto nella dieta del giorno. Presenti trasmessi: quelli confermati a MAVI dal referente; finché le presenze del centro non sono trasmesse restano a zero. "
-              : "Pasti previsti giorno per giorno dalle diete dei pazienti, da lunedì a venerdì. "}
+              : "Pasti previsti giorno per giorno dalle diete dei pazienti, da lunedì a domenica. "}
             Il PDF e l'Excel riportano le stesse righe, giornata e settimana.
           </div>
         </div>

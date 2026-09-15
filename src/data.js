@@ -454,9 +454,21 @@ export const GIORNI = [
   { n: "Venerdì", d: "18 settembre", breve: "18 set", data: "2026-09-18", chiuso: false },
 ];
 
-/* etichetta leggibile del giorno di menu, la stessa ovunque: "Martedì 15 settembre" */
+/* Le comunità mangiano sette giorni su sette: stesso calendario di GIORNI
+   (indici 0-4 identici), più sabato e domenica. GIORNI resta la settimana del
+   menu aziendale; per le comunità l'indice vale anche per GIORNI_SETT. */
+/* la giornata in cui la demo segna e trasmette le presenze: mercoledì 16 */
+export const INDICE_DEMO_COMUNITA = 2;
+
+export const GIORNI_COMUNITA = [
+  ...GIORNI,
+  { n: "Sabato", d: "19 settembre", breve: "19 set", data: "2026-09-19", chiuso: false },
+  { n: "Domenica", d: "20 settembre", breve: "20 set", data: "2026-09-20", chiuso: false },
+];
+
+/* etichetta leggibile del giorno, la stessa ovunque: "Martedì 15 settembre" */
 export function etichettaGiorno(indice) {
-  const g = GIORNI[indice];
+  const g = GIORNI_COMUNITA[indice];
   return g ? g.n + " " + g.d : "";
 }
 
@@ -1119,19 +1131,77 @@ export const PASTI_VARIAZIONE = [
   { id: "entrambi", nome: "Pranzo e cena" },
 ];
 
+/* Variazioni strutturate. Una variazione di tipo "presenze" porta
+   `presenza: { pranzo?: bool, cena?: bool }` (e `presenzaPrima`, com'era
+   prima), una di tipo "dieta" porta `dieta: { pranzo?: { primo, secondo,
+   contorno } }` (e `dietaPrima`). Solo "altro" è testo libero. Per un paziente,
+   un giorno e un pasto vale l'ultima variazione inviata: la leggono le
+   Presenze del giorno, la trasmissione a MAVI e la stima di Produzione. */
+export const PORTATE_DIETA = [
+  { id: "primo", nome: "Primo" },
+  { id: "secondo", nome: "Secondo" },
+  { id: "contorno", nome: "Contorno" },
+];
+const NOME_PASTO_BREVE = { pranzo: "Pranzo", cena: "Cena" };
+const testoPresenza = (v) => (v === true ? "presente" : v === false ? "assente" : "non segnato");
+
+export function ultimaVariazione(variazioni, pazienteId, indiceGiorno, pasto, tipo) {
+  const campo = tipo === "presenze" ? "presenza" : "dieta";
+  return (variazioni || [])
+    .filter((v) => v.tipo === tipo && v.pazienteId === pazienteId && v.indiceGiorno === indiceGiorno
+      && v[campo] && v[campo][pasto] !== undefined)
+    .reduce((ultima, v) => (!ultima || String(v.creataIl) > String(ultima.creataIl) ? v : ultima), null);
+}
+
+/* true / false dall'ultima variazione di presenza, null se non ce ne sono */
+export function presenzaVariata(variazioni, pazienteId, indiceGiorno, pasto) {
+  const v = ultimaVariazione(variazioni, pazienteId, indiceGiorno, pasto, "presenze");
+  return v ? v.presenza[pasto] : null;
+}
+
+/* dieta del giorno e pasto con applicata l'ultima variazione di dieta */
+export function dietaEffettiva(paziente, indiceGiorno, pasto, variazioni) {
+  const base = ((paziente && paziente.dieta) || {})[GIORNI_SETT[indiceGiorno]]?.[pasto] || null;
+  const v = ultimaVariazione(variazioni, paziente && paziente.id, indiceGiorno, pasto, "dieta");
+  return v ? { ...(base || {}), ...v.dieta[pasto] } : base;
+}
+
+/* "da presente ad assente", "da assente a presente" */
+export function daA(prima, dopo) {
+  return "da " + prima + (/^[aeiou]/i.test(dopo) ? " ad " : " a ") + dopo;
+}
+
+export function testoVariazionePresenza(presenzaPrima, presenza) {
+  return Object.keys(presenza)
+    .map((p) => NOME_PASTO_BREVE[p] + ": " + daA(testoPresenza(presenzaPrima[p]), testoPresenza(presenza[p])))
+    .join(". ") + ".";
+}
+
+export function testoVariazioneDieta(dietaPrima, dieta) {
+  return Object.keys(dieta).map((p) => NOME_PASTO_BREVE[p] + " · " + PORTATE_DIETA
+    .filter((c) => dieta[p][c.id] !== undefined && dieta[p][c.id] !== ((dietaPrima[p] || {})[c.id] || ""))
+    .map((c) => c.nome.toLowerCase() + " " + splitPiatto((dietaPrima[p] || {})[c.id]).nome + " → " + splitPiatto(dieta[p][c.id]).nome)
+    .join(", ")).join(". ") + ".";
+}
+
+const pazienteSeme = (id) => PAZIENTI_COMUNITA.find((p) => p.id === id);
+const DIETA_PRIMA_ZIED = { pranzo: { ...pazienteSeme("p02").dieta["mercoledì"].pranzo } };
+const DIETA_ZIED = { pranzo: { primo: "Pasta all'olio || IN BIANCO", secondo: "Petto di pollo alla griglia", contorno: "Verdure lesse" } };
+
 export const VARIAZIONI_INIZIALI = [
   {
     id: "var-1", committenteId: "comunita", reparto: "Spazio Giovani SGA",
     autore: "Samuele Ferri", ruoloAutore: "Referente",
     indiceGiorno: 2, pasto: "pranzo", pazienteId: "p02", pazienteNome: "Zied Dridi", tipo: "dieta",
-    testo: "Da mercoledì a venerdì dieta in bianco per Zied Dridi: pasta o riso all'olio, carne bianca ai ferri, verdure lesse. Niente sughi né fritti.",
+    dietaPrima: DIETA_PRIMA_ZIED, dieta: DIETA_ZIED,
+    testo: testoVariazioneDieta(DIETA_PRIMA_ZIED, DIETA_ZIED),
     creataIl: oraLocale(15, 9, 40), stato: "presa_in_carico",
     presaInCaricoIl: oraLocale(15, 10, 15), presaInCaricoDa: "Cucina centrale",
   },
   {
     id: "var-2", committenteId: "comunita", reparto: "CSS Sole Luna, Desio",
     autore: "Samuele Ferri", ruoloAutore: "Referente",
-    indiceGiorno: 2, pasto: "cena", pazienteId: null, pazienteNome: null, tipo: "presenze",
+    indiceGiorno: 2, pasto: "cena", pazienteId: null, pazienteNome: null, tipo: "altro",
     testo: "Mercoledì sera 2 ospiti in più a cena, rientrano dal soggiorno estivo: dieta standard, nessuna allergia.",
     creataIl: oraLocale(15, 11, 25), stato: "inviata",
     presaInCaricoIl: null, presaInCaricoDa: null,
@@ -1140,7 +1210,8 @@ export const VARIAZIONI_INIZIALI = [
     id: "var-3", committenteId: "comunita", reparto: "CSS Sole Luna, Desio",
     autore: "Samuele Ferri", ruoloAutore: "Referente",
     indiceGiorno: 2, pasto: "pranzo", pazienteId: "p03", pazienteNome: "Carmelo Aronica", tipo: "presenze",
-    testo: "Carmelo Aronica mercoledì pranza fuori con la famiglia: niente pranzo, la cena resta confermata.",
+    presenzaPrima: { pranzo: null }, presenza: { pranzo: false },
+    testo: testoVariazionePresenza({ pranzo: null }, { pranzo: false }),
     creataIl: oraLocale(15, 12, 5), stato: "inviata",
     presaInCaricoIl: null, presaInCaricoDa: null,
   },

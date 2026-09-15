@@ -16,11 +16,14 @@ MAVI verifica i pasti in arrivo, **per giorno e per settimana**, con il
 riepilogo da stampare per la cucina. **La data che si sta guardando è sempre
 visibile**: occhiello, titolo, banner del filtro e ogni documento.
 
-- **Vista Giorno**: navigazione ‹ › fra le cinque giornate di `GIORNI`
-  (apertura su mercoledì, indice 2, i giorni `chiuso` segnalati), titolo
-  `giornoDataIt(GIORNI[g].data)`.
-- **Vista Settimana**: "Settimana dal 14/09 al 18/09/2026", tabella piatto ×
-  lun–ven con il totale.
+- **Vista Giorno**: navigazione ‹ › fra le **sette giornate** di
+  `GIORNI_COMUNITA`, da lunedì a domenica, perché le comunità mangiano tutta
+  la settimana (apertura su mercoledì, indice 2, i giorni `chiuso` segnalati),
+  titolo `giornoDataIt(GIORNI_COMUNITA[g].data)`. Sabato e domenica l'azienda
+  non ha menu (`indiceGiorno >= GIORNI.length`): contributo con `chiusi` e stato
+  **"nessun servizio"**.
+- **Vista Settimana**: "Settimana dal 14/09 al 20/09/2026", tabella piatto ×
+  lun–dom con il totale.
 - **Filtro**: Tutte / Aziende / Comunità / singolo committente ("Filtra
   questa") / **singolo centro** ("Filtra centro", `filtro = "centro:<chiave>"`),
   con banner che lo segnala; Pranzo / Cena / Entrambi. L'azienda serve solo il
@@ -40,15 +43,20 @@ presenze). `distintaDelGiorno` calcola sempre pranzo e cena, con
   (prima si sommava la stima intera alle conferme: 7 + 28 invece di 28).
 - **Comunità** — centro per centro e pasto per pasto: `st.presenzeTrasmesse`
   di quel centro (`stanza`); se quel centro non ha trasmesso, stima dalle diete
-  dei suoi pazienti (`pastiDi`, `portateServite`). Prima bastava che un centro
+  dei suoi pazienti (`pastiDi`, `portateServite`) **con le variazioni applicate**:
+  un paziente con variazione di presenza `false` per quel giorno e pasto non
+  si conta, la dieta è `dietaEffettiva`. Sulle righe già trasmesse le
+  variazioni arrivano sostituendo la riga (`sostituisciRigaTrasmessa`, lato
+  comunità). Prima bastava che un centro
   trasmettesse per azzerare la stima degli altri. Un centro che ha trasmesso
   tutti assenti non ha righe ma compare in `st.trasmissioniCentri`: conta come
   trasmesso (campo `trasmessi` del contributo) e ha stato **"trasmesso, nessun
   pasto"**, a schermo, nel PDF e nell'Excel.
 
 Riquadri: pasti (azienda, comunità, quanti stimati), porzioni, diete
-particolari, variazioni dai centri (da prendere in carico, non incluse nelle
-quantità), "Destinazioni confermate N su M". Pannelli, nell'ordine:
+particolari, variazioni dai centri (da prendere in carico; presenza e dieta già
+nelle quantità, Altro da applicare a mano), "Destinazioni confermate N su M".
+Pannelli, nell'ordine:
 
 1. **Pasti per committente e centro** — riga per committente e, sotto, una riga
    per centro con referente (`st.utenti` con `struttura` e `reparto`), pasti per

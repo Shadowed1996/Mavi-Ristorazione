@@ -71,9 +71,13 @@ dalla tabella senza bisogno di una decisione separata.
     settimana, o serve un riepilogo mensile con l'importo stimato?
   - In cucina basta "presa in carico", o servono anche "rifiutata" e una
     risposta scritta al referente?
-  - Gli ospiti in più segnalati con una variazione entrano nei conteggi di
-    presenze e fatture, o restano un avviso? Oggi le variazioni non cambiano
-    le quantità della distinta: vanno applicate a mano, e lo dice.
+  - Gli ospiti in più (variazione Altro) devono entrare nei conteggi di
+    presenze e fatture? Oggi le variazioni di presenza e di dieta di un
+    paziente si applicano da sole, quelle Altro restano avvisi da applicare a
+    mano.
+  - Le presenze si segnano e si trasmettono solo per mercoledì
+    (`GIORNO_DEMO`): negli altri giorni, fine settimana compreso, la comunità
+    è in stima dalle diete e dalle variazioni.
   - Piatti quasi omonimi segnalati in Produzione: sono lo stesso piatto?
     Risotto ai funghi / ai funghi porcini, Pasta al pomodoro / Penne al
     pomodoro e basilico, Salmone al forno / con erbe, Pollo grigliato / Petto

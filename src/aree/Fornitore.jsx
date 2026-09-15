@@ -1,8 +1,8 @@
 import React from "react";
 import {
-  ALLERGENI, CATEGORIE, splitPiatto, COLORI, DIPENDENTI, ETICHETTE_PORTALE, GIORNI, GIORNI_SETT, GIRI,
+  ALLERGENI, CATEGORIE, splitPiatto, COLORI, DIPENDENTI, ETICHETTE_PORTALE, GIORNI, GIORNI_COMUNITA, GIORNI_SETT, GIRI,
   INGREDIENTI_DIETE, MARCATORI, METODI_PAGAMENTO, PASTI_TIPO, PAZIENTI_COMUNITA, PERMESSI, PIATTI,
-  REGIMI_IVA, TERMINI_PAGAMENTO, catalogoPerCategoria, etichettaGiorno, menuDelGiorno, metodoPagamento,
+  REGIMI_IVA, TERMINI_PAGAMENTO, catalogoPerCategoria, dietaEffettiva, etichettaGiorno, menuDelGiorno, metodoPagamento, presenzaVariata,
   ordinaProforme, pastiDi, permessiDelPortale, portateServite, regimeIva, scadenzaPagamento, sostituisce,
   terminiPagamento, testoCondizioni, totaliProforma,
 } from "../data.js";
@@ -108,11 +108,13 @@ export default function Fornitore({ diretto, onEsci, utente }) {
 
 /* ==================== distinta di produzione, per giorno e per settimana ==================== */
 
-/* La settimana della demo è quella di GIORNI; si apre sul mercoledì, il giorno
-   su cui sono seminati gli ordini nominativi dell'azienda. */
+/* La settimana della distinta è quella delle comunità, da lunedì a domenica
+   (GIORNI_COMUNITA): l'azienda ha il menu solo nei giorni di GIORNI e nel fine
+   settimana risulta "nessun servizio". Si apre sul mercoledì, il giorno su cui
+   sono seminati gli ordini nominativi dell'azienda. */
 const GIORNO_APERTURA = 2;
-const ETICHETTA_SETTIMANA = "Settimana dal " + dataIt(GIORNI[0].data).slice(0, 5)
-  + " al " + dataIt(GIORNI[GIORNI.length - 1].data);
+const ETICHETTA_SETTIMANA = "Settimana dal " + dataIt(GIORNI_COMUNITA[0].data).slice(0, 5)
+  + " al " + dataIt(GIORNI_COMUNITA[GIORNI_COMUNITA.length - 1].data);
 
 /* Coperti previsti dell'azienda, uno per giornata. Finché i dipendenti non
    confermano, la cucina deve comunque avere un ordine di grandezza su cui
@@ -185,7 +187,7 @@ function destinazioniDi(c, centriExtra = []) {
    quel centro non ha ancora trasmesso, stima dalle diete dei suoi pazienti.
    Senza la divisione per centro, il primo referente che trasmette farebbe
    sparire la stima degli altri centri. */
-function distintaDelGiorno({ committenti, indiceGiorno, menu, nominativi, presenze, trasmissioni = [], idPerNome, centriComunita }) {
+function distintaDelGiorno({ committenti, indiceGiorno, menu, nominativi, presenze, trasmissioni = [], variazioni = [], idPerNome, centriComunita }) {
   const voci = new Map();
   const contributi = new Map();
   const diete = new Map();
@@ -193,7 +195,7 @@ function distintaDelGiorno({ committenti, indiceGiorno, menu, nominativi, presen
   const contributo = (dest, pasto) => {
     if (!contributi.has(dest)) contributi.set(dest, {});
     const c = contributi.get(dest);
-    if (!c[pasto]) c[pasto] = { coperti: 0, confermati: 0, stimati: 0, porzioni: 0, trasmessi: 0 };
+    if (!c[pasto]) c[pasto] = { coperti: 0, confermati: 0, stimati: 0, porzioni: 0, trasmessi: 0, chiusi: 0 };
     return c[pasto];
   };
 
@@ -223,7 +225,9 @@ function distintaDelGiorno({ committenti, indiceGiorno, menu, nominativi, presen
   };
 
   const azienda = committenti.find((c) => c.id === "azienda");
-  if (azienda) {
+  if (azienda && indiceGiorno >= GIORNI.length) {
+    contributo(azienda.id, "pranzo").chiusi += 1;
+  } else if (azienda) {
     const dest = azienda.id;
     const confermati = nominativi.filter((n) => n.indiceGiorno === indiceGiorno);
     confermati.forEach((r) => {
@@ -271,9 +275,12 @@ function distintaDelGiorno({ committenti, indiceGiorno, menu, nominativi, presen
           c.confermati += trasmesse.length;
           return;
         }
+        /* stima: le variazioni di presenza e di dieta inviate per quel giorno
+           valgono già (un paziente segnato assente non si cucina) */
         PAZIENTI_COMUNITA.forEach((p) => {
           if (!delCentro(p.stanza) || !pastiDi(p).includes(pasto)) return;
-          const dieta = (p.dieta || {})[giornoSett] ? p.dieta[giornoSett][pasto] : null;
+          if (presenzaVariata(variazioni, p.id, indiceGiorno, pasto) === false) return;
+          const dieta = dietaEffettiva(p, indiceGiorno, pasto, variazioni);
           const portate = portateServite(dieta);
           if (!portate.length) return;
           portate.forEach((categoria) => aggiungi(dieta[categoria], categoria, dest, pasto, 1));
@@ -296,9 +303,9 @@ const senzaAccenti = (testo) => String(testo || "").normalize("NFD").replace(/[�
 /* Stato di una destinazione sul periodo e sui pasti guardati. */
 function statoContributo(r) {
   if (r.coperti === 0) {
-    return r.trasmessi > 0
-      ? { testo: "trasmesso, nessun pasto", classe: "p-ok" }
-      : { testo: "in attesa", classe: "p-neu" };
+    if (r.trasmessi > 0) return { testo: "trasmesso, nessun pasto", classe: "p-ok" };
+    if (r.chiusi > 0) return { testo: "nessun servizio", classe: "p-neu" };
+    return { testo: "in attesa", classe: "p-neu" };
   }
   if (r.stimati === 0) return { testo: "confermato", classe: "p-ok" };
   if (r.confermati === 0) return { testo: "stima", classe: "p-att" };
@@ -376,12 +383,13 @@ function Produzione() {
   const destinazioni = React.useMemo(() => committenti.flatMap((c) =>
     destinazioniDi(c, c.id === "comunita" ? centriComunita : [])), [committenti, chiaveCentri]);
 
-  const giorni = React.useMemo(() => GIORNI.map((unused, i) => distintaDelGiorno({
+  const giorni = React.useMemo(() => GIORNI_COMUNITA.map((unused, i) => distintaDelGiorno({
     committenti, indiceGiorno: i, menu: st.menu, nominativi: st.nominativiAzienda,
-    presenze: st.presenzeTrasmesse, trasmissioni: st.trasmissioniCentri, idPerNome, centriComunita,
-  })), [committenti, st.menu, st.nominativiAzienda, st.presenzeTrasmesse, st.trasmissioniCentri, idPerNome, chiaveCentri]);
+    presenze: st.presenzeTrasmesse, trasmissioni: st.trasmissioniCentri, variazioni: st.variazioni,
+    idPerNome, centriComunita,
+  })), [committenti, st.menu, st.nominativiAzienda, st.presenzeTrasmesse, st.trasmissioniCentri, st.variazioni, idPerNome, chiaveCentri]);
 
-  const indiciGiornate = vista === "giorno" ? [giorno] : GIORNI.map((unused, i) => i);
+  const indiciGiornate = vista === "giorno" ? [giorno] : GIORNI_COMUNITA.map((unused, i) => i);
   const filtroCentro = filtro.indexOf("centro:") === 0;
   const dentroFiltro = (d) => {
     if (filtro === "tutte") return true;
@@ -403,9 +411,9 @@ function Produzione() {
       .map((u) => u.nome)
     : [d.committente.referente].filter(Boolean));
 
-  const vuoto = () => ({ coperti: 0, confermati: 0, stimati: 0, porzioni: 0, trasmessi: 0, perPasto: { pranzo: 0, cena: 0 } });
+  const vuoto = () => ({ coperti: 0, confermati: 0, stimati: 0, porzioni: 0, trasmessi: 0, chiusi: 0, perPasto: { pranzo: 0, cena: 0 } });
   const somma = (lista) => lista.reduce((t, r) => {
-    ["coperti", "confermati", "stimati", "porzioni", "trasmessi"].forEach((k) => { t[k] += r[k]; });
+    ["coperti", "confermati", "stimati", "porzioni", "trasmessi", "chiusi"].forEach((k) => { t[k] += r[k]; });
     PASTI_TIPO.forEach((p) => { t.perPasto[p] += r.perPasto[p]; });
     return t;
   }, vuoto());
@@ -415,7 +423,7 @@ function Produzione() {
       const c = giorni[i].contributi.get(chiave) || {};
       pastiScelti.forEach((p) => {
         if (!c[p]) return;
-        ["coperti", "confermati", "stimati", "porzioni", "trasmessi"].forEach((k) => { r[k] += c[p][k]; });
+        ["coperti", "confermati", "stimati", "porzioni", "trasmessi", "chiusi"].forEach((k) => { r[k] += c[p][k]; });
         r.perPasto[p] += c[p].coperti;
       });
     });
@@ -451,7 +459,7 @@ function Produzione() {
       if (!unite.has(v.chiave)) {
         unite.set(v.chiave, {
           chiave: v.chiave, nome: v.nome, categoria: v.categoria, idPiatto: v.idPiatto, colore: v.colore,
-          perStruttura: colonne.map(() => 0), perGiorno: GIORNI.map(() => 0), perPasto: pastiScelti.map(() => 0), totale: 0,
+          perStruttura: colonne.map(() => 0), perGiorno: GIORNI_COMUNITA.map(() => 0), perPasto: pastiScelti.map(() => 0), totale: 0,
         });
       }
       const r = unite.get(v.chiave);
@@ -475,7 +483,7 @@ function Produzione() {
   const copertiComunita = somma(destDentro.filter((d) => d.committente.tipo === "Comunità")).coperti;
   const confermate = destDentro.filter((d) => d.coperti > 0 && d.stimati === 0).length;
   const inAttesa = destDentro.filter((d) => d.coperti === 0).length;
-  const copertiPerGiorno = GIORNI.map((unused, i) =>
+  const copertiPerGiorno = GIORNI_COMUNITA.map((unused, i) =>
     chiaviDentro.reduce((s, k) => s + sommaDestinazione(k, [i]).coperti, 0));
 
   const nomeCommittente = (id) => (committenti.find((c) => c.id === id) || {}).nome || id;
@@ -536,7 +544,7 @@ function Produzione() {
     variazioni: variazioni.filter((v) => v.committenteId === d.committente.id && (!d.centro || v.reparto === d.centro)),
   }));
 
-  const giornoCorrente = GIORNI[giorno];
+  const giornoCorrente = GIORNI_COMUNITA[giorno];
   const etichettaVista = vista === "giorno" ? etichettaGiorno(giorno) : ETICHETTA_SETTIMANA;
   const etichettaPasto = pasto === "entrambi" ? "pranzo e cena" : pasto;
   const destinazioneFiltro = filtroCentro ? destinazioni.find((d) => d.chiave === filtro.slice(7)) : null;
@@ -546,8 +554,8 @@ function Produzione() {
         : destinazioneFiltro ? destinazioneFiltro.committente.nome + " · centro " + destinazioneFiltro.centro
           : (committenti.find((c) => c.id === filtro) || {}).nome || "Struttura non in elenco";
   const perimetro = nomeFiltro + " · pasto " + etichettaPasto;
-  const etichetteGiorni = GIORNI.map((g) => g.n + " " + g.breve);
-  const nColonne = 3 + (vista === "giorno" ? (conColonne ? colonne.length : 0) : GIORNI.length) + 1;
+  const etichetteGiorni = GIORNI_COMUNITA.map((g) => g.n + " " + g.breve);
+  const nColonne = 3 + (vista === "giorno" ? (conColonne ? colonne.length : 0) : GIORNI_COMUNITA.length) + 1;
 
   const nomeColore = (v) => (v.colore ? COLORI[v.colore].nome : "fuori catalogo");
 
@@ -711,7 +719,7 @@ function Produzione() {
         datiCentri.push(riga);
       }
 
-      const nomeFile = "Distinta_" + (vista === "giorno" ? giornoCorrente.data : "settimana_" + GIORNI[0].data)
+      const nomeFile = "Distinta_" + (vista === "giorno" ? giornoCorrente.data : "settimana_" + GIORNI_COMUNITA[0].data)
         + (filtro === "tutte" ? "" : "_" + senzaAccenti(nomeFiltro).replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_|_$/g, ""))
         + "_" + (pasto === "entrambi" ? "pranzo_e_cena" : pasto) + ".xlsx";
 
@@ -834,8 +842,8 @@ function Produzione() {
                 {etichettaGiorno(giorno)}
                 <small>{copertiPerGiorno[giorno]} pasti · {dataIt(giornoCorrente.data)}</small>
               </div>
-              <button type="button" title="Giorno successivo" disabled={giorno === GIORNI.length - 1}
-                onClick={() => setGiorno((g) => Math.min(GIORNI.length - 1, g + 1))}>
+              <button type="button" title="Giorno successivo" disabled={giorno === GIORNI_COMUNITA.length - 1}
+                onClick={() => setGiorno((g) => Math.min(GIORNI_COMUNITA.length - 1, g + 1))}>
                 <Icone.dx size={17} />
               </button>
             </div>
@@ -843,7 +851,7 @@ function Produzione() {
             <div className="dist-nav">
               <div className="dist-nav-giorno larga">
                 {ETICHETTA_SETTIMANA}
-                <small>{GIORNI.length} giornate, da {GIORNI[0].n.toLowerCase()} a {GIORNI[GIORNI.length - 1].n.toLowerCase()}</small>
+                <small>{GIORNI_COMUNITA.length} giornate, da {GIORNI_COMUNITA[0].n.toLowerCase()} a {GIORNI_COMUNITA[GIORNI_COMUNITA.length - 1].n.toLowerCase()}</small>
               </div>
             </div>
           )}
@@ -887,7 +895,7 @@ function Produzione() {
             <div className="n-val">{variazioni.length}</div>
             <div className="n-nota">
               {variazioniDaPrendere > 0 ? <b>{variazioniDaPrendere} da prendere in carico</b> : "nessuna da prendere in carico"}
-              {" "}· non incluse nelle quantità
+              {" "}· presenza e dieta già nelle quantità
             </div>
           </div>
           <div className="numero">
@@ -1213,8 +1221,9 @@ function Produzione() {
             </table>
           </div>
           <div className="pannello-piede">
-            Le scrive il referente di ogni centro. <b>Non sono già conteggiate nelle quantità</b>: la cucina le
-            applica a mano, dopo averle prese in carico da Ordini in arrivo. Compaiono anche nella stampa e
+            Le scrive il referente. Quelle di <b>presenza e dieta di un paziente sono già conteggiate nelle
+            quantità</b> di quel giorno; quelle <b>Altro</b> (ospiti in più, avvisi generali) la cucina le applica a
+            mano, dopo averle prese in carico da Ordini in arrivo. Compaiono anche nella stampa e
             nell'Excel della distinta.
           </div>
         </div>

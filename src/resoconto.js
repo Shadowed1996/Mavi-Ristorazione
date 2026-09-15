@@ -293,7 +293,7 @@ function bloccoDiete(diete = [], titolo = "Diete particolari e consistenze") {
 }
 
 /* variazioni: [{ giorno, committente, centro, pasto, paziente, tipo, testo, autore, inviata, stato }]
-   scritte dai referenti dei centri; non sono conteggiate nelle quantità */
+   scritte dai referenti; presenza e dieta sono già nelle quantità, Altro no */
 function bloccoVariazioni(variazioni = [], { conGiorno = false, titolo = "Variazioni dai centri" } = {}) {
   return blocco(titolo, tabellaHtml({
     colonne: [
@@ -314,7 +314,7 @@ function bloccoVariazioni(variazioni = [], { conGiorno = false, titolo = "Variaz
     ]),
     vuota: "Nessuna variazione dai centri per il periodo, il perimetro e il pasto scelti.",
   }) + (variazioni.length
-    ? paragrafo("Le variazioni non sono già conteggiate nelle quantità: vanno applicate a mano.", { piccolo: true })
+    ? paragrafo("Le variazioni di presenza e di dieta sono già conteggiate nelle quantità; quelle Altro vanno applicate a mano.", { piccolo: true })
     : ""));
 }
 
@@ -478,7 +478,7 @@ export function generaDistintaPDF({
     note: "Documento di lavoro della cucina, valido per la sola giornata indicata in testa. Le "
       + "quantità sommano i contributi delle strutture comprese nel perimetro: quelle ancora non "
       + "confermate sono stime del portale e vanno confermate dal committente prima della produzione. "
-      + "Le variazioni dai centri non sono già conteggiate nelle quantità.",
+      + "Le variazioni di presenza e di dieta sono già conteggiate nelle quantità; quelle Altro vanno applicate a mano.",
     datiAziendali,
   });
 
@@ -488,7 +488,7 @@ export function generaDistintaPDF({
 /* Gemella della precedente sulla settimana: stessa struttura, ma le colonne
    intermedie sono le giornate invece dei committenti.
    periodo:  "Settimana dal 14/09 al 18/09/2026", finisce nel titolo
-   giorni:   [etichetta, ...] — le colonne, di norma lunedì-venerdì
+   giorni:   [etichetta, ...] — le colonne, da lunedì a domenica
    sezioni:  [{ categoria, righe: [{ piatto, colore, nota, perGiorno: [n, ...], totale }] }]
    pastiPerCentro, destinazioni, variazioni, diete: come la distinta del giorno,
    sommati sulla settimana */
@@ -520,8 +520,8 @@ export function generaDistintaSettimanaPDF({
     ],
     note: "Prospetto settimanale della cucina: serve a programmare acquisti e lavorazioni, non "
       + "sostituisce la distinta del giorno, che resta il documento da portare in produzione. Le "
-      + "giornate non ancora confermate dai committenti sono stime del portale. Le variazioni dai "
-      + "centri non sono già conteggiate nelle quantità.",
+      + "giornate non ancora confermate dai committenti sono stime del portale. Le variazioni di "
+      + "presenza e di dieta sono già conteggiate nelle quantità; quelle Altro vanno applicate a mano.",
     datiAziendali,
   });
 

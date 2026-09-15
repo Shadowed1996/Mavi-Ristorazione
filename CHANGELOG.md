@@ -13,6 +13,15 @@ e il progetto adotta il [Versionamento Semantico](https://semver.org/lang/it/).
 
 ## [Non rilasciato]
 
+### Cambiato — 15 settembre 2026, variazioni e settimana delle comunità
+- **Variazioni per tipo**: Presenze apre lo stato del paziente sbloccato (da
+  assente a presente e viceversa), Dieta apre la sua dieta attuale del giorno
+  da riscrivere, Altro apre il testo libero. Presenze e dieta si applicano
+  subito: presenze del giorno, righe già trasmesse e quantità della distinta.
+- **Le comunità vanno da lunedì a domenica**: giorni delle variazioni, scheda
+  paziente, resoconti della settimana, template Excel del dietista e distinta
+  di Produzione (sabato e domenica l'azienda risulta "nessun servizio").
+
 ### Aggiunto — 15 settembre 2026, vocale di MAVI
 - **Referente e responsabile amministrativo**: nel portale comunità i ruoli
   diventano "Referente" (pazienti, diete, presenze e variazioni di tutte le

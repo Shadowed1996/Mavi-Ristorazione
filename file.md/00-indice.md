@@ -53,7 +53,7 @@ dettaglio per dipendente, export paghe, fatture.
 
 ### 08 — Portale comunità
 `08-portale-comunita.md`
-Anagrafica pazienti, scheda dieta settimanale su cinque giorni con pranzo e
+Anagrafica pazienti, scheda dieta settimanale da lunedì a domenica con pranzo e
 cena, modifica inline, import ed export Excel della dieta, presenze del giorno,
 resoconti giorno e settimana.
 

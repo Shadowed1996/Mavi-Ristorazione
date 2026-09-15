@@ -5009,10 +5009,17 @@ tr.pz-neutro td:first-child { border-left: 3px solid var(--linea); }
 }
 
 /* ---- card giornaliere per scheda paziente e accordion ---- */
+/* settimana delle comunità: sette giorni, da lunedì a domenica */
 .menu-sett-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 10px;
+}
+@media (max-width: 1200px) {
+  .menu-sett-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .menu-sett-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 .menu-sett-giorno {
   background: var(--foglio);
@@ -5832,6 +5839,55 @@ tr.pz-neutro td:first-child { border-left: 3px solid var(--linea); }
   border-color: var(--linea-forte);
 }
 [data-tema="scuro"] .modulo-variazione select:disabled { background: var(--foglio); }
+/* variazioni strutturate: presenza da cambiare, dieta del giorno da riscrivere */
+.var-dettaglio {
+  margin: 4px 0 18px;
+  padding: 14px 18px 6px;
+  border: 1.5px solid var(--linea);
+  border-radius: 12px;
+  background: var(--carta);
+}
+.var-dettaglio-testa {
+  font-family: var(--serif);
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.var-riga {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 0;
+  border-top: 1px solid var(--linea);
+}
+.var-pasto {
+  padding: 12px 0 4px;
+  border-top: 1px solid var(--linea);
+}
+.var-portate {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 14px;
+  margin-top: 8px;
+}
+.var-portate input.var-cambiata {
+  border-color: var(--acc);
+  background: var(--acc-tenue);
+}
+.var-vuoto {
+  margin: 4px 0 18px;
+  padding: 14px 18px;
+  border: 1.5px dashed var(--linea);
+  border-radius: 12px;
+  color: var(--muto);
+  font-size: 13.5px;
+}
+@media (max-width: 640px) {
+  .var-portate { grid-template-columns: 1fr; }
+}
+[data-tema="scuro"] .var-dettaglio { background: var(--foglio); }
 
 /* ==== vocale 15/09 · produzione e variazioni MAVI ==== */
 /* righe dei centri sotto il committente, righe fuori dal filtro attenuate */

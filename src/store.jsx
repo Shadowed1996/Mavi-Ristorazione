@@ -1,8 +1,8 @@
 import React from "react";
 import {
-  PIATTI, GIORNI, MENU_INIZIALE, COMMITTENTI, ORDINI_UNITA, PAZIENTI_COMUNITA,
+  PIATTI, GIORNI, GIORNI_COMUNITA, INDICE_DEMO_COMUNITA, MENU_INIZIALE, COMMITTENTI, ORDINI_UNITA, PAZIENTI_COMUNITA,
   ETICHETTE_AZIENDA_DEMO, PROFORME_INIZIALI, RUOLI_INIZIALI, UTENTI, VARIAZIONI_INIZIALI,
-  anagraficaAzienda, etichettaGiorno, regimeIva, scadenzaPagamento,
+  anagraficaAzienda, etichettaGiorno, presenzaVariata, regimeIva, scadenzaPagamento,
 } from "./data.js";
 
 const Ctx = React.createContext(null);
@@ -185,7 +185,12 @@ export function Provider({ children }) {
   /* presenza per paziente E per pasto: pranzo e cena sono indipendenti, si
      segnano e si trasmettono separatamente */
   const [presenzeComunita, setPresenzeComunita] = React.useState(() =>
-    Object.fromEntries((PAZIENTI_COMUNITA || []).map((p) => [p.id, { pranzo: null, cena: null }]))
+    Object.fromEntries((PAZIENTI_COMUNITA || []).map((p) => [p.id, {
+      /* le variazioni di presenza già inviate per la giornata della demo
+         partono applicate: la pagina Presenze le mostra già segnate */
+      pranzo: presenzaVariata(VARIAZIONI_INIZIALI, p.id, INDICE_DEMO_COMUNITA, "pranzo"),
+      cena: presenzaVariata(VARIAZIONI_INIZIALI, p.id, INDICE_DEMO_COMUNITA, "cena"),
+    }]))
   );
   const [logOperazioni, setLogOperazioni] = React.useState([
     { id: "s1", ora: "06:00", utente: "Sistema", ruolo: "Automatico", azione: "Backup giornaliero completato", dettaglio: "Database e file multimediali", tipo: "sistema" },
@@ -314,11 +319,18 @@ export function Provider({ children }) {
 
   /* dal referente a MAVI. Restituisce l'id, oppure null se manca il
      testo. L'id si genera fuori dall'aggiornamento di stato, che in
-     StrictMode può essere eseguito due volte. */
+     StrictMode può essere eseguito due volte. Presenze e dieta portano i dati
+     strutturati (`presenza`/`presenzaPrima`, `dieta`/`dietaPrima`, vedi
+     VARIAZIONI_INIZIALI) e valgono solo per un paziente. */
   const inviaVariazione = React.useCallback((dati = {}) => {
     const testo = String(dati.testo || "").trim();
     if (!testo) {
       avvisa("Scrivi il testo della variazione prima di inviarla");
+      return null;
+    }
+    const tipo = TIPI_AMMESSI.includes(dati.tipo) ? dati.tipo : "altro";
+    if (tipo !== "altro" && !dati.pazienteId) {
+      avvisa("Scegli il paziente della variazione");
       return null;
     }
     const id = "var-" + (++contatoreVariazioni);
@@ -329,11 +341,13 @@ export function Provider({ children }) {
       reparto: String(dati.reparto || ""),
       autore: dati.autore || (sessione ? sessione.nome : "—"),
       ruoloAutore: dati.ruoloAutore || (ruoloSessione ? ruoloSessione.nome : ""),
-      indiceGiorno: Number.isInteger(indice) && indice >= 0 && indice < GIORNI.length ? indice : 0,
+      indiceGiorno: Number.isInteger(indice) && indice >= 0 && indice < GIORNI_COMUNITA.length ? indice : 0,
       pasto: PASTI_AMMESSI.includes(dati.pasto) ? dati.pasto : "entrambi",
       pazienteId: dati.pazienteId || null,
       pazienteNome: dati.pazienteId ? dati.pazienteNome || null : null,
-      tipo: TIPI_AMMESSI.includes(dati.tipo) ? dati.tipo : "altro",
+      tipo,
+      ...(tipo === "presenze" ? { presenza: { ...dati.presenza }, presenzaPrima: { ...dati.presenzaPrima } } : {}),
+      ...(tipo === "dieta" ? { dieta: { ...dati.dieta }, dietaPrima: { ...dati.dietaPrima } } : {}),
       testo,
       creataIl: new Date().toISOString(),
       stato: "inviata",
@@ -348,6 +362,17 @@ export function Provider({ children }) {
     avvisa("Variazione inviata a MAVI");
     return id;
   }, [sessione, ruoloSessione, loggaSessione, avvisa]);
+
+  /* variazione su un pasto già trasmesso: la riga del paziente per quel giorno
+     e pasto si sostituisce (riga nuova) o si toglie (riga null, ora assente),
+     così distinta, etichette e ordini in arrivo contano giusto */
+  const sostituisciRigaTrasmessa = React.useCallback((id, pasto, giorno, riga) => {
+    const generatoIl = new Date().toISOString();
+    setPresenzeTrasmesse((prec) => [
+      ...prec.filter((r) => !(r.id === id && r.pasto === pasto && r.giorno === giorno)),
+      ...(riga ? [{ ...riga, generatoIl }] : []),
+    ]);
+  }, []);
 
   /* lato MAVI. Legge da una ref, come `conferma`: due clic ravvicinati non
      devono prendere in carico (e loggare) due volte la stessa variazione */
@@ -813,7 +838,7 @@ export function Provider({ children }) {
     versione, riordinaMenu, salvaPiatto, eliminaPiatto,
     documenti, aggiungiDocumento, rimuoviDocumento,
     proforme, emettiProforma, annullaProforma,
-    committente, setCommittente, committenti, aggiungiCommittente, aggiornaCommittente, unita, cambiaUnita, aggiungiOspitePresente, presenze, cambiaPresenze, assenti, commutaAssente, ospitiExtra, aggiungiOspite, presenzeTrasmesse, trasmissioniCentri, trasmettiPresenze,
+    committente, setCommittente, committenti, aggiungiCommittente, aggiornaCommittente, unita, cambiaUnita, aggiungiOspitePresente, presenze, cambiaPresenze, assenti, commutaAssente, ospitiExtra, aggiungiOspite, presenzeTrasmesse, trasmissioniCentri, trasmettiPresenze, sostituisciRigaTrasmessa,
     oraConferma, nominativiAzienda,
     variazioni, inviaVariazione, prendiInCaricoVariazione,
     presenzeComunita, setPresenzeComunita, logOperazioni, logga,

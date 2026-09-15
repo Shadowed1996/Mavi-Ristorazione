@@ -1,6 +1,7 @@
 /* diete.js — import/export diete pazienti da/verso Excel */
 
-const GIORNI = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì"];
+/* le comunità mangiano tutta la settimana: il template va da lunedì a domenica */
+const GIORNI = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"];
 const PASTI = ["pranzo", "cena"];
 const PORTATE = ["primo", "secondo", "contorno"];
 
@@ -80,10 +81,10 @@ export async function generaTemplateDieta(pazienti) {
     ws.getColumn(1).width = 14;
     for (let j = 2; j <= 7; j++) ws.getColumn(j).width = 24;
 
-    /* nota in fondo */
-    ws.addRow([]);
-    const notaRow = ws.getRow(12);
-    ws.mergeCells("A12", "G12");
+    /* nota in fondo, una riga vuota dopo l'ultimo giorno */
+    const rigaNota = 6 + GIORNI.length + 1;
+    const notaRow = ws.getRow(rigaNota);
+    ws.mergeCells("A" + rigaNota, "G" + rigaNota);
     notaRow.getCell(1).value = "Compilare i piatti nelle celle vuote. Usare \" || \" per aggiungere note di preparazione (es: Risotto agli asparagi || NO MANTECATO)";
     notaRow.getCell(1).font = { name: "Calibri", size: 9, italic: true, color: { argb: "FF888074" } };
   }
@@ -119,6 +120,9 @@ export async function parsaDietaExcel(file) {
   for (let i = 0; i < GIORNI.length; i++) {
     const row = ws.getRow(rigaStart + i);
     const giorno = GIORNI[i];
+    /* un template vecchio si ferma a venerdì: le righe che non sono quel giorno
+       non si leggono, e la dieta già presente per quel giorno resta */
+    if (String(row.getCell(1).value || "").toLowerCase().trim() !== giorno) continue;
     dieta[giorno] = {
       pranzo: {
         primo: String(row.getCell(2).value || "—").trim(),

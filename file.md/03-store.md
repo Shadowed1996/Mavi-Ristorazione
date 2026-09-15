@@ -95,8 +95,9 @@ inizializzato: la funzione esce subito. Resta per quando il modulo RSA tornerà.
 
 | Nome | Cosa |
 |---|---|
-| `presenzeComunita` | `{ [idPaziente]: { pranzo: true \| false \| null, cena: true \| false \| null } }`, tutto a `null` all'avvio (dal 14 settembre 2026 la presenza è **per pasto**) |
-| `setPresenzeComunita(v)` | aggiorna la mappa |
+| `presenzeComunita` | `{ [idPaziente]: { pranzo: true \| false \| null, cena: true \| false \| null } }`, a `null` all'avvio salvo le variazioni di presenza del seed per la giornata della demo (`INDICE_DEMO_COMUNITA`); dal 14 settembre 2026 la presenza è **per pasto** |
+| `setPresenzeComunita(v)` | aggiorna la mappa; usare la forma funzionale `(prec) => ...` |
+| `sostituisciRigaTrasmessa(id, pasto, giorno, riga)` | variazione su un pasto già trasmesso: toglie la riga del paziente per quel giorno e pasto e, se `riga` non è `null`, la rimette timbrata. Non tocca `trasmissioniCentri` (il loro `presenti` resta quello del momento della trasmissione) |
 | `presenzeTrasmesse` | lista trasmessa a MAVI, **una riga per paziente e pasto**, ogni riga timbrata con `generatoIl` |
 | `trasmettiPresenze(lista, ambito)` | timbra `generatoIl` e **aggiorna per `id` + `pasto`** (non sovrascrive): centri e pasti trasmessi in momenti diversi si sommano, la cena non cancella il pranzo. `ambito = { centri, pasto, giorno }` (15 settembre 2026) dice cosa copre la trasmissione: le righe già trasmesse di quei centri per quel pasto vengono **sostituite**, così un paziente ritrasmesso assente sparisce, e ogni centro viene registrato in `trasmissioniCentri`. Il log riporta pasto e centri |
 | `trasmissioniCentri` | `[{ reparto, pasto, giorno, generatoIl, presenti }]`, una voce per centro e pasto trasmessi: serve a sapere che un centro **ha trasmesso anche con zero presenti** (senza, la distinta tornerebbe alla stima dei suoi pazienti) |
@@ -112,16 +113,22 @@ che prevedono quel pasto (`pastiDi(p)` in `data.js`).
 | Nome | Cosa |
 |---|---|
 | `variazioni` | seed `VARIAZIONI_INIZIALI`, forma sotto; le nuove in testa |
-| `inviaVariazione(dati)` | `dati` = campi tranne `id`, `creataIl`, `stato`, `presaInCarico*`. Senza testo avvisa e ritorna `null`; altrimenti numera `var-N`, normalizza pasto/tipo/giorno, completa autore e ruolo dalla sessione, logga (`ordine`), avvisa e **ritorna l'id** |
+| `inviaVariazione(dati)` | `dati` = campi tranne `id`, `creataIl`, `stato`, `presaInCarico*`. Senza testo, o senza paziente per Presenze e Dieta, avvisa e ritorna `null`; altrimenti numera `var-N`, normalizza pasto/tipo/giorno (0-6, da lunedì a domenica), conserva `presenza`/`presenzaPrima` o `dieta`/`dietaPrima` secondo il tipo, completa autore e ruolo dalla sessione, logga (`ordine`), avvisa e **ritorna l'id**. Applicare la variazione a presenze e righe trasmesse tocca al chiamante (`VariazioniComunita`) |
 | `prendiInCaricoVariazione(id)` | lato MAVI: `stato: "presa_in_carico"`, `presaInCaricoIl` (ISO) e `presaInCaricoDa` (nome della sessione), logga (`approvazione`), avvisa; ritorna `false` se l'id non c'è o è già presa in carico (legge da una ref, niente doppioni con due clic) |
 
 ```js
 { id, committenteId, reparto /* il centro */, autore, ruoloAutore,
-  indiceGiorno /* in GIORNI */, pasto: "pranzo" | "cena" | "entrambi",
-  pazienteId, pazienteNome /* null = tutto il centro */,
+  indiceGiorno /* in GIORNI_COMUNITA, 0 = lunedì … 6 = domenica */,
+  pasto: "pranzo" | "cena" | "entrambi",
+  pazienteId, pazienteNome /* null = tutto il centro, solo per "altro" */,
   tipo: "dieta" | "presenze" | "altro", testo, creataIl /* ISO */,
+  presenza, presenzaPrima /* solo "presenze": { pranzo?: bool, cena?: bool } */,
+  dieta, dietaPrima /* solo "dieta": { pranzo?: { primo, secondo, contorno } } */,
   stato: "inviata" | "presa_in_carico", presaInCaricoIl, presaInCaricoDa }
 ```
+
+Per un paziente, un giorno e un pasto vale l'**ultima** variazione di quel tipo
+(`ultimaVariazione`, `presenzaVariata`, `dietaEffettiva` in `data.js`).
 
 ## Proforma (dal 14 settembre 2026)
 

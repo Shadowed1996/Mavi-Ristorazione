@@ -94,7 +94,7 @@ Ogni funzione compone `paginaDocumento` e chiude con `apriDocumento`.
 | `generaResocontoComunitaPDF({ struttura, reparto, giorno, pasti, datiAziendali, avvisa })` | Comunità › Resoconti › PDF; `pasti` è `[{ pasto, righe }]`, ogni portata `{ nome, nota }` da `splitPiatto` |
 | `generaResocontoUnitaPDF({ struttura, modello, periodo, etichettaUnita, etichettaDiete, numeri, righe, nota, datiAziendali, avvisa })` | "Resoconto mensile" del cruscotto struttura: riporta la situazione corrente del cruscotto, lo dichiara in nota |
 | `generaDistintaPDF({ giorno, perimetro, strutture, sezioni, totali, pastiPerCentro, destinazioni, variazioni, diete, datiAziendali, avvisa })` | Produzione, vista Giorno: `sezioni: [{ categoria, righe: [{ piatto, colore, nota?, perStruttura, totale }] }]` (la `nota` segnala i nomi quasi omonimi); poi "Pasti per committente e centro" (`pastiPerCentro: { colonnePasto, righe, totale }`), "Variazioni dai centri", diete (`{ nome, committenteNome, reparto, pastiTesto, tipoDieta, note }`), firma; infine **una scheda di consegna per destinazione, ognuna su pagina nuova** (`schedaDestinazione`: periodo, referente, pasti, stato, piatti con pranzo/cena, diete e variazioni del centro) |
-| `generaDistintaSettimanaPDF({ periodo, perimetro, giorni, sezioni, totali, pastiPerCentro, destinazioni, variazioni, diete, datiAziendali, avvisa })` | Produzione, vista Settimana: `giorni` sono le colonne lun–ven ("Lunedì 14 set"), righe con `perGiorno`; stesse sezioni sommate sulla settimana, variazioni con la colonna Giorno |
+| `generaDistintaSettimanaPDF({ periodo, perimetro, giorni, sezioni, totali, pastiPerCentro, destinazioni, variazioni, diete, datiAziendali, avvisa })` | Produzione, vista Settimana: `giorni` sono le colonne lun–dom ("Lunedì 14 set"), righe con `perGiorno`; stesse sezioni sommate sulla settimana, variazioni con la colonna Giorno |
 | `generaRiepilogoPrenotazioniPDF({ dipendente, committente, settimana, righe, datiAziendali, avvisa })` | Dipendente › Le mie prenotazioni › "Scarica riepilogo" |
 
 Il riepilogo del giorno del referente (`Cliente.jsx`, Cruscotto) usa invece
@@ -133,21 +133,25 @@ funzione. Ogni foglio è impaginato con l'identità MAVI:
 
 ## `src/diete.js` — template e import delle diete
 
-Costanti locali: cinque giorni, due pasti, tre portate. Invariato dal 14
-settembre 2026: l'import non tocca il campo `pasti` del paziente.
+Costanti locali: **sette giorni, da lunedì a domenica** (dal 15 settembre
+2026: le comunità mangiano tutta la settimana), due pasti, tre portate.
+L'import non tocca il campo `pasti` del paziente.
 
 ### `generaTemplateDieta(pazienti)`
 
 Xlsx con **un foglio per paziente** (nome troncato a 31 caratteri). Riga 1
 titolo "Dieta settimanale — Nome", riga 2 stanza · tipo dieta · note, riga 4
-celle unite PRANZO / CENA, riga 5 intestazioni, dalla 6 un giorno per riga. In
-fondo la nota sul separatore ` || ` per le note di preparazione.
+celle unite PRANZO / CENA, riga 5 intestazioni, dalla 6 alla 12 un giorno per
+riga. Dopo una riga vuota la nota sul separatore ` || ` per le note di
+preparazione.
 
 ### `parsaDietaExcel(file)`
 
 Legge il primo foglio e ritorna `{ dieta, titolo, nomeFoglio }`. Cerca la riga
-con `giorno` in colonna A (altrimenti parte dalla 6), legge cinque righe,
-colonne 2–4 pranzo e 5–7 cena, celle vuote → `—`. Errore `Il file non contiene
+con `giorno` in colonna A (altrimenti parte dalla 6), legge sette righe,
+colonne 2–4 pranzo e 5–7 cena, celle vuote → `—`. Una riga si legge solo se in
+colonna A c'è proprio quel giorno: un template vecchio, fermo a venerdì, lascia
+com'erano sabato e domenica. Errore `Il file non contiene
 fogli` se vuoto. **Il risultato passa sempre dal modale di anteprima**, mai
 applicato direttamente (`08-portale-comunita.md`).
 

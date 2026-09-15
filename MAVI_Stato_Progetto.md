@@ -2,9 +2,9 @@
 
 Documento vivo. Va riletto all'inizio di ogni nuova sessione e aggiornato alla fine di ogni task.
 
-**Ultimo aggiornamento**: 15 settembre 2026 — vocale della referente MAVI: il referente gestisce pazienti, diete, presenze e variazioni di tutti i centri, il responsabile solo la parte amministrativa, resoconto per la cucina diviso per committente e centro. Nuova pagina Variazioni con presa in carico in cucina, Produzione verificata cifra per cifra con PDF ed Excel (sezione 22, con il chiarimento finale sui centri).
+**Ultimo aggiornamento**: 15 settembre 2026, sera — variazioni per tipo (presenze sbloccate, dieta attuale da riscrivere, testo solo per Altro) che si applicano alle quantità, e comunità da lunedì a domenica ovunque (sezione 23).
 
-**Precedente**: 14 settembre 2026 — TO DO MAVI in nove punti, lavorati da agenti paralleli su un clone git: `documento.js` e PDF veri ovunque, pranzo e cena indipendenti, fatturazione per committente con proforma a mano, piatti fissi, riepilogo del giorno del referente, Produzione per giorno e settimana, permessi e ruoli applicati (sezione 21).
+**Precedente**: 15 settembre 2026 — vocale della referente MAVI: il referente gestisce pazienti, diete, presenze e variazioni di tutti i centri, il responsabile solo la parte amministrativa, resoconto per la cucina diviso per committente e centro. Nuova pagina Variazioni con presa in carico in cucina, Produzione verificata cifra per cifra con PDF ed Excel (sezione 22, con il chiarimento finale sui centri).
 
 ---
 
@@ -1015,5 +1015,48 @@ referente limitato al proprio centro" era sbagliata. Correzioni:
 
 Verificato nel browser (15 controlli su 15, matrice ruoli compresa) e
 confronto schermo / PDF / Excel della distinta ancora a 0 discrepanze.
+
+---
+
+## 23. Variazioni per tipo, comunità da lunedì a domenica — 15 settembre 2026
+
+Provando il localhost, Filippo ha chiesto:
+- **Presenze**: "si deve sbloccare lo stato del paziente, che se era assente si
+  può mettere presente e viceversa";
+- **Altro**: "deve aprirsi il box testo";
+- **Dieta**: "deve aprirsi la sua dieta attuale per la variazione";
+- e: "ricorda che le comunità come giorni arrivano fino a domenica".
+
+**Variazioni strutturate** (`VariazioniComunita`): il modulo cambia con il
+tipo. Presenze e Dieta chiedono il paziente e aprono il suo stato o la sua
+dieta del giorno scelto, e generano il testo; Altro apre il testo libero con
+paziente facoltativo. Le variazioni ora hanno `presenza`/`presenzaPrima` o
+`dieta`/`dietaPrima`, e **si applicano** (scelta presa senza chiedere, perché
+"sbloccare lo stato" vuol dire cambiarlo davvero):
+- nella giornata della demo aggiornano `st.presenzeComunita` e, se il pasto era
+  già trasmesso, la riga arrivata alla cucina (`sostituisciRigaTrasmessa`);
+- Presenze del giorno mostra e trasmette `dietaEffettiva`;
+- la stima di Produzione salta i pazienti con presenza variata a `false` e usa
+  la dieta variata;
+- le note "le variazioni non sono conteggiate nelle quantità" in Produzione, PDF
+  ed Excel sono diventate "presenza e dieta già conteggiate, Altro a mano".
+La dieta settimanale del paziente non cambia. Il seed è convertito: la dieta di
+Zied, gli ospiti in più (ora Altro), Carmelo assente a pranzo (che parte già
+segnato in Presenze del giorno).
+
+**Sette giorni** (`GIORNI_COMUNITA`, `GIORNI` più sabato 19 e domenica 20,
+stessi indici): giorni delle variazioni, scheda paziente (prima sabato e
+domenica comparivano senza nome), griglia a sette colonne, resoconti della
+settimana, template e import Excel delle diete (un template vecchio non
+sovrascrive il fine settimana), distinta di Produzione giorno e settimana.
+L'azienda resta su `GIORNI` e nel fine settimana ha "nessun servizio".
+
+**Verifiche**: prova nel browser 22 controlli su 22 (tre tipi di modulo, stato
+applicato a Presenze del giorno, variazione su pasto già trasmesso che fa
+scendere la distinta, navigazione fino a domenica, colonne della settimana,
+scheda e resoconti a sette giorni, nessun errore) e confronto schermo / PDF /
+Excel della distinta a 0 discrepanze, giorno e settimana. Errore mio corretto
+durante la prova: il pulsante "giorno successivo" restava disabilitato a
+venerdì.
 
 ---

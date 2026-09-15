@@ -48,15 +48,22 @@ utente.
    proforma di Rossi, con scadenza e condizioni.
 8. Uscire → **Samuele Ferri** (referente) → Pazienti: i pazienti di tutte le
    strutture e i reparti, Spazio Giovani SGA e CSS Sole Luna insieme. Aprire
-   Beatrice Comi → **Modifica dieta**; poi **Nuovo paziente**: si sceglie il
-   centro. **Scarica template** → l'Excel pensato per il dietista.
-9. **Presenze** (tutti i centri in una pagina) → segnare presenti e assenti →
-   "Trasmetti pranzo a MAVI" si attiva quando sono segnati tutti. Passare a
-   **Cena**: Beatrice e Zied non compaiono, fanno solo pranzo.
-10. **Variazioni** → una nuova variazione per mercoledì, scegliendo centro e
-    paziente (es. dieta in bianco) → **Invia a MAVI**: compare in cima come
-    "Inviata a MAVI". Nell'elenco ce n'è già una "Presa in carico" dalla
-    cucina, con data, ora e chi l'ha presa.
+   Beatrice Comi: la settimana va da lunedì a domenica → **Modifica dieta**;
+   poi **Nuovo paziente**: si sceglie il centro. **Scarica template** →
+   l'Excel per il dietista, anche lui da lunedì a domenica.
+9. **Presenze** (tutti i centri in una pagina) → Carmelo Aronica è già assente
+   a pranzo per una variazione; segnare gli altri → "Trasmetti pranzo a MAVI".
+   Passare a **Cena**: Beatrice e Zied non compaiono, fanno solo pranzo.
+10. **Variazioni**, i tre tipi:
+    - **Dieta** → Beatrice Comi: si apre la sua dieta di mercoledì, riscrivere
+      il primo (es. Riso in bianco), "Era: Pasta al ragù" → **Invia a MAVI**.
+      In Presenze del giorno il piatto è già cambiato.
+    - **Presenze** → Zied Dridi: "Adesso: presente", mettere **Assente** →
+      Invia. Il pranzo era già trasmesso: in Produzione Spazio Giovani scende di
+      un pasto, senza ritrasmettere.
+    - **Altro** → si apre il box di testo, per esempio "stasera 2 ospiti in più".
+    Il giorno si sceglie fino a domenica. In elenco ce n'è già una "Presa in
+    carico" dalla cucina, con data, ora e chi l'ha presa.
 11. Uscire → **Ilaria Gatti** (responsabile amministrativa) → entra
     direttamente in **Fatture**: da saldare, scaduto, prossima scadenza e
     pagato, poi l'elenco delle proforma con PDF. Nel menu ci sono solo
@@ -72,7 +79,8 @@ utente.
     referente e lo stato. Il pranzo trasmesso da Samuele risulta confermato
     per entrambi i centri, la cena di Sole Luna resta in stima. Il pannello "Variazioni dai
     centri" mostra quella appena inviata. "Filtra centro" su Sole Luna, filtro
-    Pranzo / Cena, cambiare giorno con ‹ ›, poi vista **Settimana**.
+    Pranzo / Cena, cambiare giorno con ‹ › fino a domenica (l'azienda risulta
+    "nessun servizio"), poi vista **Settimana** da lunedì a domenica.
     **Stampa / PDF**: riepilogo totale, variazioni, diete e poi **una scheda
     per destinazione, ognuna su pagina nuova**, da mettere con il carico.
     **Excel**: cinque fogli, stessi numeri.

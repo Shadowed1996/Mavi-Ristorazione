@@ -84,7 +84,8 @@ mutano anche l'array condiviso `PAZIENTI_COMUNITA` (stessa scorciatoia di
 ## Scheda paziente — `SchedaPaziente`
 
 Modale largo: in testa centro, data di ingresso, nome, note cliniche, tipo
-dieta; sotto una card per giorno di `GIORNI_SETT` con **Pranzo** e **Cena**
+dieta; sotto una card per giorno di `GIORNI_SETT` (**da lunedì a domenica**,
+griglia `.menu-sett-grid` a sette colonne) con **Pranzo** e **Cena**
 (primo, secondo, contorno). Si mostrano solo i pasti previsti (`pastiDi`),
 l'altro è un blocco disattivato "Non previsto per questo paziente". L'import
 Excel non tocca il campo `pasti`.
@@ -116,11 +117,9 @@ lettura compare un avviso con il messaggio dell'eccezione.
 
 ### Scarica template
 
-Con `pazienti.dieta`. `generaTemplateDieta([paziente])` produce un xlsx per quel
-singolo paziente, intestato con nome, stanza e tipo dieta, con righe = giorni e
-colonne = portate divise in Pranzo e Cena, più la nota su come usare il
-separatore ` || ` per le note di preparazione. È il file che si manda al
-dietista.
+Con `pazienti.dieta`. `generaTemplateDieta([paziente])`: xlsx per il dietista,
+righe = giorni da lunedì a domenica, colonne = portate di Pranzo e Cena
+(dettagli in `10-export-e-documenti.md`).
 
 ## Presenze del giorno — `PresenzeComunita`
 
@@ -140,7 +139,10 @@ segnare il pranzo non segna la cena. La riga prende una classe che la colora:
 | `false` | `pz-assente`, rosso, portate mostrate come `—` |
 | `null` | `pz-neutro`, non ancora segnato |
 
-Tutti partono da `null`. Il bottone **"Trasmetti pranzo/cena a MAVI" resta
+Tutti partono da `null`, tranne chi ha una variazione di presenza già inviata
+per mercoledì (nel seed Carmelo Aronica, assente a pranzo). Primo, secondo e
+contorno mostrati e trasmessi sono quelli di `dietaEffettiva`, cioè con le
+variazioni di dieta applicate. Il bottone **"Trasmetti pranzo/cena a MAVI" resta
 disabilitato finché c'è anche un solo paziente del pasto non segnato** (o se
 il pasto non ha pazienti), e nel frattempo l'etichetta diventa "Segna tutti
 prima di trasmettere".
@@ -166,24 +168,43 @@ vede pranzo e cena come righe distinte.
 ## Variazioni — `VariazioniComunita` (15 settembre 2026)
 
 Voce dopo Presenze del giorno (`variazioni.vedi`). È il canale del referente
-per dire alla cucina ciò che le presenze non dicono: dieta in bianco per
-qualche giorno, ospiti in più, un paziente che esce. Dati e API in
-`st.variazioni` (`03-store.md`).
+per dire alla cucina ciò che cambia rispetto a presenze e diete. Dati, forma e
+API in `st.variazioni` (`03-store.md`).
 
-- **Modulo** (`variazioni.invia`, nascosto a chi è limitato ma senza centro):
-  giorno fra quelli non `chiuso` di `GIORNI` (parte da mercoledì, la giornata
-  della demo), centro (fisso per chi è limitato, a tendina per chi vede tutti
-  i centri), pasto (Pranzo / Cena / Pranzo e cena), tipo (Dieta / Presenze /
-  Altro), paziente facoltativo del centro scelto ("Tutto il centro" di
-  default), testo obbligatorio. "Invia a MAVI" chiama `st.inviaVariazione`.
+**Modulo** (`variazioni.invia`): giorno da **lunedì a domenica**
+(`GIORNI_COMUNITA`, parte da mercoledì), centro, tipo, pasto (Pranzo / Cena /
+Pranzo e cena), paziente. Il modulo cambia con il **tipo** (richiesta di
+Filippo, 15 settembre 2026):
+
+- **Presenze** — paziente obbligatorio. Per ogni pasto scelto si apre lo stato
+  attuale ("Adesso: presente / assente / non ancora segnato"; nella giornata
+  della demo quello di Presenze del giorno, negli altri giorni l'ultima
+  variazione) con il toggle `✓ Presente | ✕ Assente` **sbloccato**: da assente
+  si mette presente e viceversa. Un pasto non previsto dal paziente resta
+  disattivato. Si invia solo se almeno un pasto cambia.
+- **Dieta** — paziente obbligatorio. Si apre **la sua dieta attuale** di quel
+  giorno (`dietaEffettiva`, con le variazioni precedenti già applicate), un
+  campo per primo, secondo e contorno; i piatti riscritti si evidenziano con
+  "Era: …". Vale per quel giorno e pasto, la dieta settimanale non cambia.
+- **Altro** — si apre il **box di testo** libero, paziente facoltativo ("Tutto
+  il centro"): ospiti in più, uscite di gruppo, avvisi.
+
+Per Presenze e Dieta il testo della variazione è generato
+(`testoVariazionePresenza`, `testoVariazioneDieta`: "Pranzo: da non segnato ad
+assente.", "Pranzo · primo Pasta al ragù → Riso in bianco.") e **la variazione
+si applica**: nella giornata della demo aggiorna `st.presenzeComunita` e, se
+quel pasto del centro era già trasmesso, sostituisce o toglie la riga del
+paziente con `st.sostituisciRigaTrasmessa`; negli altri giorni la legge la
+stima di Produzione (`presenzaVariata`, `dietaEffettiva`). Presenze del giorno
+mostra e trasmette la dieta con le variazioni applicate. Le variazioni Altro
+restano avvisi che la cucina applica a mano.
+
 - **Numeri**: in attesa di MAVI, prese in carico, totale.
 - **Elenco** delle variazioni di tutti i centri (solo del proprio senza
   `pazienti.tuttiReparti`), più recenti in alto: per quando, riguarda, testo
   con autore e ora di invio, stato "Inviata a MAVI" oppure "Presa in carico il
   … da …". La presa in carico la fa MAVI (`flussi.variazioni`) e si vede qui
   subito, senza ricaricare.
-
-Le variazioni sono avvisi: non modificano diete né presenze.
 
 ## Resoconti — `ResocontiComunita`
 
@@ -199,7 +220,7 @@ righe, filtrati per centro; il nome del file include il centro.
 **Senza** (responsabile amministrativo) — `ResocontiCentri`: **nessun nome, nessuna
 dieta**, avviso che lo spiega. Numeri aggregati **per centro e per pasto**:
 Giorno (pasti previsti, presenti trasmessi a MAVI) e Settimana (pasti previsti
-lunedì-venerdì, totale settimana), con totale per centro (quando i centri sono
+da lunedì a domenica, totale settimana), con totale per centro (quando i centri sono
 più di uno) e totale generale. Previsti = pazienti con quel pasto fra i pasti
 previsti e almeno una portata nella dieta del giorno; trasmessi = righe di
 `st.presenzeTrasmesse` di mercoledì. Il calcolo è uno solo
