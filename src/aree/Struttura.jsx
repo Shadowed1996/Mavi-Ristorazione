@@ -183,6 +183,16 @@ export default function PortaleStruttura({ tipo, onEsci, utente }) {
   const [voci, pagina, setPagina] = usaVociPermesse(
     tipo === "comunita" ? VOCI_COMUNITA : VOCI_ALTRE, PERMESSO_PAGINA, ruoloCfg && ruoloCfg.home
   );
+  /* dalla scheda paziente a Variazioni con centro e paziente già scelti */
+  const [presetVariazione, setPresetVariazione] = React.useState(null);
+  React.useEffect(() => {
+    if (pagina !== "variazioni") setPresetVariazione(null);
+  }, [pagina]);
+  const puoVariare = voci.some(([k]) => k === "variazioni") && st.puo("variazioni.invia");
+  const apriVariazione = (p) => {
+    setPresetVariazione({ centro: p.stanza, pazienteId: p.id });
+    setPagina("variazioni");
+  };
 
   /* un utente di un committente creato in demo non ha una configurazione in
      STRUTTURE: si usa il telaio del tipo, con il suo committente vero */
@@ -228,10 +238,11 @@ export default function PortaleStruttura({ tipo, onEsci, utente }) {
       {voci.length === 0 && <NessunPermesso onEsci={onEsci} />}
       {pagina === "ordine" && tipo !== "comunita" && <OrdiniUnita tipo={tipo} utente={utente} />}
       {tipo === "comunita" && pagina === "pazienti" && (
-        <Comunita.Pazienti key={"paz-" + chiaveScope} soloLettura={!puoAnagrafica} puoDieta={puoDieta} reparto={reparto} />
+        <Comunita.Pazienti key={"paz-" + chiaveScope} soloLettura={!puoAnagrafica} puoDieta={puoDieta} reparto={reparto}
+          onVariazione={puoVariare ? apriVariazione : null} />
       )}
       {tipo === "comunita" && pagina === "presenze" && <Comunita.Presenze key={"pre-" + chiaveScope} reparto={reparto} />}
-      {tipo === "comunita" && pagina === "variazioni" && <Comunita.Variazioni key={"var-" + chiaveScope} reparto={reparto} />}
+      {tipo === "comunita" && pagina === "variazioni" && <Comunita.Variazioni key={"var-" + chiaveScope + (presetVariazione ? "-" + presetVariazione.pazienteId : "")} reparto={reparto} preset={presetVariazione} />}
       {tipo === "comunita" && pagina === "resoconti" && <Comunita.Resoconti key={"res-" + chiaveScope} reparto={reparto} />}
       {pagina === "cruscotto" && <CruscottoStruttura tipo={tipo} cfg={cfgAttiva} />}
       {pagina === "settimana" && <MenuStruttura cfg={cfgAttiva} />}

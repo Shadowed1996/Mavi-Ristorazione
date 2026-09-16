@@ -51,7 +51,7 @@ function quandoIt(iso) {
 }
 
 /* ==================== pagina Pazienti ==================== */
-function Pazienti({ soloLettura, puoDieta, reparto }) {
+function Pazienti({ soloLettura, puoDieta, reparto, onVariazione }) {
   const st = usaStato();
   /* reparto null = tutti i reparti; stringa = solo quel reparto; stringa
      vuota = utente limitato al proprio reparto, ma senza reparto assegnato */
@@ -145,6 +145,7 @@ function Pazienti({ soloLettura, puoDieta, reparto }) {
           onChiudi={() => setScheda(null)}
           onModifica={soloLettura ? null : () => { setModulo(scheda); setScheda(null); }}
           onElimina={soloLettura ? null : () => elimina(scheda.id)}
+          onVariazione={onVariazione}
           soloLettura={soloLettura}
           puoDieta={!!puoDieta}
         />
@@ -174,20 +175,19 @@ function aggiornaRigheTrasmesse(st, p, diete) {
 }
 
 /* ==================== scheda paziente ====================
-   La griglia mostra cosa si serve questa settimana. Ogni piatto cambiato da qui
-   chiede per quando vale, e in entrambi i casi MAVI riceve la variazione:
-   - solo quel giorno: variazione di dieta del giorno, come dalla pagina
-     Variazioni; non si può sui giorni chiusi;
-   - tutte le settimane: cambia la dieta di base e manda un avviso "Dieta di
-     base"; se il giorno è già chiuso vale dalla prossima settimana. */
-function SchedaPaziente({ paziente: pazienteVisto, onChiudi, onModifica, onElimina, soloLettura, puoDieta }) {
+   Qui si cambia la dieta settimanale, per tutte le settimane: a mano o con
+   Carica dieta. Ogni cambio manda a MAVI un avviso "Dieta di base"; su un
+   giorno già chiuso vale dalla prossima settimana. Le eccezioni di un solo
+   giorno non si fanno qui ma dalla pagina Variazioni, a cui porta la
+   scorciatoia `onVariazione`. La griglia mostra cosa si serve questa settimana,
+   con le note delle eccezioni. */
+function SchedaPaziente({ paziente: pazienteVisto, onChiudi, onModifica, onElimina, onVariazione, soloLettura, puoDieta }) {
   /* la scheda può ricevere una copia (dopo una modifica d'anagrafica): la dieta
      si cambia sull'oggetto condiviso che leggono Presenze e Produzione */
   const paziente = PAZIENTI_COMUNITA.find((p) => p.id === pazienteVisto.id) || pazienteVisto;
   const [editing, setEditing] = React.useState(null);
   const [editVal, setEditVal] = React.useState("");
   const [modalitaModifica, setModalitaModifica] = React.useState(false);
-  const [proposta, setProposta] = React.useState(null); // { giorno, indice, pasto, portata, prima, dopo }
   const [importPreview, setImportPreview] = React.useState(null); // { dieta, titolo }
   const [importError, setImportError] = React.useState("");
   const fileRef = React.useRef(null);
@@ -200,26 +200,10 @@ function SchedaPaziente({ paziente: pazienteVisto, onChiudi, onModifica, onElimi
   };
 
   function salvaOverride(giorno, pasto, portata) {
-    const indice = GIORNI_SETT.indexOf(giorno);
-    const prima = dietaEffettiva(paziente, indice, pasto, st.variazioni)?.[portata] || "";
     const dopo = editVal.trim();
     setEditing(null);
-    if (dopo && dopo !== prima) setProposta({ giorno, indice, pasto, portata, prima, dopo });
-  }
-
-  function soloQuestoGiorno() {
-    const { indice, pasto, portata, dopo } = proposta;
-    const dietaPrima = { [pasto]: { ...(dietaEffettiva(paziente, indice, pasto, st.variazioni) || {}) } };
-    const dieta = { [pasto]: { [portata]: dopo } };
-    const id = st.inviaVariazione({ ...base, tipo: "dieta", indiceGiorno: indice, pasto, dieta, dietaPrima, testo: testoVariazioneDieta(dietaPrima, dieta) });
-    if (id && indice === INDICE_GIORNO_DEMO) aggiornaRigheTrasmesse(st, paziente, { [pasto]: { ...dietaPrima[pasto], ...dieta[pasto] } });
-    if (id) setProposta(null);
-  }
-
-  function tutteLeSettimane() {
-    const { giorno, indice, pasto, portata, dopo } = proposta;
+    const indice = GIORNI_SETT.indexOf(giorno);
     const cambio = cambiaDietaDiBase(paziente, { [giorno]: { [pasto]: { [portata]: dopo } } })[giorno]?.[pasto];
-    setProposta(null);
     if (!cambio) return;
     const chiuso = !!GIORNI_COMUNITA[indice]?.chiuso;
     const dietaPrima = { [pasto]: cambio.prima };
@@ -233,7 +217,7 @@ function SchedaPaziente({ paziente: pazienteVisto, onChiudi, onModifica, onElimi
     }
   }
 
-  /* Excel: stessa logica di "tutte le settimane", un solo avviso a MAVI con
+  /* Excel: stessa logica della modifica a mano, un solo avviso a MAVI con
      quello che è cambiato davvero */
   function applicaImport() {
     const cambiati = cambiaDietaDiBase(paziente, importPreview.dieta);
@@ -292,7 +276,7 @@ function SchedaPaziente({ paziente: pazienteVisto, onChiudi, onModifica, onElimi
           cursor: modalitaModifica ? "pointer" : "default",
           borderBottom: modalitaModifica ? "1px dashed var(--linea-forte)" : "1px solid transparent",
         }}
-        onClick={() => { if (!modalitaModifica) return; setEditing(chiave); setEditVal(servito); }}
+        onClick={() => { if (!modalitaModifica) return; setEditing(chiave); setEditVal(futuro); }}
       >
         {splitPiatto(val).nome}
         {splitPiatto(val).nota && <span className="nota-prep piccola"> ⚠ {splitPiatto(val).nota}</span>}
@@ -325,6 +309,21 @@ function SchedaPaziente({ paziente: pazienteVisto, onChiudi, onModifica, onElimi
           )}
         </div>
       </div>
+
+      {modalitaModifica && (
+        <div className="banner-dieta banner-info dieta-guida">
+          <Icone.attenzione size={15} />
+          <span>
+            Stai cambiando la <b>dieta settimanale</b>: vale per tutte le settimane e MAVI riceve l'avviso.
+            Sui giorni già chiusi vale dalla prossima settimana.
+          </span>
+          {onVariazione && (
+            <button type="button" className="btn linea piccolo" onClick={() => onVariazione(paziente)}>
+              Serve solo per un giorno? Fai una variazione <Icone.dx size={13} />
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="scheda-ospite" style={{ padding: "16px 24px" }}>
         <div className="menu-sett-grid">
@@ -441,44 +440,6 @@ function SchedaPaziente({ paziente: pazienteVisto, onChiudi, onModifica, onElimi
           </div>
         </Velo>
       )}
-
-      {proposta && (() => {
-        const chiuso = !!GIORNI_COMUNITA[proposta.indice]?.chiuso;
-        const giornoData = etichettaGiorno(proposta.indice);
-        return (
-          <Velo onChiudi={() => setProposta(null)}>
-            <div className="scelta-testa">
-              <div className="occhiello">Cambio di dieta · {paziente.nome}</div>
-              <h2>{PORTATE_DIETA.find((c) => c.id === proposta.portata)?.nome} di {proposta.pasto}, {proposta.giorno}</h2>
-              <p>
-                {proposta.prima ? <>Da <b>{splitPiatto(proposta.prima).nome}</b> a </> : "Diventa "}
-                <b>{splitPiatto(proposta.dopo).nome}</b>. Per quando vale?
-              </p>
-            </div>
-            <div className="dieta-scelte">
-              <button type="button" className="dieta-scelta" disabled={chiuso} onClick={soloQuestoGiorno}>
-                <b>Solo {giornoData.toLowerCase()}</b>
-                <span>
-                  {chiuso
-                    ? "Non si può: gli ordini di " + proposta.giorno + " di questa settimana sono chiusi e la cucina l'ha già preparato."
-                    : "Vale solo questa settimana. MAVI la riceve come variazione del giorno e aggiorna le quantità; la dieta settimanale non cambia."}
-                </span>
-              </button>
-              <button type="button" className="dieta-scelta" onClick={tutteLeSettimane}>
-                <b>Tutte le settimane</b>
-                <span>
-                  {chiuso
-                    ? "Cambia la dieta di ogni " + proposta.giorno + " dalla prossima settimana: questa settimana il giorno è già chiuso e resta com'era. MAVI riceve l'avviso."
-                    : "Cambia la dieta di ogni " + proposta.giorno + ", già da " + giornoData.toLowerCase() + ". MAVI riceve l'avviso."}
-                </span>
-              </button>
-            </div>
-            <div className="scelta-piede" style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button className="btn linea" onClick={() => setProposta(null)}>Annulla</button>
-            </div>
-          </Velo>
-        );
-      })()}
     </Velo>
   );
 }
@@ -712,7 +673,9 @@ function rigaTrasmessa(p, pasto, dieta) {
 }
 const NOME_STATO_PRESENZA = (v) => (v === true ? "presente" : v === false ? "assente" : "non ancora segnato");
 
-function VariazioniComunita({ reparto }) {
+/* `preset` arriva dalla scheda paziente ("Serve solo per un giorno?"): il
+   modulo si apre sulla dieta di quel paziente */
+function VariazioniComunita({ reparto, preset }) {
   const st = usaStato();
   const puoInviare = st.puo("variazioni.invia");
   const limitato = reparto !== null && reparto !== undefined;
@@ -722,10 +685,11 @@ function VariazioniComunita({ reparto }) {
 
   const [giorno, setGiorno] = React.useState(() =>
     giorniAperti.some((g) => g.i === INDICE_GIORNO_DEMO) ? INDICE_GIORNO_DEMO : (giorniAperti[0] ? giorniAperti[0].i : 0));
-  const [centro, setCentro] = React.useState(centri[0] || "");
+  const presetValido = preset && centri.includes(preset.centro) ? preset : null;
+  const [centro, setCentro] = React.useState(presetValido ? presetValido.centro : centri[0] || "");
   const [pasto, setPasto] = React.useState("pranzo");
   const [tipo, setTipo] = React.useState("dieta");
-  const [pazienteId, setPazienteId] = React.useState("");
+  const [pazienteId, setPazienteId] = React.useState(presetValido ? presetValido.pazienteId : "");
   const [testo, setTesto] = React.useState("");
   /* scelte in corso sul paziente: presenza per pasto e piatti riscritti */
   const [presenzaScelta, setPresenzaScelta] = React.useState({});

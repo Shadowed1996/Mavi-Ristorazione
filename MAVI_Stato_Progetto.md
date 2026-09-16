@@ -2,7 +2,7 @@
 
 Documento vivo. Va riletto all'inizio di ogni nuova sessione e aggiornato alla fine di ogni task.
 
-**Ultimo aggiornamento**: 16 settembre 2026, pomeriggio — cambi di dieta dalla scheda paziente con scelta "solo quel giorno / tutte le settimane" e avviso sempre a MAVI (sezione 29); tema scuro corretto in tutti i portali con verifica automatica del contrasto (sezione 28); tutta la settimana visibile in ogni portale, lunedì, martedì e mercoledì chiusi con il lucchetto e in sola lettura, giovedì e venerdì aperti; orologio HH:MM:SS nel telaio; tolto il nastro nero "Prototipo dimostrativo" che faceva scorrere le pagine; Menu del giorno del dipendente a schermata fissa su desktop (sezione 27).
+**Ultimo aggiornamento**: 16 settembre 2026, pomeriggio — cambi di dieta: la scheda paziente cambia la dieta settimanale con avviso a MAVI, le eccezioni del giorno solo da Variazioni (sezione 29); tema scuro corretto in tutti i portali con verifica automatica del contrasto (sezione 28); tutta la settimana visibile in ogni portale, lunedì, martedì e mercoledì chiusi con il lucchetto e in sola lettura, giovedì e venerdì aperti; orologio HH:MM:SS nel telaio; tolto il nastro nero "Prototipo dimostrativo" che faceva scorrere le pagine; Menu del giorno del dipendente a schermata fissa su desktop (sezione 27).
 
 **Precedente**: 16 settembre 2026 — manifesto di consegna riscritto in colonna unica e aperto anche al cliente, con un riquadro per dipendente; etichette pasto ridotte all'essenziale (sezione 26).
 
@@ -1405,5 +1405,32 @@ trifolate, con "solo questo giorno" disattivato). In Ordini in arrivo tre voci
 con tipo e "per quando" giusti, nel log tre righe; in Produzione lunedì resta 4
 Patate arrosto e nessuna zucchina, giovedì Pasta al pomodoro al posto della
 norma, venerdì 1 filetto (l'altro paziente) e 1 merluzzo.
+
+---
+
+### 29 bis. Tolto il doppione "solo quel giorno o sempre"
+
+Osservazione di Filippo subito dopo: la pagina Variazioni già modifica la dieta
+di un giorno, quindi la scelta "solo quel giorno / sempre" nella scheda è un
+processo duplicato. Vero: due strade per la stessa eccezione. Spostare tutto
+in Variazioni però avrebbe lasciato la dieta di base con due ingressi (Carica
+dieta nella scheda, modifica a mano in Variazioni). Proposta accettata, "una
+pagina, una cosa":
+
+- **Scheda paziente** › Modifica dieta e Carica dieta: solo la dieta
+  settimanale, per tutte le settimane, sempre con avviso "Dieta di base" a
+  MAVI; sui giorni chiusi dalla prossima settimana. Tolta la finestra di scelta.
+- **Variazioni** › Dieta: solo le eccezioni di un giorno, come prima.
+- In modifica, un banner nella scheda lo spiega e il bottone "Serve solo per un
+  giorno? Fai una variazione" apre Variazioni con centro, paziente e tipo Dieta
+  già scelti (`onVariazione` da `Struttura.jsx`, `preset` in
+  `VariazioniComunita`); compare solo a chi può inviare variazioni.
+
+Provato nel browser: venerdì Filetto → Merluzzo e lunedì chiuso Patate arrosto
+→ Zucchine trifolate dalla scheda, senza finestra, entrambi "Dieta di base"
+(lunedì "dalla prossima settimana"); scorciatoia su Variazioni con Beatrice
+Comi già scelta; variazione di venerdì Merluzzo → Orata al cartoccio inviata a
+MAVI; tornando alla scheda venerdì mostra "Orata al cartoccio · solo questa
+settimana · di base Merluzzo al vapore".
 
 ---

@@ -6312,40 +6312,14 @@ tr.pz-neutro td:first-child { border-left: 3px solid var(--linea); }
   align-items: baseline;
   flex-wrap: wrap;
 }
-.dieta-scelte {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-  gap: 12px;
-  padding: 4px 24px 18px;
+.dieta-guida {
+  margin: 0 24px;
+  flex-wrap: wrap;
 }
-.dieta-scelta {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  text-align: left;
-  padding: 14px 16px;
-  border: 1.5px solid var(--linea);
-  border-radius: var(--r-m);
-  background: var(--foglio);
-  color: var(--inchiostro);
-  cursor: pointer;
-  transition: border-color 0.12s, background 0.12s;
+.dieta-guida span {
+  flex: 1;
+  min-width: 240px;
 }
-.dieta-scelta b {
-  font-family: var(--serif);
-  font-size: 16px;
-  font-weight: 600;
-}
-.dieta-scelta span {
-  font-size: 12.5px;
-  line-height: 1.45;
-  color: var(--muto);
-}
-.dieta-scelta:hover:not(:disabled) {
-  border-color: var(--acc);
-  background: var(--acc-tenue);
-}
-.dieta-scelta:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
+.dieta-guida .btn {
+  gap: 4px;
 }

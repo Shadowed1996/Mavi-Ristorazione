@@ -14,15 +14,17 @@ e il progetto adotta il [Versionamento Semantico](https://semver.org/lang/it/).
 ## [Non rilasciato]
 
 ### Corretto — 16 settembre 2026, cambi di dieta dalla scheda paziente
-- **Un piatto cambiato dalla scheda del paziente ora chiede per quando vale**:
-  "Solo domenica 20 settembre" diventa una variazione del giorno, "Tutte le
-  settimane" cambia la dieta di base. Prima la modifica riscriveva la dieta di
-  tutte le settimane **senza avvisare la cucina** e senza lasciare traccia.
-- **MAVI viene sempre avvisata**: la variazione compare in Ordini in arrivo
-  ("Dieta" o "Dieta di base", con "Ogni domenica, da…") e le quantità di
-  Produzione si aggiornano.
-- **I giorni chiusi non si toccano**: "solo quel giorno" non si può, "tutte le
-  settimane" vale dalla prossima settimana e la scheda lo scrive.
+- **La scheda del paziente cambia la dieta settimanale e avvisa la cucina**:
+  prima la modifica riscriveva la dieta di tutte le settimane **senza avvisare
+  MAVI** e senza lasciare traccia. Ora ogni cambio arriva in Ordini in arrivo
+  come "Dieta di base" ("Ogni domenica, da…") e le quantità di Produzione si
+  aggiornano.
+- **Le eccezioni di un solo giorno si fanno da Variazioni**: dalla scheda, "Serve
+  solo per un giorno? Fai una variazione" apre Variazioni con il paziente già
+  scelto. Nessuna delle due pagine chiede più "solo quel giorno o sempre".
+- **I giorni chiusi non si toccano**: un cambio della dieta settimanale su un
+  giorno già chiuso vale dalla prossima settimana, e la scheda lo scrive. La
+  griglia mostra anche le eccezioni della settimana ("solo questa settimana").
 - **Carica dieta da Excel** segue la stessa regola e manda un avviso a MAVI con
   i piatti cambiati.
 

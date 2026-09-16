@@ -99,16 +99,19 @@ Con `pazienti.dieta` (il referente). "Modifica dieta" rende i piatti cliccabili
 si serve questa settimana** (`dietaEffettiva`), con lucchetto sui giorni chiusi
 e due note: "solo questa settimana · di base X" e "dalla prossima settimana: Y".
 
-**Ogni piatto cambiato chiede per quando vale** (16 settembre 2026: prima
-riscriveva la dieta settimanale senza avvisare nessuno):
-- **Solo quel giorno**: `inviaVariazione` tipo `dieta`, come dalla pagina
-  Variazioni; disattivato sui giorni chiusi;
-- **Tutte le settimane**: `cambiaDietaDiBase` e variazione `dieta_base`
-  ("Dieta di base" in cucina). Su un giorno chiuso vale dalla prossima
-  settimana: la dieta di questa settimana resta congelata (`dietaCongelata`).
-In tutti e due i casi MAVI la trova in Ordini in arrivo, le quantità di
-Produzione si aggiornano e, nella giornata della demo, anche le righe già
-trasmesse (`aggiornaRigheTrasmesse`).
+**Una pagina, una cosa** (16 settembre 2026). La scheda cambia **solo la dieta
+settimanale**, per tutte le settimane: `cambiaDietaDiBase` e variazione
+`dieta_base` ("Dieta di base" in cucina). Su un giorno chiuso vale dalla
+prossima settimana: questa settimana resta congelata (`dietaCongelata`). MAVI
+la trova in Ordini in arrivo, le quantità di Produzione si aggiornano e, nella
+giornata della demo, anche le righe già trasmesse (`aggiornaRigheTrasmesse`).
+
+Le eccezioni di un solo giorno si fanno **solo da Variazioni**. In modifica un
+banner lo ricorda e il bottone "Serve solo per un giorno? Fai una variazione"
+(`onVariazione`, da `Struttura.jsx`, solo con `variazioni.invia`) apre
+Variazioni con centro, paziente e tipo Dieta già scelti (prop `preset`).
+Prima (stesso giorno) la scheda chiedeva "solo quel giorno o sempre": era un
+doppione della pagina Variazioni ed è stato tolto.
 
 La dieta di base resta sull'oggetto condiviso di `PAZIENTI_COMUNITA` (la scheda
 lo recupera per id anche se riceve una copia): è la scorciatoia del catalogo
