@@ -2,7 +2,7 @@
 
 Documento vivo. Va riletto all'inizio di ogni nuova sessione e aggiornato alla fine di ogni task.
 
-**Ultimo aggiornamento**: 16 settembre 2026, pomeriggio — tutta la settimana visibile in ogni portale, lunedì, martedì e mercoledì chiusi con il lucchetto e in sola lettura, giovedì e venerdì aperti; orologio HH:MM:SS nel telaio; tolto il nastro nero "Prototipo dimostrativo" che faceva scorrere le pagine (sezione 27).
+**Ultimo aggiornamento**: 16 settembre 2026, pomeriggio — tutta la settimana visibile in ogni portale, lunedì, martedì e mercoledì chiusi con il lucchetto e in sola lettura, giovedì e venerdì aperti; orologio HH:MM:SS nel telaio; tolto il nastro nero "Prototipo dimostrativo" che faceva scorrere le pagine; Menu del giorno del dipendente a schermata fissa su desktop (sezione 27).
 
 **Precedente**: 16 settembre 2026 — manifesto di consegna riscritto in colonna unica e aperto anche al cliente, con un riquadro per dipendente; etichette pasto ridotte all'essenziale (sezione 26).
 
@@ -1285,6 +1285,24 @@ contenuto ci stava. Tolti il nastro da JSX e CSS (stampa compresa) e la
 variante compatta dell'orologio che ci viveva dentro; telaio e barra laterale
 ora `100dvh` pieni. Misurato nel browser: login e pagina Documenti alti
 esattamente quanto la finestra, barra laterale senza overflow.
+
+**Menu del giorno a schermata fissa** (richiesta successiva: "tirare un po' su
+anche i menu di destra nel pannello dipendente", evitando lo scorrimento senza
+rompere il layout). La pagina era alta 1359px su una finestra di 1009. Su
+desktop (da 1101×760) ora:
+- intestazione più bassa, navigazione settimana e giorni sulla stessa riga,
+  schede giorno più compatte;
+- le tre colonne occupano l'altezza rimasta; se i piatti non ci stanno scorre
+  solo la lista della colonna, con barra sottile;
+- il piatto unico non è più un box centrato alto 212px ma una fascia sotto le
+  colonne, "oppure" in verticale a sinistra, titolo e nota a sinistra e piatti
+  affiancati;
+- card piatto leggermente più compatte (miniatura 46px).
+In `Dipendente.jsx` solo due `div` in più (`menu-fisso`, `menu-barra`);
+sotto quelle misure non hanno stili e il layout resta quello a scorrimento.
+Misurato a 1920×1009: pagina 1009px, nessuna lista in scorrimento; con un
+giorno chiuso (avviso in più) la pagina resta ferma e scorre di poco solo la
+lista dei secondi. Scelta di un piatto, vassoio e conferma invariati.
 
 **Limite noto**: "Rendi fisso" da un giorno aperto aggiunge il piatto a tutta la
 settimana, quindi anche ai giorni chiusi, come prima. Per la demo va bene; in

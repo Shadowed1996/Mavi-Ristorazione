@@ -146,127 +146,132 @@ function MenuGiorno() {
 
   return (
     <>
-      <Intestazione
-        occhiello="Settimana 38, 14 · 18 settembre 2026"
-        titolo="Menu del giorno"
-        sotto="Prenota giorno per giorno. Puoi modificare finché il giorno resta aperto."
-      />
-      <div className="tela">
-        <div className="strumenti">
-          <button className="nav-tondo" onClick={() => st.avvisa("Settimana precedente")}><Icone.sx size={16} /></button>
-          <div className="settimana">14 · 18 settembre</div>
-          <button className="nav-tondo" onClick={() => st.avvisa("Settimana successiva")}><Icone.dx size={16} /></button>
-        </div>
-
-        <div className="giorni">
-          {SETTIMANA.map((d) => {
-            const i = d.i;
-            const o = st.ordini[i] || {};
-            const n = Object.keys(o).length;
-            const cls = st.confermati[i] ? "ok" : n ? "parziale" : "";
-            const testo = d.chiuso ? "chiuso" : st.confermati[i] ? "prenotato" : n ? "in corso" : "da fare";
-            return (
-              <button key={d.n} className={"giorno" + (i === giorno ? " on" : "") + (d.chiuso ? " chiuso" : "")} onClick={() => setGiorno(i)}>
-                <div className="gn">{d.n}</div>
-                <div className="gd">{d.breve}</div>
-                <div className="gs">
-                  {d.chiuso ? <Icone.lucchetto size={13} /> : <i className={"punto " + cls} />}
-                  {testo}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {g.chiuso && (
-          <div className="avviso chiuso" style={{ marginBottom: 12 }}>
-            <Icone.lucchetto size={16} />
-            <span>
-              Le prenotazioni di <b>{g.n.toLowerCase()} {g.d}</b> sono chiuse: il menu resta
-              consultabile ma non si può più scegliere, confermare o disdire.
-            </span>
-          </div>
-        )}
-
-        {st.dietaUtente && (
-          <div className="banner-dieta" style={{ marginBottom: 12 }}>
-            <Icone.foglia size={15} />
-            Dieta {st.dietaUtente} attiva — i piatti non compatibili sono segnalati
-          </div>
-        )}
-
-        <div className="colonne-3">
-          {[
-            { key: "primo", alt: "sost_primo", titolo: "Primo", nota: "Scegline uno, oppure passa alle alternative." },
-            { key: "secondo", alt: "sost_secondo", titolo: "Secondo", nota: "Scegline uno, oppure passa alle alternative." },
-            { key: "contorno", alt: null, titolo: "Contorno", nota: "Una scelta per completare il pasto." },
-          ].map((col) => {
-            const listaBase = menuDelGiorno(st.menu, giorno, col.key);
-            const listaAlt = col.alt ? menuDelGiorno(st.menu, giorno, col.alt) : [];
-            const vista = vistaCol[col.key] || "base";
-            const lista = vista === "alt" ? listaAlt : listaBase;
-            const catAttiva = vista === "alt" ? col.alt : col.key;
-            const scelto = ordine[catAttiva];
-            const scelotAltro = vista === "alt" ? ordine[col.key] : ordine[col.alt];
-            const coperta = coperte.includes(col.key);
-            if (!listaBase.length && !listaAlt.length) return null;
-            return (
-              <section className={"col3" + (coperta ? " coperta" : "")} key={col.key}>
-                <div className="col3-testa">
-                  <h3>{col.titolo}</h3>
-                  <span className={"col3-stato" + (scelto || scelotAltro ? " on" : "")}>
-                    {coperta ? "coperto" : (scelto || scelotAltro) ? "scelto" : "da scegliere"}
-                  </span>
-                </div>
-                {col.alt && listaAlt.length > 0 && !coperta && (
-                  <div className="col3-toggle">
-                    <button className={vista === "base" ? "on" : ""} onClick={() => setVistaCol((v) => ({ ...v, [col.key]: "base" }))}>
-                      {col.titolo} <em>{listaBase.length}</em>
-                    </button>
-                    <button className={vista === "alt" ? "on" : ""} onClick={() => setVistaCol((v) => ({ ...v, [col.key]: "alt" }))}>
-                      Alternative <em>{listaAlt.length}</em>
-                    </button>
-                  </div>
-                )}
-                {coperta ? (
-                  <p className="col3-nota">Coperto dal piatto unico che hai scelto.</p>
-                ) : (
-                  <>
-                    <p className="col3-nota">{col.nota}</p>
-                    <div className="col3-lista">
-                      {lista.map((id) => (
-                        <Tessera key={id} id={id} cat={catAttiva} giorno={giorno} scelto={scelto === id} dietaAttiva={st.dietaUtente} onScheda={() => setScheda({ id, cat: catAttiva })} onScegli={scegliConCheck} />
-                      ))}
-                    </div>
-                  </>
-                )}
-              </section>
-            );
-          })}
-        </div>
-
-        {(() => {
-          const unici = menuDelGiorno(st.menu, giorno, "unico");
-          if (!unici.length) return null;
-          const sceltoUnico = ordine.unico;
-          return (
-            <div className={"unico-wrap" + (sceltoUnico ? " on" : "")}>
-              <div className="unico-sep"><span>oppure</span></div>
-              <section className={"col3 unico-box" + (sceltoUnico ? " scelto" : "")}>
-                <div className="col3-testa">
-                  <h3>Piatto unico</h3>
-                  <span className={"col3-stato" + (sceltoUnico ? " on" : "")}>{sceltoUnico ? "scelto" : "da scegliere"}</span>
-                </div>
-                <p className="col3-nota">Sostituisce più portate, la scheda indica quali.</p>
-                <div className="col3-lista">
-                  {unici.map((id) => (
-                    <Tessera key={id} id={id} cat="unico" giorno={giorno} scelto={sceltoUnico === id} dietaAttiva={st.dietaUtente} onScheda={() => setScheda({ id, cat: "unico" })} onScegli={scegliConCheck} />
-                  ))}
-                </div>
-              </section>
+      {/* su desktop sta in una schermata, scorrono solo le liste dei piatti */}
+      <div className="menu-fisso">
+        <Intestazione
+          occhiello="Settimana 38, 14 · 18 settembre 2026"
+          titolo="Menu del giorno"
+          sotto="Prenota giorno per giorno. Puoi modificare finché il giorno resta aperto."
+        />
+        <div className="tela">
+          <div className="menu-barra">
+            <div className="strumenti">
+              <button className="nav-tondo" onClick={() => st.avvisa("Settimana precedente")}><Icone.sx size={16} /></button>
+              <div className="settimana">14 · 18 settembre</div>
+              <button className="nav-tondo" onClick={() => st.avvisa("Settimana successiva")}><Icone.dx size={16} /></button>
             </div>
-          );
-        })()}
+
+            <div className="giorni">
+              {SETTIMANA.map((d) => {
+                const i = d.i;
+                const o = st.ordini[i] || {};
+                const n = Object.keys(o).length;
+                const cls = st.confermati[i] ? "ok" : n ? "parziale" : "";
+                const testo = d.chiuso ? "chiuso" : st.confermati[i] ? "prenotato" : n ? "in corso" : "da fare";
+                return (
+                  <button key={d.n} className={"giorno" + (i === giorno ? " on" : "") + (d.chiuso ? " chiuso" : "")} onClick={() => setGiorno(i)}>
+                    <div className="gn">{d.n}</div>
+                    <div className="gd">{d.breve}</div>
+                    <div className="gs">
+                      {d.chiuso ? <Icone.lucchetto size={13} /> : <i className={"punto " + cls} />}
+                      {testo}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {g.chiuso && (
+            <div className="avviso chiuso" style={{ marginBottom: 12 }}>
+              <Icone.lucchetto size={16} />
+              <span>
+                Le prenotazioni di <b>{g.n.toLowerCase()} {g.d}</b> sono chiuse: il menu resta
+                consultabile ma non si può più scegliere, confermare o disdire.
+              </span>
+            </div>
+          )}
+
+          {st.dietaUtente && (
+            <div className="banner-dieta" style={{ marginBottom: 12 }}>
+              <Icone.foglia size={15} />
+              Dieta {st.dietaUtente} attiva — i piatti non compatibili sono segnalati
+            </div>
+          )}
+
+          <div className="colonne-3">
+            {[
+              { key: "primo", alt: "sost_primo", titolo: "Primo", nota: "Scegline uno, oppure passa alle alternative." },
+              { key: "secondo", alt: "sost_secondo", titolo: "Secondo", nota: "Scegline uno, oppure passa alle alternative." },
+              { key: "contorno", alt: null, titolo: "Contorno", nota: "Una scelta per completare il pasto." },
+            ].map((col) => {
+              const listaBase = menuDelGiorno(st.menu, giorno, col.key);
+              const listaAlt = col.alt ? menuDelGiorno(st.menu, giorno, col.alt) : [];
+              const vista = vistaCol[col.key] || "base";
+              const lista = vista === "alt" ? listaAlt : listaBase;
+              const catAttiva = vista === "alt" ? col.alt : col.key;
+              const scelto = ordine[catAttiva];
+              const scelotAltro = vista === "alt" ? ordine[col.key] : ordine[col.alt];
+              const coperta = coperte.includes(col.key);
+              if (!listaBase.length && !listaAlt.length) return null;
+              return (
+                <section className={"col3" + (coperta ? " coperta" : "")} key={col.key}>
+                  <div className="col3-testa">
+                    <h3>{col.titolo}</h3>
+                    <span className={"col3-stato" + (scelto || scelotAltro ? " on" : "")}>
+                      {coperta ? "coperto" : (scelto || scelotAltro) ? "scelto" : "da scegliere"}
+                    </span>
+                  </div>
+                  {col.alt && listaAlt.length > 0 && !coperta && (
+                    <div className="col3-toggle">
+                      <button className={vista === "base" ? "on" : ""} onClick={() => setVistaCol((v) => ({ ...v, [col.key]: "base" }))}>
+                        {col.titolo} <em>{listaBase.length}</em>
+                      </button>
+                      <button className={vista === "alt" ? "on" : ""} onClick={() => setVistaCol((v) => ({ ...v, [col.key]: "alt" }))}>
+                        Alternative <em>{listaAlt.length}</em>
+                      </button>
+                    </div>
+                  )}
+                  {coperta ? (
+                    <p className="col3-nota">Coperto dal piatto unico che hai scelto.</p>
+                  ) : (
+                    <>
+                      <p className="col3-nota">{col.nota}</p>
+                      <div className="col3-lista">
+                        {lista.map((id) => (
+                          <Tessera key={id} id={id} cat={catAttiva} giorno={giorno} scelto={scelto === id} dietaAttiva={st.dietaUtente} onScheda={() => setScheda({ id, cat: catAttiva })} onScegli={scegliConCheck} />
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </section>
+              );
+            })}
+          </div>
+
+          {(() => {
+            const unici = menuDelGiorno(st.menu, giorno, "unico");
+            if (!unici.length) return null;
+            const sceltoUnico = ordine.unico;
+            return (
+              <div className={"unico-wrap" + (sceltoUnico ? " on" : "")}>
+                <div className="unico-sep"><span>oppure</span></div>
+                <section className={"col3 unico-box" + (sceltoUnico ? " scelto" : "")}>
+                  <div className="col3-testa">
+                    <h3>Piatto unico</h3>
+                    <span className={"col3-stato" + (sceltoUnico ? " on" : "")}>{sceltoUnico ? "scelto" : "da scegliere"}</span>
+                  </div>
+                  <p className="col3-nota">Sostituisce più portate, la scheda indica quali.</p>
+                  <div className="col3-lista">
+                    {unici.map((id) => (
+                      <Tessera key={id} id={id} cat="unico" giorno={giorno} scelto={sceltoUnico === id} dietaAttiva={st.dietaUtente} onScheda={() => setScheda({ id, cat: "unico" })} onScegli={scegliConCheck} />
+                    ))}
+                  </div>
+                </section>
+              </div>
+            );
+          })()}
+        </div>
       </div>
 
       <div className="vassoio">

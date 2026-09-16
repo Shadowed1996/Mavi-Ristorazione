@@ -10,6 +10,18 @@ Diete speciali, Documenti utili.
 È la pagina più importante della demo. Riprogettata a settembre 2026 passando
 da sei colonne a tre.
 
+### Schermata fissa su desktop (16 settembre 2026)
+
+Da 1101px di larghezza e 760px di altezza la pagina **sta tutta nella finestra
+e non scorre** (`.menu-fisso`, in fondo a `styles.css`): intestazione
+compatta, navigazione settimana e giorni su una riga (`.menu-barra`), le tre
+colonne che riempiono l'altezza rimasta, il piatto unico in fascia orizzontale
+sotto le colonne con "oppure" a sinistra, il vassoio fisso in basso. Se i piatti
+di una colonna non ci stanno **scorre solo la sua lista**. A 1920×1009 non
+scorre nulla, nemmeno le liste. Sotto quelle misure (finestre basse, tablet,
+telefono) resta il layout a scorrimento: i due `div` in più non hanno stili
+fuori dalla media query.
+
 ### Selettore giorno
 
 Un bottone per **ogni giorno della settimana** (`giorniSettimana(GIORNI)`,

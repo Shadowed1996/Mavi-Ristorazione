@@ -6079,3 +6079,163 @@ tr.pz-neutro td:first-child { border-left: 3px solid var(--linea); }
 @media (prefers-reduced-motion: reduce) {
   .orologio-ora i { animation: none; }
 }
+
+/* ===================== menu del giorno a schermata fissa =====================
+   Su desktop la pagina del dipendente sta tutta nella finestra: intestazione
+   compatta, settimana e giorni su una riga, colonne che occupano lo spazio
+   rimasto e piatto unico in fascia orizzontale. Se i piatti non ci stanno
+   scorre la lista dentro la colonna, non la pagina. Sotto queste misure resta
+   il layout a scorrimento di sempre. */
+@media (min-width: 1101px) and (min-height: 760px) {
+  .menu-fisso {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .menu-fisso .intestazione {
+    padding: 18px 34px 8px;
+  }
+  .menu-fisso .intestazione h1 {
+    font-size: 28px;
+    margin-top: 4px;
+  }
+  .menu-fisso .intestazione .sotto {
+    font-size: 13px;
+    margin-top: 3px;
+  }
+  .menu-fisso .tela {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 10px 34px 96px;
+  }
+  .menu-barra {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 12px;
+  }
+  .menu-barra .strumenti,
+  .menu-barra .giorni {
+    margin-bottom: 0;
+  }
+  .menu-barra .strumenti {
+    flex-wrap: nowrap;
+    flex: 0 0 auto;
+  }
+  .menu-barra .giorni {
+    flex: 1;
+    min-width: 0;
+    padding-bottom: 2px;
+  }
+  .menu-barra .giorno {
+    min-width: 116px;
+    padding: 8px 13px;
+  }
+  .menu-barra .giorno .gn {
+    font-size: 15.5px;
+  }
+  .menu-barra .giorno .gs {
+    margin-top: 4px;
+  }
+  .menu-fisso .avviso.chiuso,
+  .menu-fisso .banner-dieta {
+    padding-block: 8px;
+    margin-bottom: 10px !important;
+  }
+
+  .menu-fisso .colonne-3 {
+    flex: 1;
+    min-height: 0;
+    grid-template-rows: minmax(0, 1fr);
+    align-items: stretch;
+  }
+  .menu-fisso .colonne-3 .col3 {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 14px 14px 10px;
+  }
+  .menu-fisso .col3-testa,
+  .menu-fisso .col3-toggle {
+    margin-bottom: 6px;
+  }
+  .menu-fisso .col3-nota {
+    margin-bottom: 7px;
+  }
+  .menu-fisso .colonne-3 .col3-lista {
+    flex: 1;
+    min-height: 0;
+    gap: 6px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    margin-right: -8px;
+    padding: 1px 8px 0 1px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--linea-forte) transparent;
+  }
+  .menu-fisso .tsc {
+    padding: 9px 11px;
+    flex: 0 0 auto;
+  }
+  .menu-fisso .tsc-thumb,
+  .menu-fisso .tsc-thumb svg {
+    width: 46px !important;
+    height: 46px !important;
+    flex-basis: 46px;
+  }
+
+  /* piatto unico: fascia sotto le colonne, "oppure" a sinistra */
+  .menu-fisso .unico-wrap {
+    flex: 0 0 auto;
+    margin-top: 12px;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 14px;
+  }
+  .menu-fisso .unico-sep {
+    width: auto;
+    max-width: none;
+    margin: 0;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .menu-fisso .unico-sep::before,
+  .menu-fisso .unico-sep::after {
+    width: 1px;
+    height: auto;
+  }
+  .menu-fisso .unico-sep span {
+    padding: 6px 0;
+  }
+  .menu-fisso .unico-box {
+    flex: 1;
+    max-width: none;
+    display: grid;
+    grid-template-columns: minmax(170px, 210px) 1fr;
+    grid-template-areas: "testa lista" "nota lista";
+    align-content: center;
+    column-gap: 18px;
+    padding: 10px 14px;
+  }
+  .menu-fisso .unico-box .col3-testa {
+    grid-area: testa;
+    align-self: end;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 2px;
+  }
+  .menu-fisso .unico-box .col3-nota {
+    grid-area: nota;
+    align-self: start;
+    margin: 0;
+  }
+  .menu-fisso .unico-box .col3-lista {
+    grid-area: lista;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 8px;
+  }
+}
