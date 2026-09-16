@@ -13,6 +13,20 @@ e il progetto adotta il [Versionamento Semantico](https://semver.org/lang/it/).
 
 ## [Non rilasciato]
 
+### Cambiato — 16 settembre 2026, manifesto di consegna ed etichette
+- **Manifesto di consegna riscritto, in colonna unica**: via il "Totale per
+  piatto" in testa (la cucina ce l'ha già dalla distinta di produzione) e via
+  le tabelle. Adesso è una persona sotto l'altra, in ordine alfabetico: nome e
+  cognome, reparto, matricola e il pasto scritto per esteso una portata per
+  riga.
+- **Il manifesto non è più riservato al fornitore**: lo stampano in autonomia
+  sia la cucina sia il referente dell'azienda, quindi via la fascetta "non
+  esporre al cliente". Proprio per questo le diete con prescrizione medica non
+  compaiono più: in chiaro restano solo le allergie dichiarate dal dipendente.
+- **Etichette pasto ridotte all'essenziale**, aziendali anonime e comunità
+  nominative: nome e cognome (solo in comunità), portata, nome del piatto e
+  note. Via ingredienti, allergeni, kcal e riga di riscaldamento.
+
 ### Cambiato — 15 settembre 2026, stati delle proforma
 - **Lo stato si vede sulla proforma**: timbro NON PAGATA (con la scadenza),
   PAGATA, ANNULLATA o STORNATA (con la data) stampato sul documento, più il

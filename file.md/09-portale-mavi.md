@@ -101,9 +101,11 @@ Una riga per committente (`st.committenti`), con pasti dichiarati e stato
   dettaglio si sceglie **per giornata** (selettore dei cinque giorni con il
   conteggio dei nominativi) e il bottone genera il **manifesto PDF** di quel
   solo giorno (`manifesto.js`, `generaManifestoConsegna` con `indiceGiorno`)
-  da stampare e mettere nel cassone termico: il resoconto dettagliato della
-  cucina, con totale per piatto, allergeni, matricola, reparto, dieta e
-  allergie (`10-export-e-documenti.md`). Dal 15 settembre 2026 il dettaglio
+  da stampare e mettere nel cassone termico. Dal 16 settembre 2026 il manifesto
+  è asciutto e **non è più riservato al fornitore**: lo stampano sia la cucina
+  sia il referente dell'azienda, quindi niente diete con prescrizione medica,
+  solo nome, pasto una portata per riga e allergie dichiarate
+  (`10-export-e-documenti.md`). Dal 15 settembre 2026 il dettaglio
   nominativo e il manifesto si vedono anche senza conferme dal vivo (prima la
   sezione spariva finché un dipendente non confermava, nascondendo gli ordini
   già chiusi). L'occhiello della pagina è `ETICHETTA_ADESSO`.
@@ -149,10 +151,9 @@ sarebbe ingestibile (letteralmente migliaia di card). Ora:
   "Visualizza etichette arrivate" finché c'è qualcosa di nuovo da vedere.
 
 **Azienda** — etichette **anonime**, raggruppate per piatto con contatore `×N`
-(`raggruppaAzienda`). Mostrano portata, nome piatto, ingredienti, allergeni,
-kcal e riscaldamento. Nessun nome di dipendente: in cucina non serve e sarebbe
-un dato inutile da far circolare. Si generano solo quando un dipendente
-conferma la prenotazione.
+(`raggruppaAzienda`). Mostrano portata e nome piatto, nient'altro. Nessun nome
+di dipendente: in cucina non serve e sarebbe un dato inutile da far circolare.
+Si generano solo quando un dipendente conferma la prenotazione.
 
 **Comunità** — etichette **nominative**, raggruppate prima per **centro** (`stanza`)
 poi per paziente e infine per Pranzo/Cena (`raggruppaComunita`) — senza il
@@ -160,12 +161,15 @@ livello reparto, una comunità con molti pazienti torna a essere uno scroll
 enorme, lo stesso problema di partenza. La chiave di ogni etichetta include il
 pasto (`com-<id>-<pasto>-<portata>`), così pranzo e cena dello stesso paziente
 coesistono; la card "Pasto" in cima riflette i pasti presenti ("Pranzo",
-"Cena", "Pranzo + Cena") invece di essere fissa. Mostrano nome paziente, stanza, tipo
-dieta, portata, piatto, note di preparazione, ingredienti, allergeni, kcal e
-note dieta.
+"Cena", "Pranzo + Cena") invece di essere fissa. Mostrano nome paziente,
+stanza, tipo dieta, portata, piatto, nota di preparazione e note della dieta.
 
-Gli ingredienti dei piatti delle diete arrivano da `INGREDIENTI_DIETE`, che
-mappa i nomi in chiaro (non ci sono codici piatto nelle diete).
+**Dal 16 settembre 2026 le etichette dicono il minimo indispensabile** (Filippo,
+riferendo il cliente): nome e cognome solo in comunità, portata, nome del piatto
+e note. Via ingredienti, allergeni, kcal e riga di riscaldamento da entrambe —
+erano informazione in più che rendeva l'etichetta difficile da leggere in
+cucina. Per questo `INGREDIENTI_DIETE` non serve più a `Fornitore.jsx`. Il
+blocco Note della comunità compare solo se la dieta ha davvero delle note.
 
 Sotto ogni card c'è "Elimina etichetta", con modale di conferma — solo nella
 vista a elenco, non nella vista di stampa: `CardEtichettaAzienda` e

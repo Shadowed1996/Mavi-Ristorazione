@@ -156,6 +156,33 @@ export function elencoOrdini(voci = []) {
   return `<div class="doc-ordini">${righe}</div>`;
 }
 
+/* elenco dei pasti nominativi: una persona sotto l'altra, in colonna unica.
+   Per ogni persona il nome, il pasto scritto per esteso una portata per riga e,
+   se ci sono, le allergie dichiarate. È il manifesto di consegna del cassone
+   termico, che leggono sia la cucina sia il referente dell'azienda: ogni
+   riquadro o colonna in più lo rendeva solo più difficile da scorrere.
+   voci: [{ nome, nota, codice, portate, avviso }]
+     nota     — il reparto, accanto al nome
+     codice   — la matricola, a destra
+     portate  — [{ etichetta, piatto, vuota }], una riga ciascuna
+     avviso   — le allergie dichiarate, in fondo. Stringa vuota se non ce ne sono. */
+export function elencoPasti(voci = []) {
+  if (!voci.length) return "";
+  const righe = voci.map((v) => {
+    const portate = (v.portate || []).map((p) => `<div class="doc-pasto-portata${p.vuota ? " vuota" : ""}">`
+      + `<span class="doc-pasto-et">${testoHtml(p.etichetta)}</span>`
+      + `<span class="doc-pasto-piatto">${testoHtml(p.piatto)}</span></div>`).join("");
+    return `<div class="doc-pasto">`
+      + `<div class="doc-pasto-testa">`
+      + `<span class="doc-pasto-nome">${testoHtml(v.nome)}${v.nota ? `<span>${testoHtml(v.nota)}</span>` : ""}</span>`
+      + `${v.codice ? `<span class="doc-pasto-codice">${testoHtml(v.codice)}</span>` : ""}</div>`
+      + portate
+      + `${v.avviso ? `<div class="doc-pasto-avviso">Allergie dichiarate: ${testoHtml(v.avviso)}</div>` : ""}`
+      + `</div>`;
+  }).join("");
+  return `<div class="doc-pasti">${righe}</div>`;
+}
+
 /* pastiglie in fila (marcatori, tag di un piatto) */
 export function etichette(lista = []) {
   const voci = lista.filter(Boolean).map((t) => `<span class="doc-et">${testoHtml(t)}</span>`).join("");
@@ -185,7 +212,7 @@ body{font-family:'Segoe UI',Calibri,Arial,sans-serif;color:var(--scuro);font-siz
 .doc-meta-voce label{display:block;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muto);margin-bottom:4px}
 .doc-meta-voce span{font-size:14px;font-weight:700;color:var(--scuro)}
 .doc-blocco{margin-bottom:24px}
-.doc-blocco h2,.doc-note h2{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--terracotta);font-weight:700;margin-bottom:9px;padding-bottom:5px;border-bottom:1px solid var(--grigio)}
+.doc-blocco h2,.doc-note h2{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--terracotta);font-weight:700;margin-bottom:9px;padding-bottom:5px;border-bottom:1px solid var(--grigio);page-break-after:avoid}
 .doc-testo{font-size:12.5px;line-height:1.75;color:var(--testo)}
 .doc-testo.piccolo{font-size:11px;color:var(--muto)}
 .doc-riservato{display:inline-block;background:var(--scuro);color:#fff;padding:7px 15px;border-radius:4px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:18px}
@@ -205,6 +232,19 @@ body{font-family:'Segoe UI',Calibri,Arial,sans-serif;color:var(--scuro);font-siz
 .doc-ordine-nome span{font-size:10.5px;font-weight:400;color:var(--muto);margin-left:8px}
 .doc-ordine-pasto{font-size:12.5px;color:var(--testo);margin-top:3px;line-height:1.5}
 @media (max-width:640px){.doc-ordini{grid-template-columns:1fr}}
+.doc-pasti{margin-bottom:10px}
+.doc-pasto{padding:14px 0 15px;border-bottom:1px solid var(--grigio);page-break-inside:avoid}
+.doc-pasto:last-child{border-bottom:none}
+.doc-pasto-testa{display:flex;justify-content:space-between;align-items:baseline;gap:14px;margin-bottom:9px}
+.doc-pasto-nome{font-size:16px;font-weight:700;color:var(--scuro);letter-spacing:.01em}
+.doc-pasto-nome span{font-size:11px;font-weight:400;color:var(--muto);text-transform:uppercase;letter-spacing:.08em;margin-left:10px}
+.doc-pasto-codice{font-size:10.5px;color:var(--muto);letter-spacing:.06em;white-space:nowrap}
+.doc-pasto-portata{display:flex;gap:16px;padding:3px 0}
+.doc-pasto-et{flex:0 0 96px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.11em;color:var(--terracotta);padding-top:4px}
+.doc-pasto-piatto{flex:1;font-size:14px;line-height:1.45;color:var(--scuro)}
+.doc-pasto-portata.vuota .doc-pasto-piatto{color:var(--muto);font-style:italic}
+.doc-pasto-avviso{margin:9px 0 0 112px;font-size:12px;font-weight:600;color:var(--terracotta)}
+@media (max-width:640px){.doc-pasto-portata{flex-direction:column;gap:0}.doc-pasto-avviso{margin-left:0}}
 .doc-etichette{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px}
 .doc-et{background:var(--avorio-chiaro);border:1px solid var(--grigio);border-radius:4px;padding:3px 9px;font-size:10.5px;color:var(--testo)}
 thead{display:table-header-group}
@@ -301,25 +341,4 @@ export function apriDocumento(html, { nomeFile = "Documento_MAVI.html", avvisa }
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   return false;
-}
-
-/* elenco nominativo stampabile: una tabella di persone con quello che hanno
-   ordinato, più le sezioni facoltative prima e dopo. Lo usano il manifesto di
-   consegna del fornitore (`manifesto.js`) e il riepilogo del giorno del
-   referente, che stampano lo stesso oggetto con intestazioni diverse.
-   `blocchiPrima` e `blocchiDopo` sono HTML già composto (di solito il ritorno
-   di `blocco`, `paragrafo` o `elenco`). Come `apriDocumento`, va chiamata
-   dentro il gesto dell'utente. Ritorna true se la scheda si è aperta. */
-export function generaElencoNominativo({
-  titolo, badge, sottotitolo, meta = [], colonne = [], righe = [], totale,
-  vuota = "Nessun nominativo per questa giornata.",
-  blocchiPrima = [], blocchiDopo = [], note, piede,
-  nomeFile = "Elenco_MAVI.html", datiAziendali, avvisa,
-}) {
-  const html = paginaDocumento({
-    titolo, badge, sottotitolo, meta,
-    blocchi: [...blocchiPrima, tabellaHtml({ colonne, righe, totale, vuota }), ...blocchiDopo],
-    note, piede, datiAziendali,
-  });
-  return apriDocumento(html, { nomeFile, avvisa });
 }

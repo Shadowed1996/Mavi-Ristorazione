@@ -2,9 +2,11 @@
 
 Documento vivo. Va riletto all'inizio di ogni nuova sessione e aggiornato alla fine di ogni task.
 
-**Ultimo aggiornamento**: 15 settembre 2026, notte — stato delle proforma stampato sul documento (non pagata, pagata, annullata, stornata) con le azioni in Fatturazione, tolta la scheda Fatturazione a 30 giorni della Gestione portale, audit completo del sito nel browser (sezione 25).
+**Ultimo aggiornamento**: 16 settembre 2026 — manifesto di consegna riscritto in colonna unica e aperto anche al cliente, etichette pasto ridotte all'essenziale (sezione 26).
 
-**Precedente**: 15 settembre 2026, ore 23 — "adesso" fissato a martedì 22:56 con giorni chiusi calcolati dagli orari limite (azienda: solo giovedì e venerdì; comunità da giovedì, presenze della demo su giovedì), riepilogo del dipendente ridotto all'ordine, manifesto della cucina dettagliato (sezione 24).
+**Precedente**: 15 settembre 2026, notte — stato delle proforma stampato sul documento (non pagata, pagata, annullata, stornata) con le azioni in Fatturazione, tolta la scheda Fatturazione a 30 giorni della Gestione portale, audit completo del sito nel browser (sezione 25).
+
+**Prima ancora**: 15 settembre 2026, ore 23 — "adesso" fissato a martedì 22:56 con giorni chiusi calcolati dagli orari limite (azienda: solo giovedì e venerdì; comunità da giovedì, presenze della demo su giovedì), riepilogo del dipendente ridotto all'ordine, manifesto della cucina dettagliato (sezione 24).
 
 ---
 
@@ -1169,5 +1171,50 @@ screenshot, guardati uno per uno. Trovato e corretto:
   di cutoff).
 Dopo le correzioni: 58 pagine, 0 problemi. Ripassate tutte le prove sulla
 build e il confronto schermo / PDF / Excel della distinta.
+
+---
+
+## 26. Manifesto di consegna in colonna, etichette essenziali — 16 settembre 2026
+
+Due passaggi, entrambi partiti da come il documento si legge davvero in
+consegna e non da come stava in pagina.
+
+**Manifesto di consegna** (`manifesto.js`, `documento.js`). Impaginazione
+piaciuta, contenuto no. Tolto in due giri:
+
+1. Il **"Totale per piatto"** che stava in testa. La cucina quel conteggio ce
+   l'ha già dalla distinta di produzione; nel cassone termico serve il
+   nominativo, non il riepilogo.
+2. Le **tabelle e i riquadri** del dettaglio. Prima provato a riquadri, una
+   scheda per dipendente su due colonne divise per reparto: troppo. Adesso è
+   una **colonna unica**, una persona sotto l'altra in ordine alfabetico —
+   nome e cognome, reparto accanto, matricola a destra, il pasto scritto per
+   esteso una portata per riga (o `Piatto unico` da solo) e, se ce ne sono, le
+   allergie dichiarate.
+
+Cambio più importante del solo aspetto: **il manifesto non è più riservato al
+fornitore**. Deve poterlo stampare in autonomia sia la cucina sia il referente
+dell'azienda, quindi via la fascetta "non esporre al cliente" — e proprio per
+questo le **diete con prescrizione medica non compaiono più**, restano
+riservate. In chiaro solo le allergie dichiarate dal dipendente, che servono a
+chi distribuisce i pasti.
+
+In `documento.js`: `generaElencoNominativo` eliminata (l'usava solo il
+manifesto) e sostituita da `elencoPasti`; `manifesto.js` compone
+`paginaDocumento` e chiude con `apriDocumento`, come già fanno `proforma.js` e
+`resoconto.js`. I titoletti di sezione non restano più orfani in fondo alla
+pagina stampata.
+
+**Etichette pasto** (`Fornitore.jsx`). Il cliente ha fatto sapere che basta
+molto meno: nome e cognome (solo in comunità, quelle aziendali restano
+anonime), portata, nome del piatto e note. Via **ingredienti, allergeni, kcal
+e la riga di riscaldamento** da entrambe le card. Il blocco Note della comunità
+compare solo se la dieta ha davvero delle note, e `INGREDIENTI_DIETE` non serve
+più a `Fornitore.jsx`.
+
+Provato sulla build: manifesto generato con i dati demo (piatto unico e piatto
+fuori catalogo inclusi) e le due card etichetta viste nel portale cucina dopo
+una prenotazione confermata dal dipendente e le presenze trasmesse dalla
+comunità.
 
 ---

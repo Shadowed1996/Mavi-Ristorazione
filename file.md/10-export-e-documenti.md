@@ -10,7 +10,8 @@ aperta dentro il gesto di click (vedi sotto).
 Un solo CSS A4 per tutti i documenti stampabili: palette terracotta / scuro /
 avorio (la stessa di `excel.js`), font Segoe UI / Calibri, `@page A4 14mm`,
 `thead` ripetuto su ogni pagina, righe che non si spezzano, numero di pagina
-nei browser che supportano le margin box di `@page`, barra "Stampa / Salva PDF"
+nei browser che supportano le margin box di `@page`, titoletti di sezione che
+non restano orfani in fondo alla pagina (`page-break-after:avoid`), barra "Stampa / Salva PDF"
 esclusa dalla stampa. La riga di totale (`tbody tr.doc-totale td`) ha la stessa
 specificità della riga pari e viene dopo: resta terracotta con testo bianco
 anche quando cade in posizione pari (prima diventava bianco su avorio). Testata con marchio MAVI, mittente (`intestazioneMavi`) e
@@ -29,8 +30,8 @@ badge.
 | `cellaConNota(principale, nota)` | cella su due righe, nota in grigio |
 | `riepilogoTotali([{ etichetta, valore, forte }])` | riquadro totali a destra |
 | `blocco(titolo, html)`, `paragrafo(testo, { piccolo })`, `elenco(righe)`, `etichette(lista)` | sezioni di testo |
-| `generaElencoNominativo({ titolo, badge, sottotitolo, meta, colonne, righe, totale, vuota, blocchiPrima, blocchiDopo, note, piede, nomeFile, datiAziendali, avvisa })` | pagina + tabella + apertura, usata dal manifesto |
 | `elencoOrdini([{ nome, nota, pasto }])` | nome (con nota accanto) e sotto il pasto, su due colonne: il riepilogo ordini del referente |
+| `elencoPasti([{ nome, nota, codice, portate, avviso }])` | colonna unica: nome (con reparto accanto e matricola a destra), `portate: [{ etichetta, piatto, vuota }]` una per riga, `avviso` le allergie dichiarate. È il manifesto di consegna |
 | `apriDocumento(html, { nomeFile, avvisa })` | apre la scheda; ritorna `true` se aperta |
 
 Una **cella** è un valore qualsiasi, che passa da `testoHtml`, oppure
@@ -86,19 +87,27 @@ generaManifestoConsegna({ struttura, indiceGiorno, pasto, righe, datiAziendali, 
 ```
 
 `righe` è `st.nominativiAzienda` completo, arricchito da `FlussiOrdine` con
-`dieta` (`dietaDipendente` o dieta impostata nel portale) e `allergeni`
-dichiarati: la funzione **filtra per `indiceGiorno`** e intesta con
-`giornoDataIt(GIORNI[i].data)`. Le etichette pasto dell'azienda sono anonime;
-questo è l'unico documento nominativo, marcato "Riservato al fornitore — non
-esporre al cliente", raggiungibile solo dal drill-down azienda di "Ordini in
-arrivo" nel portale MAVI, dopo aver scelto la giornata.
+`dieta` e `allergeni` dichiarati: la funzione **filtra per `indiceGiorno`** e
+intesta con `giornoDataIt(GIORNI[i].data)`. Raggiungibile dal drill-down
+azienda di "Ordini in arrivo" nel portale MAVI, dopo aver scelto la giornata.
 
-È il **resoconto dettagliato della cucina** (Filippo, 15 settembre 2026):
-riquadri pasti, porzioni e "con dieta o allergie"; **Totale per piatto**
-(portata, piatto, allergeni dal catalogo, porzioni; un nome fuori catalogo è
-segnalato "allergeni da verificare"); poi il dettaglio per dipendente ordinato
-per reparto: matricola, nome con reparto, primo (o piatto unico), secondo,
-contorno, **dieta e allergie** (una prescrizione medica resta "Riservata").
+Riscritto due volte il 16 settembre 2026, su indicazione di Filippo:
+
+1. **Via il "Totale per piatto" in testa.** Quel conteggio la cucina ce l'ha già
+   dalla distinta di produzione; in consegna serviva solo il nominativo.
+2. **Via i riquadri, via le tabelle, via la fascetta "Riservato al fornitore".**
+   Il manifesto lo stampano **sia la cucina sia il referente dell'azienda**, in
+   autonomia, quindi non è più un documento riservato — e proprio per questo le
+   **diete con prescrizione medica non compaiono più**: restano riservate. In
+   chiaro ci sono solo le **allergie dichiarate** dal dipendente, che servono a
+   chi distribuisce i pasti.
+
+Quello che resta è una **colonna unica** (`elencoPasti`), una persona sotto
+l'altra in ordine alfabetico: nome e cognome, reparto accanto, matricola a
+destra, il pasto scritto per esteso una portata per riga (`Primo`, `Secondo`,
+`Contorno`, oppure `Piatto unico` da solo quando c'è) e, se ce ne sono, le
+allergie dichiarate. Le etichette pasto restano anonime: questo è l'unico
+foglio nominativo del cassone termico.
 
 ## `src/resoconto.js` — resoconti e riepiloghi
 

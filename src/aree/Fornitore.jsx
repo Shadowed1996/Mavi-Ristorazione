@@ -1,7 +1,7 @@
 import React from "react";
 import {
   ALLERGENI, CATEGORIE, splitPiatto, COLORI, DIPENDENTI, ETICHETTA_ADESSO, ETICHETTE_PORTALE, GIORNI, GIORNI_COMUNITA, GIORNI_SETT, GIRI, INDICE_DOMANI,
-  INGREDIENTI_DIETE, MARCATORI, METODI_PAGAMENTO, PASTI_TIPO, PAZIENTI_COMUNITA, PERMESSI, PIATTI,
+  MARCATORI, METODI_PAGAMENTO, PASTI_TIPO, PAZIENTI_COMUNITA, PERMESSI, PIATTI,
   REGIMI_IVA, TERMINI_PAGAMENTO, catalogoPerCategoria, dietaEffettiva, etichettaGiorno, menuDelGiorno, metodoPagamento, presenzaVariata,
   ordinaProforme, pastiDi, permessiDelPortale, portateServite, proformaValida, regimeIva, scadenzaPagamento, sostituisce, statoProforma,
   terminiPagamento, testoCondizioni, totaliProforma,
@@ -2835,7 +2835,7 @@ function raggruppaAzienda(lista) {
   const perPiatto = {};
   lista.forEach((e) => {
     const k = e.piatto;
-    if (!perPiatto[k]) perPiatto[k] = { piatto: e.piatto, portata: e.portata, kcal: e.kcal, ing: e.ing, allergeni: e.allergeni, riscaldamento: e.riscaldamento, giorno: e.giorno, pasto: e.pasto, count: 0, chiavi: [] };
+    if (!perPiatto[k]) perPiatto[k] = { piatto: e.piatto, portata: e.portata, giorno: e.giorno, pasto: e.pasto, count: 0, chiavi: [] };
     perPiatto[k].count++;
     perPiatto[k].chiavi.push(e.chiave);
   });
@@ -2870,14 +2870,6 @@ function CardEtichettaAzienda({ g, onElimina }) {
           <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--inchiostro-2)" }}>
             <b style={{ fontSize: 20 }}>×{g.count}</b> <span style={{ color: "var(--muto)" }}>etichette</span>
           </p>
-          {g.ing && <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--muto)", lineHeight: 1.4 }}>Ingredienti: {g.ing}</p>}
-          {g.allergeni && g.allergeni.length > 0 && (
-            <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--acc)" }}>Allergeni: {g.allergeni.join(", ")}</p>
-          )}
-          <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--muto)" }}>{g.kcal} kcal</p>
-        </div>
-        <div className="etichetta-piede">
-          <span>{g.riscaldamento}</span>
         </div>
       </div>
       {onElimina && (
@@ -2906,20 +2898,13 @@ function CardEtichettaComunita({ e, onElimina }) {
           <span className="so-lab">{e.portata}</span>
           <p style={{ margin: "4px 0 0", fontSize: 15, fontWeight: 600 }}>{e.piatto}</p>
           {e.nota && <p className="nota-prep" style={{ margin: "6px 0 0" }}>⚠ {e.nota}</p>}
-          {e.ing && <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--muto)", lineHeight: 1.4 }}>Ingredienti: {e.ing}</p>}
-          {e.allergeni && e.allergeni.length > 0 && (
-            <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--acc)" }}>Allergeni: {e.allergeni.join(", ")}</p>
-          )}
-          {e.kcal && <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--muto)" }}>{e.kcal} kcal</p>}
         </div>
-        <div className="etichetta-allergeni">
-          <span className="so-lab">Note</span>
-          <p>{e.note}</p>
-        </div>
-        <div className="etichetta-piede">
-          <span>Riscaldare 800 W, 2 min</span>
-          <span className="et-cod">{e.chiave}</span>
-        </div>
+        {e.note && (
+          <div className="etichetta-allergeni">
+            <span className="so-lab">Note</span>
+            <p>{e.note}</p>
+          </div>
+        )}
       </div>
       {onElimina && (
         <button className="btn-rimuovi-et" onClick={onElimina}>
@@ -3042,10 +3027,6 @@ function EtichettePasto() {
           pasto: "pranzo",
           portata: catNome,
           piatto: PIATTI[id].n,
-          kcal: PIATTI[id].kcal,
-          ing: PIATTI[id].ing || "",
-          allergeni: (PIATTI[id].a || []).map((code) => ALLERGENI[code] || code),
-          riscaldamento: PIATTI[id].ris || "Riscaldare 800 W, 2 min",
         });
       });
     });
@@ -3054,20 +3035,12 @@ function EtichettePasto() {
 
   /* etichette comunità: dalle presenze trasmesse */
   const etichetteComunita = React.useMemo(() => {
-    const cercaPiatto = (nome) => {
-      const fromCatalog = Object.values(PIATTI).find((p) => p.n.toLowerCase() === nome.toLowerCase());
-      if (fromCatalog) return fromCatalog;
-      const fromDiete = INGREDIENTI_DIETE[nome];
-      if (fromDiete) return { ing: fromDiete.ing, a: fromDiete.a, kcal: "" };
-      return null;
-    };
     const lista = [];
     trasmessi.forEach((t) => {
       const { primo, secondo, contorno } = t.dieta;
       [["primo", primo], ["secondo", secondo], ["contorno", contorno]].forEach(([portata, piatto]) => {
         if (!piatto || piatto === "—") return;
         const nomeClean = splitPiatto(piatto).nome;
-        const found = cercaPiatto(nomeClean);
         lista.push({
           chiave: "com-" + t.id + "-" + t.pasto + "-" + portata,
           nome: t.nome,
@@ -3079,9 +3052,6 @@ function EtichettePasto() {
           portata,
           piatto: nomeClean,
           nota: splitPiatto(piatto).nota,
-          ing: found?.ing || "",
-          allergeni: (found?.a || []).map((code) => ALLERGENI[code] || code),
-          kcal: found?.kcal || "",
         });
       });
     });
