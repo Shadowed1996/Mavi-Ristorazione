@@ -13,6 +13,14 @@ e il progetto adotta il [Versionamento Semantico](https://semver.org/lang/it/).
 
 ## [Non rilasciato]
 
+### Cambiato — 16 settembre 2026, manifesto con i riquadri
+- **Ogni dipendente dentro il suo riquadro** sul manifesto di consegna, sempre
+  in colonna unica: testata con nome, reparto e matricola, le portate una per
+  riga e le allergie dichiarate su fascia in fondo. Il riquadro non si spezza
+  fra due pagine.
+- **Solo la data** nella giornata del manifesto, senza il giorno della
+  settimana.
+
 ### Cambiato — 16 settembre 2026, manifesto di consegna ed etichette
 - **Manifesto di consegna riscritto, in colonna unica**: via il "Totale per
   piatto" in testa (la cucina ce l'ha già dalla distinta di produzione) e via

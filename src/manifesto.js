@@ -12,7 +12,7 @@
    Impaginazione e regole di escape stanno in documento.js. */
 
 import { GIORNI } from "./data.js";
-import { apriDocumento, dataIt, elencoPasti, giornoDataIt, paginaDocumento, paragrafo } from "./documento.js";
+import { apriDocumento, dataIt, elencoPasti, paginaDocumento, paragrafo } from "./documento.js";
 
 const PORTATE = [
   { id: "primo", nome: "Primo" },
@@ -61,11 +61,11 @@ export function generaManifestoConsegna({ struttura, indiceGiorno, pasto = "pran
   const html = paginaDocumento({
     titolo: "Manifesto di consegna",
     badge: "Cassone termico",
-    sottotitolo: [struttura, [g ? giornoDataIt(g.data) : "", pasto].filter(Boolean).join(", "),
+    sottotitolo: [struttura, [g ? dataIt(g.data) : "", pasto].filter(Boolean).join(", "),
       "generato il " + oggi + " alle " + ora].filter(Boolean).join(" · "),
     meta: [
       { etichetta: "Struttura", valore: struttura },
-      { etichetta: "Giornata", valore: g ? giornoDataIt(g.data) : "—" },
+      { etichetta: "Giornata", valore: g ? dataIt(g.data) : "—" },
       { etichetta: "Pasto", valore: pasto },
       { etichetta: "Pasti", valore: delGiorno.length },
       { etichetta: "Porzioni", valore: porzioni },

@@ -2,7 +2,7 @@
 
 Documento vivo. Va riletto all'inizio di ogni nuova sessione e aggiornato alla fine di ogni task.
 
-**Ultimo aggiornamento**: 16 settembre 2026 — manifesto di consegna riscritto in colonna unica e aperto anche al cliente, etichette pasto ridotte all'essenziale (sezione 26).
+**Ultimo aggiornamento**: 16 settembre 2026 — manifesto di consegna riscritto in colonna unica e aperto anche al cliente, con un riquadro per dipendente; etichette pasto ridotte all'essenziale (sezione 26).
 
 **Precedente**: 15 settembre 2026, notte — stato delle proforma stampato sul documento (non pagata, pagata, annullata, stornata) con le azioni in Fatturazione, tolta la scheda Fatturazione a 30 giorni della Gestione portale, audit completo del sito nel browser (sezione 25).
 
@@ -1211,6 +1211,16 @@ anonime), portata, nome del piatto e note. Via **ingredienti, allergeni, kcal
 e la riga di riscaldamento** da entrambe le card. Il blocco Note della comunità
 compare solo se la dieta ha davvero delle note, e `INGREDIENTI_DIETE` non serve
 più a `Fornitore.jsx`.
+
+**Rifinitura dello stesso giorno.** Ogni dipendente sta ora dentro il suo
+riquadro — testata con nome, reparto e matricola, portate una per riga,
+allergie su fascia in fondo — sempre in colonna unica, e il riquadro non si
+spezza fra due pagine. Della giornata si stampa solo la data, senza il giorno
+della settimana.
+
+Provata e scartata l'idea di farlo stare per forza su una pagina sola: con 28
+pasti servivano una riga per persona e caratteri da 8px, illeggibili in cucina.
+Con molti dipendenti il manifesto occupa più pagine e va bene così.
 
 Provato sulla build: manifesto generato con i dati demo (piatto unico e piatto
 fuori catalogo inclusi) e le due card etichetta viste nel portale cucina dopo

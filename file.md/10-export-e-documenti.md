@@ -31,7 +31,7 @@ badge.
 | `riepilogoTotali([{ etichetta, valore, forte }])` | riquadro totali a destra |
 | `blocco(titolo, html)`, `paragrafo(testo, { piccolo })`, `elenco(righe)`, `etichette(lista)` | sezioni di testo |
 | `elencoOrdini([{ nome, nota, pasto }])` | nome (con nota accanto) e sotto il pasto, su due colonne: il riepilogo ordini del referente |
-| `elencoPasti([{ nome, nota, codice, portate, avviso }])` | colonna unica: nome (con reparto accanto e matricola a destra), `portate: [{ etichetta, piatto, vuota }]` una per riga, `avviso` le allergie dichiarate. È il manifesto di consegna |
+| `elencoPasti([{ nome, nota, codice, portate, avviso }])` | colonna unica, un **riquadro per persona**: testata con nome (reparto accanto, matricola a destra), `portate: [{ etichetta, piatto, vuota }]` una per riga, e in fondo `avviso` con le allergie dichiarate. È il manifesto di consegna |
 | `apriDocumento(html, { nomeFile, avvisa })` | apre la scheda; ritorna `true` se aperta |
 
 Una **cella** è un valore qualsiasi, che passa da `testoHtml`, oppure
@@ -103,11 +103,21 @@ Riscritto due volte il 16 settembre 2026, su indicazione di Filippo:
    chi distribuisce i pasti.
 
 Quello che resta è una **colonna unica** (`elencoPasti`), una persona sotto
-l'altra in ordine alfabetico: nome e cognome, reparto accanto, matricola a
-destra, il pasto scritto per esteso una portata per riga (`Primo`, `Secondo`,
-`Contorno`, oppure `Piatto unico` da solo quando c'è) e, se ce ne sono, le
-allergie dichiarate. Le etichette pasto restano anonime: questo è l'unico
-foglio nominativo del cassone termico.
+l'altra in ordine alfabetico, **ognuna dentro il suo riquadro**: testata con
+nome e cognome, reparto accanto e matricola a destra, poi il pasto scritto per
+esteso una portata per riga (`Primo`, `Secondo`, `Contorno`, oppure `Piatto
+unico` da solo quando c'è) e, in fondo, le allergie dichiarate su fascia
+terracotta quando ce ne sono. La cornice tiene insieme nome e pasto e si vede a
+colpo d'occhio dove finisce uno e comincia l'altro; il riquadro non si spezza
+mai fra due pagine (`page-break-inside`).
+
+Della giornata si stampa **solo la data** (`dataIt`), non il giorno della
+settimana: sul foglio di consegna era rumore. Con molti dipendenti il manifesto
+occupa più pagine, e va bene così: comprimerlo su una sola voleva dire una riga
+per persona a corpo 8, illeggibile in cucina.
+
+Le etichette pasto restano anonime: questo è l'unico foglio nominativo del
+cassone termico.
 
 ## `src/resoconto.js` — resoconti e riepiloghi
 
