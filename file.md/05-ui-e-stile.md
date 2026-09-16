@@ -37,24 +37,15 @@ Il guscio di ogni portale. Props:
 </Telaio>
 ```
 
-Rende: barra laterale alta quanto la finestra (`100dvh`) con marchio,
-tag ruolo, menu di navigazione, **orologio**, toggle tema a tre stati e blocco
-utente con pulsante di uscita; il contenuto in `<main className="principale">`; e, sotto,
-una barra di navigazione per il mobile che mostra solo la prima parola di ogni
-etichetta.
+Rende: barra laterale alta quanto la finestra (`100dvh`, niente più nastro
+"Prototipo dimostrativo" dal 16 settembre 2026) con marchio, tag ruolo, menu,
+**orologio**, toggle tema e blocco utente con uscita; il contenuto in
+`<main className="principale">`; sotto, la barra di navigazione mobile.
 
-### `Orologio` — aggiunto 16 settembre 2026
-
-Niente più nastro nero "Prototipo dimostrativo" in cima alle pagine (tolto lo
-stesso giorno): `.telaio` e `.fianco` sono alti `100dvh` pieni, senza i 32px
-che il nastro spingeva fuori dalla finestra.
-
-Ora reale `HH:MM:SS` in Fraunces con cifre tabellari, due punti che pulsano e
-secondi nell'accento dell'area, data sotto ("mercoledì 16 settembre"). Sta in
-fondo alla barra laterale, quindi sotto i 1040px, quando la barra sparisce,
-non si vede. Il timeout si
-riallinea al secondo pieno e ridisegna solo l'orologio. È l'ora vera, non
-`ADESSO_DEMO`.
+**`Orologio`** (16 settembre 2026): ora reale `HH:MM:SS` in Fraunces a cifre
+tabellari, due punti che pulsano, secondi in accento, data sotto. In fondo alla
+barra laterale (sotto i 1040px non si vede). Si riallinea al secondo pieno e
+ridisegna solo sé stesso. È l'ora vera, non `ADESSO_DEMO`.
 
 ### Modifica profilo — aggiunta 12 settembre 2026
 
