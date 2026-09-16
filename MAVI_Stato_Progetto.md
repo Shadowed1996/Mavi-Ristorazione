@@ -1294,15 +1294,15 @@ desktop (da 1101×760) ora:
   schede giorno più compatte;
 - le tre colonne occupano l'altezza rimasta; se i piatti non ci stanno scorre
   solo la lista della colonna, con barra sottile;
-- il piatto unico non è più un box centrato alto 212px ma una fascia sotto le
-  colonne, "oppure" in verticale a sinistra, titolo e nota a sinistra e piatti
-  affiancati;
-- card piatto leggermente più compatte (miniatura 46px).
+- il piatto unico resta centrato sotto le colonne, con meno margini.
+Primo giro scartato da Filippo: piatto unico in fascia orizzontale e card
+compatte (miniatura 46px) stavano tutti nella finestra ma era "tutto troppo
+stretto". Ripristinati box centrato e card originali; lo spazio si recupera
+riducendo i caratteri dei box dei giorni in alto.
 In `Dipendente.jsx` solo due `div` in più (`menu-fisso`, `menu-barra`);
 sotto quelle misure non hanno stili e il layout resta quello a scorrimento.
-Misurato a 1920×1009: pagina 1009px, nessuna lista in scorrimento; con un
-giorno chiuso (avviso in più) la pagina resta ferma e scorre di poco solo la
-lista dei secondi. Scelta di un piatto, vassoio e conferma invariati.
+Misurato a 1920×1009: pagina 1009px, ferma; scorrono dentro la colonna le
+liste di Primo e Secondo, il Contorno ci sta. Scelta di un piatto, vassoio e conferma invariati.
 
 **Limite noto**: "Rendi fisso" da un giorno aperto aggiunge il piatto a tutta la
 settimana, quindi anche ai giorni chiusi, come prima. Per la demo va bene; in

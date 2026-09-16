@@ -14,11 +14,12 @@ da sei colonne a tre.
 
 Da 1101px di larghezza e 760px di altezza la pagina **sta tutta nella finestra
 e non scorre** (`.menu-fisso`, in fondo a `styles.css`): intestazione
-compatta, navigazione settimana e giorni su una riga (`.menu-barra`), le tre
-colonne che riempiono l'altezza rimasta, il piatto unico in fascia orizzontale
-sotto le colonne con "oppure" a sinistra, il vassoio fisso in basso. Se i piatti
-di una colonna non ci stanno **scorre solo la sua lista**. A 1920×1009 non
-scorre nulla, nemmeno le liste. Sotto quelle misure (finestre basse, tablet,
+compatta, navigazione settimana e giorni su una riga (`.menu-barra`) con i box
+dei giorni in caratteri più piccoli, le tre colonne che riempiono l'altezza
+rimasta, il piatto unico **centrato sotto** come nel layout normale (solo con
+meno margini), il vassoio fisso in basso. Le card piatto hanno le misure di
+sempre. Se i piatti di una colonna non ci stanno **scorre solo la sua lista**:
+a 1920×1009 scorrono Primo e Secondo, la pagina no. Sotto quelle misure (finestre basse, tablet,
 telefono) resta il layout a scorrimento: i due `div` in più non hanno stili
 fuori dalla media query.
 

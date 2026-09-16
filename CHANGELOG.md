@@ -28,8 +28,8 @@ e il progetto adotta il [Versionamento Semantico](https://semver.org/lang/it/).
   data (visibile dove c'è la barra laterale).
 - **Menu del giorno a schermata fissa su desktop**: intestazione compatta,
   settimana e giorni su una riga, colonne a tutta altezza con scorrimento solo
-  dentro la lista quando i piatti non ci stanno, piatto unico in fascia
-  orizzontale. La pagina non scorre più; su schermi piccoli resta com'era.
+  dentro la lista quando i piatti non ci stanno, piatto unico centrato sotto le
+  colonne e box dei giorni con caratteri più piccoli. La pagina non scorre più; su schermi piccoli resta com'era.
 - **Tolto il nastro nero "Prototipo dimostrativo"** in cima a tutte le pagine:
   le pagine non scorrono più quando il contenuto sta nella finestra e la barra
   laterale occupa l'altezza piena.
