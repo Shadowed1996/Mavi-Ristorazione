@@ -1,7 +1,7 @@
 import React from "react";
 import {
   ALLERGENI, CATEGORIE, COLORI, GIORNI, PIATTI, menuDelGiorno,
-  QUOTA_DIPENDENTE, fuoriDieta, giorniAperti,
+  QUOTA_DIPENDENTE, fuoriDieta, giorniSettimana, primoAperto,
 } from "../data.js";
 import {
   Accesso, DiscoColore, Icone, Illustrazione, Intestazione, Messaggi, NessunPermesso,
@@ -100,15 +100,15 @@ export default function Dipendente({ onEsci, utente }) {
   );
 }
 
-/* Al dipendente si mostrano solo i giorni ancora aperti agli ordini (con
-   "adesso" martedì 15 alle 22:56: giovedì e venerdì). I giorni chiusi non si
-   vedono più: l'ordine è partito e la cucina ci sta già lavorando. */
-const APERTI = giorniAperti(GIORNI);
+/* Al dipendente si mostra tutta la settimana. Con "adesso" martedì 15 alle
+   22:56 lunedì, martedì e mercoledì sono chiusi: si vedono con il lucchetto e
+   restano in sola lettura. Giovedì e venerdì si prenotano. */
+const SETTIMANA = giorniSettimana(GIORNI);
 
 /* ==================== menu del giorno ==================== */
 function MenuGiorno() {
   const st = usaStato();
-  const [giorno, setGiorno] = React.useState(APERTI.length ? APERTI[0].i : 0);
+  const [giorno, setGiorno] = React.useState(() => primoAperto(GIORNI));
   const [scheda, setScheda] = React.useState(null);
   const [avviso, setAvviso] = React.useState(null);
   const [vistaCol, setVistaCol] = React.useState({ primo: "base", secondo: "base" });
@@ -123,6 +123,10 @@ function MenuGiorno() {
   const [avvisoDieta, setAvvisoDieta] = React.useState(null);
 
   function scegliConCheck(g, cat, id) {
+    if (GIORNI[g].chiuso) {
+      st.avvisa("Le prenotazioni per " + GIORNI[g].n.toLowerCase() + " sono chiuse");
+      return;
+    }
     if (!st.puo("menu.prenota")) {
       st.avvisa("Il tuo ruolo consulta il menu ma non prenota");
       return;
@@ -155,14 +159,14 @@ function MenuGiorno() {
         </div>
 
         <div className="giorni">
-          {APERTI.map((d) => {
+          {SETTIMANA.map((d) => {
             const i = d.i;
             const o = st.ordini[i] || {};
             const n = Object.keys(o).length;
             const cls = st.confermati[i] ? "ok" : n ? "parziale" : "";
             const testo = d.chiuso ? "chiuso" : st.confermati[i] ? "prenotato" : n ? "in corso" : "da fare";
             return (
-              <button key={d.n} className={"giorno" + (i === giorno ? " on" : "")} onClick={() => setGiorno(i)}>
+              <button key={d.n} className={"giorno" + (i === giorno ? " on" : "") + (d.chiuso ? " chiuso" : "")} onClick={() => setGiorno(i)}>
                 <div className="gn">{d.n}</div>
                 <div className="gd">{d.breve}</div>
                 <div className="gs">
@@ -173,6 +177,16 @@ function MenuGiorno() {
             );
           })}
         </div>
+
+        {g.chiuso && (
+          <div className="avviso chiuso" style={{ marginBottom: 12 }}>
+            <Icone.lucchetto size={16} />
+            <span>
+              Le prenotazioni di <b>{g.n.toLowerCase()} {g.d}</b> sono chiuse: il menu resta
+              consultabile ma non si può più scegliere, confermare o disdire.
+            </span>
+          </div>
+        )}
 
         {st.dietaUtente && (
           <div className="banner-dieta" style={{ marginBottom: 12 }}>
@@ -399,7 +413,8 @@ function MenuSettimana() {
   const [settIdx, setSettIdx] = React.useState(SETT_ATTUALE);
   const [portataFiltro, setPortataFiltro] = React.useState("tutte");
   const s = SETT[settIdx];
-  const giorniVisti = settIdx === SETT_ATTUALE ? APERTI : GIORNI.map((g, i) => ({ ...g, i }));
+  /* le settimane passate sono archivio: il lucchetto serve solo in quella in corso */
+  const giorniVisti = settIdx === SETT_ATTUALE ? SETTIMANA : SETTIMANA.map((g) => ({ ...g, chiuso: false }));
 
   const catFiltrate = portataFiltro === "tutte"
     ? CATEGORIE
@@ -439,13 +454,15 @@ function MenuSettimana() {
           ))}
         </div>
 
-        {/* griglia: nella settimana in corso solo i giorni ancora aperti */}
+        {/* griglia: tutta la settimana, i giorni chiusi con il lucchetto */}
         <div className="ms-grid" style={{ gridTemplateColumns: "repeat(" + giorniVisti.length + ", 1fr)" }}>
-          {/* intestazione giorni */}
           {giorniVisti.map((g) => (
-            <div className="ms-giorno-head" key={g.n}>
+            <div className={"ms-giorno-head" + (g.chiuso ? " chiuso" : "")} key={g.n}>
               <span className="ms-g-nome">{g.n}</span>
-              <span className="ms-g-data">{g.breve}</span>
+              <span className="ms-g-data">
+                {g.breve}
+                {g.chiuso && <span className="ms-g-chiuso"><Icone.lucchetto size={11} /> chiuso</span>}
+              </span>
             </div>
           ))}
 
@@ -493,8 +510,8 @@ function MenuSettimana() {
 function Prenotazioni({ utente }) {
   const st = usaStato();
 
-  /* i giorni ancora aperti, come nella tabella qui sotto: giorno e portate */
-  const righeOrdine = () => APERTI.map((d) => {
+  /* tutta la settimana, come nella tabella qui sotto: giorno e portate */
+  const righeOrdine = () => SETTIMANA.map((d) => {
     const scelte = Object.values(st.ordini[d.i] || {});
     return {
       giorno: d.n + " " + d.d,
@@ -523,7 +540,7 @@ function Prenotazioni({ utente }) {
       <Intestazione
         occhiello="Settimana 38"
         titolo="Le mie prenotazioni"
-        sotto="I giorni ancora aperti: si prenota e si disdice fino alle 14:00 del giorno prima"
+        sotto="La settimana intera: si prenota e si disdice fino alle 14:00 del giorno prima"
         azioni={st.puo("prenotazioni.riepilogo") && (
           <button className="btn linea piccolo" onClick={scaricaRiepilogo}><Icone.scarica size={16} /> Scarica riepilogo</button>
         )}
@@ -534,18 +551,20 @@ function Prenotazioni({ utente }) {
             <table className="dati">
               <thead><tr><th>Giorno</th><th>Portate scelte</th><th>Stato</th></tr></thead>
               <tbody>
-                {APERTI.map((d) => {
+                {SETTIMANA.map((d) => {
                   const i = d.i;
                   const o = st.ordini[i] || {};
-                  const v = Object.values(o);
+                  const v = Object.values(o).filter((id) => PIATTI[id]);
                   return (
-                    <tr key={d.n}>
+                    <tr key={d.n} className={d.chiuso ? "riga-chiusa" : ""}>
                       <td><b>{d.n}</b> <span style={{ color: "var(--muto)" }}>{d.breve}</span></td>
                       <td>{v.length ? v.map((id) => PIATTI[id].n).join(", ") : <span className="riservato">nessuna prenotazione</span>}</td>
                       <td>
                         {st.confermati[i] ? <span className="pastiglia p-ok">prenotato</span>
-                            : v.length ? <span className="pastiglia p-att">non confermato</span>
-                              : <span className="pastiglia p-neu">vuoto</span>}
+                            : v.length && !d.chiuso ? <span className="pastiglia p-att">non confermato</span>
+                              : null}
+                        {d.chiuso && <span className="pastiglia p-neu stato-chiuso"><Icone.lucchetto size={11} /> chiuso</span>}
+                        {!d.chiuso && !st.confermati[i] && !v.length && <span className="pastiglia p-neu">vuoto</span>}
                       </td>
                     </tr>
                   );

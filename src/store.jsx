@@ -324,6 +324,10 @@ export function Provider({ children }) {
       avvisa("Scrivi il testo della variazione prima di inviarla");
       return null;
     }
+    if (GIORNI_COMUNITA[Number(dati.indiceGiorno)]?.chiuso) {
+      avvisa("Gli ordini di questo giorno sono chiusi, la variazione non si può più inviare");
+      return null;
+    }
     const tipo = TIPI_AMMESSI.includes(dati.tipo) ? dati.tipo : "altro";
     if (tipo !== "altro" && !dati.pazienteId) {
       avvisa("Scegli il paziente della variazione");
@@ -588,6 +592,10 @@ export function Provider({ children }) {
      solo la riga nominativa. */
   const conferma = React.useCallback(
     (giorno, chi = { nome: "Antonella Rossi", ruolo: "Dipendente" }, piatti) => {
+      if (GIORNI[giorno]?.chiuso) {
+        avvisa("Le prenotazioni per questo giorno sono chiuse");
+        return;
+      }
       const perConto = !!piatti;
       const scelte = piatti || ordiniRef.current[giorno] || {};
       if (!perConto) {
@@ -632,6 +640,10 @@ export function Provider({ children }) {
 
   const disdici = React.useCallback(
     (giorno) => {
+      if (GIORNI[giorno]?.chiuso) {
+        avvisa("Le prenotazioni per questo giorno sono chiuse, non si può più disdire");
+        return;
+      }
       setConfermati((c) => {
         const n = { ...c };
         delete n[giorno];

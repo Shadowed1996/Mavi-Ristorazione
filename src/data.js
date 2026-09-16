@@ -493,13 +493,19 @@ export const GIORNI = SETTIMANA_DEMO.slice(0, 5)
 export const GIORNI_COMUNITA = SETTIMANA_DEMO
   .map((g) => ({ ...g, chiuso: ordiniChiusi(g.data, ORA_LIMITE_COMUNITA) }));
 
-/* giorni ancora aperti, con il loro indice: sono gli unici che si mostrano a
-   chi ordina (dipendente, referente, referente della comunità) */
-export const giorniAperti = (giorni) => giorni.map((g, i) => ({ ...g, i })).filter((g) => !g.chiuso);
+/* Tutti i giorni della settimana con il loro indice. Ogni portale mostra la
+   settimana intera: i giorni chiusi restano consultabili, con il lucchetto,
+   ma non si prenotano, non si disdicono e non ricevono variazioni. */
+export const giorniSettimana = (giorni) => giorni.map((g, i) => ({ ...g, i }));
+
+export const giorniAperti = (giorni) => giorniSettimana(giorni).filter((g) => !g.chiuso);
+
+/* la giornata su cui si aprono le pagine di chi ordina */
+export const primoAperto = (giorni) => Math.max(0, giorni.findIndex((g) => !g.chiuso));
 
 /* la giornata in cui la demo segna e trasmette le presenze: il primo giorno
    ancora aperto delle comunità, giovedì 17 */
-export const INDICE_DEMO_COMUNITA = Math.max(0, GIORNI_COMUNITA.findIndex((g) => !g.chiuso));
+export const INDICE_DEMO_COMUNITA = primoAperto(GIORNI_COMUNITA);
 
 /* etichetta leggibile del giorno, la stessa ovunque: "Martedì 15 settembre" */
 export function etichettaGiorno(indice) {

@@ -651,6 +651,37 @@ export function NessunPermesso({ onEsci }) {
   );
 }
 
+/* ============================ orologio ============================
+   Ora reale HH:MM:SS. Il timeout si riallinea a ogni scatto sul secondo
+   pieno, così i secondi non scivolano. Si aggiorna solo questo componente,
+   non il telaio intero. */
+const due = (n) => String(n).padStart(2, "0");
+
+export function Orologio({ compatto = false }) {
+  const [adesso, setAdesso] = React.useState(() => new Date());
+  React.useEffect(() => {
+    let timer;
+    const scatta = () => {
+      const ora = new Date();
+      setAdesso(ora);
+      timer = setTimeout(scatta, 1000 - ora.getMilliseconds());
+    };
+    timer = setTimeout(scatta, 1000 - new Date().getMilliseconds());
+    return () => clearTimeout(timer);
+  }, []);
+
+  const ora = due(adesso.getHours()) + ":" + due(adesso.getMinutes()) + ":" + due(adesso.getSeconds());
+  const data = adesso.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" });
+  return (
+    <div className={"orologio" + (compatto ? " compatto" : "")} role="timer" aria-live="off" aria-label={"Sono le " + ora + ", " + data}>
+      <span className="orologio-ora">
+        {due(adesso.getHours())}<i>:</i>{due(adesso.getMinutes())}<i>:</i><em>{due(adesso.getSeconds())}</em>
+      </span>
+      {!compatto && <span className="orologio-data">{data}</span>}
+    </div>
+  );
+}
+
 /* ============================ telaio dell'area ============================ */
 export function Telaio({ area, marchio, ruolo, utente, chiaveUtente, voci, pagina, setPagina, onEsci, children }) {
   const st = usaStato();
@@ -664,6 +695,7 @@ export function Telaio({ area, marchio, ruolo, utente, chiaveUtente, voci, pagin
     <div data-area={area}>
       <div className="nastro">
         <b>Prototipo dimostrativo.</b> Dati di esempio, nessun salvataggio reale.
+        <Orologio compatto />
       </div>
       <div className="telaio">
         <aside className="fianco">
@@ -679,6 +711,7 @@ export function Telaio({ area, marchio, ruolo, utente, chiaveUtente, voci, pagin
             ))}
           </nav>
           <div className="fianco-piede">
+            <Orologio />
             <div className="tema-toggle">
               <button className={st.tema === "chiaro" ? "on" : ""} onClick={() => st.setTema("chiaro")}>☀</button>
               <button className={st.tema === "auto" ? "on" : ""} onClick={() => st.setTema("auto")}>Auto</button>

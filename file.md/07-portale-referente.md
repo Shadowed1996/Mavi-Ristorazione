@@ -17,9 +17,11 @@ fissi scritti nel componente, non calcolati: servono a dare contesto in demo.
 
 ### Ordini del giorno (dal 14 settembre 2026)
 
-Pannello con un selettore dei soli giorni **ancora aperti**
-(`giorniAperti(GIORNI)`: con "adesso" martedì 15 alle 22:56, giovedì e
-venerdì), apertura sul primo. Anteprima a schermo delle righe di
+Pannello con un selettore di **tutta la settimana** (`giorniSettimana(GIORNI)`),
+apertura sul primo giorno aperto (giovedì). Lunedì, martedì e mercoledì hanno
+il lucchetto e la dicitura "chiuso": gli ordini si vedono (è l'elenco
+definitivo arrivato alla cucina), ma "Prenota per lui" e "Invia promemoria"
+sono disattivati. Anteprima a schermo delle righe di
 `st.nominativiAzienda` con `committente === "azienda"` e `indiceGiorno` uguale
 al giorno scelto: Dipendente / Reparto / Primo / Secondo / Contorno, con il
 piatto unico indicato come "Piatto unico: …" nella colonna Primo, e il

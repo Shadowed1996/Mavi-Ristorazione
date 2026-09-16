@@ -6,7 +6,11 @@ bosco.
 
 ## Menu della settimana — `Settimana`
 
-Compositore giorno per giorno, con navigazione a quattro settimane.
+Compositore giorno per giorno, con navigazione a quattro settimane. Si apre sul
+primo giorno aperto; i giorni con gli ordini chiusi (lunedì, martedì e
+mercoledì) hanno il lucchetto e restano **in sola lettura**: niente catalogo,
+niente riordino né "Rendi fisso", con un avviso. Ripristina e Pubblica restano
+disponibili (16 settembre 2026).
 
 Si sceglie il giorno in alto, poi la portata da modificare, e si aggiunge un
 piatto dal catalogo sulla destra. Dal 14 settembre 2026 ogni voce del catalogo

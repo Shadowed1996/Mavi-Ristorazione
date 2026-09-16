@@ -82,6 +82,9 @@ dalla tabella senza bisogno di una decisione separata.
   in produzione diventa l'ora vera e i giorni chiusi si calcolano da soli con
   gli orari limite dei committenti. Da confermare con MAVI gli orari limite
   (14:00 azienda, 16:00 comunità del giorno prima).
+- **"Rendi fisso" tocca anche i giorni chiusi**: il menu dei giorni chiusi è in
+  sola lettura, ma un piatto reso fisso da un giorno aperto entra in tutta la
+  settimana. In produzione i fissi dovranno valere dai giorni aperti in avanti.
   - Piatti quasi omonimi segnalati in Produzione: sono lo stesso piatto?
     Risotto ai funghi / ai funghi porcini, Pasta al pomodoro / Penne al
     pomodoro e basilico, Salmone al forno / con erbe, Pollo grigliato / Petto

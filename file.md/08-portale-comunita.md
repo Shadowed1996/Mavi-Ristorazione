@@ -171,7 +171,7 @@ per dire alla cucina ciò che cambia rispetto a presenze e diete. Dati, forma e
 API in `st.variazioni` (`03-store.md`).
 
 **Modulo** (`variazioni.invia`): giorno da **lunedì a domenica**
-(`GIORNI_COMUNITA`, **solo i giorni ancora aperti**: da giovedì), centro, tipo, pasto (Pranzo / Cena /
+(`GIORNI_COMUNITA`, tutti elencati: lunedì, martedì e mercoledì "· chiuso" e non selezionabili, apertura su giovedì; `st.inviaVariazione` rifiuta comunque un giorno chiuso), centro, tipo, pasto (Pranzo / Cena /
 Pranzo e cena), paziente. Il modulo cambia con il **tipo** (richiesta di
 Filippo, 15 settembre 2026):
 

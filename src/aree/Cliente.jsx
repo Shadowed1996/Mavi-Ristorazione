@@ -1,7 +1,7 @@
 import React from "react";
 import {
   CATEGORIE, DIPENDENTI, GIORNI, PIATTI, PREZZO_PASTO, QUOTA_DIPENDENTE, RESOCONTO_MENSILE,
-  etichettaGiorno, giorniAperti, menuDelGiorno, ordinaProforme, testoCondizioni, totaliProforma,
+  etichettaGiorno, giorniSettimana, menuDelGiorno, primoAperto, ordinaProforme, testoCondizioni, totaliProforma,
 } from "../data.js";
 import {
   Accesso, DiscoColore, Documenti, Icone, Intestazione, Messaggi, NessunPermesso,
@@ -80,12 +80,14 @@ export default function Cliente({ onEsci, utente }) {
   );
 }
 
-/* il referente ordina per i dipendenti solo nei giorni ancora aperti */
-const APERTI = giorniAperti(GIORNI);
+/* il referente vede gli ordini di tutta la settimana, ma prenota per i
+   dipendenti e manda promemoria solo nei giorni ancora aperti */
+const SETTIMANA = giorniSettimana(GIORNI);
 
 function Cruscotto({ utente }) {
   const st = usaStato();
-  const [giorno, setGiorno] = React.useState(APERTI.length ? APERTI[0].i : 0);
+  const [giorno, setGiorno] = React.useState(() => primoAperto(GIORNI));
+  const chiuso = GIORNI[giorno].chiuso;
   const [prenota, setPrenota] = React.useState(null); // dipendente selezionato
   const [scelte, setScelte] = React.useState({});
   const referente = utente ? utente.nome : "Roberto Manzi";
@@ -167,12 +169,18 @@ function Cruscotto({ utente }) {
           </div>
           <div className="scelta-giorno">
             <div className="giorni-tab">
-              {APERTI.map((g) => (
-                <button key={g.n} className={g.i === giorno ? "on" : ""} onClick={() => setGiorno(g.i)}>
-                  {g.n}<span>{g.d}</span>
+              {SETTIMANA.map((g) => (
+                <button key={g.n} className={(g.i === giorno ? "on" : "") + (g.chiuso ? " chiuso" : "")} onClick={() => setGiorno(g.i)}>
+                  {g.chiuso && <Icone.lucchetto size={12} />}{g.n}<span>{g.chiuso ? "chiuso · " + g.breve : g.d}</span>
                 </button>
               ))}
             </div>
+            {chiuso && (
+              <div className="avviso chiuso" style={{ marginBottom: 14 }}>
+                <Icone.lucchetto size={16} />
+                <span>Gli ordini di {etichettaGiorno(giorno).toLowerCase()} sono chiusi: l'elenco è quello definitivo arrivato alla cucina.</span>
+              </div>
+            )}
           </div>
           <div className="scorri">
             <table className="dati">
@@ -200,9 +208,9 @@ function Cruscotto({ utente }) {
 
         <div className="pannello">
           <div className="pannello-testa">
-            <h2>Chi non ha ancora prenotato per {etichettaGiorno(giorno).toLowerCase()}</h2>
+            <h2>{chiuso ? "Chi non ha prenotato per " : "Chi non ha ancora prenotato per "}{etichettaGiorno(giorno).toLowerCase()}</h2>
             <div className="az">
-              <button className="btn piccolo" disabled={senzaOrdine.length === 0}
+              <button className="btn piccolo" disabled={chiuso || senzaOrdine.length === 0}
                 onClick={() => st.avvisa("Promemoria inviato a " + senzaOrdine.length + (senzaOrdine.length === 1 ? " dipendente" : " dipendenti"))}>
                 Invia promemoria
               </button>
@@ -221,7 +229,7 @@ function Cruscotto({ utente }) {
                     <td>{d.rep}</td>
                     <td>
                       {st.puo("prenota.perConto") && (
-                        <button className="btn linea piccolo" disabled={GIORNI[giorno].chiuso}
+                        <button className="btn linea piccolo" disabled={chiuso}
                           onClick={() => { setPrenota(d); setScelte({}); }}>
                           Prenota per lui
                         </button>

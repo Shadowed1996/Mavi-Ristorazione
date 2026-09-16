@@ -19,7 +19,7 @@ visibile**: occhiello, titolo, banner del filtro e ogni documento.
 - **Vista Giorno**: navigazione ‹ › fra le **sette giornate** di
   `GIORNI_COMUNITA`, da lunedì a domenica, perché le comunità mangiano tutta
   la settimana (apertura su domani rispetto ad "adesso", `INDICE_DOMANI`,
-  mercoledì 16; i giorni `chiuso` segnalati "ordini chiusi"),
+  mercoledì 16; pastiglia "ordini chiusi" con lucchetto o "ordini aperti"),
   titolo `giornoDataIt(GIORNI_COMUNITA[g].data)`. Sabato e domenica l'azienda
   non ha menu (`indiceGiorno >= GIORNI.length`): contributo con `chiusi` e stato
   **"nessun servizio"**.
@@ -99,7 +99,7 @@ Una riga per committente (`st.committenti`), con pasti dichiarati e stato
   seminato da `ETICHETTE_AZIENDA_DEMO` e alimentato dalle conferme reali della
   demo): chi ha preso cosa, mai visibile al cliente. Dal 14 settembre 2026 il
   dettaglio si sceglie **per giornata** (selettore dei cinque giorni con il
-  conteggio dei nominativi) e il bottone genera il **manifesto PDF** di quel
+  conteggio dei nominativi e "chiuso" / "aperto", lucchetto sui chiusi) e il bottone genera il **manifesto PDF** di quel
   solo giorno (`manifesto.js`, `generaManifestoConsegna` con `indiceGiorno`)
   da stampare e mettere nel cassone termico. Dal 16 settembre 2026 il manifesto
   è asciutto e **non è più riservato al fornitore**: lo stampano sia la cucina

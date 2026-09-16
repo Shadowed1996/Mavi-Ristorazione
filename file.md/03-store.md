@@ -19,7 +19,7 @@ prenota, il portale MAVI vede la distinta aggiornata.
 | `confermati` | `{ [indiceGiorno]: true }` |
 | `scegli(giorno, categoria, id)` | seleziona o deseleziona un piatto |
 | `conferma(giorno, chi, piatti?)` | conferma la prenotazione del giorno, logga, timbra `oraConferma[giorno]` e aggiunge/aggiorna la riga in `nominativiAzienda`. Con `piatti` (`{ categoria: idPiatto }`) è la prenotazione **per conto di un altro**: non tocca `ordini`, `confermati` né `oraConferma`, produce solo la riga nominativa. `chi` è `{ nome, matricola?, ruolo, inseritaDa? }`; con `inseritaDa` il log attribuisce l'azione a chi prenota |
-| `disdici(giorno)` | annulla la conferma |
+| `disdici(giorno)` | annulla la conferma; su un giorno `chiuso` avvisa e non fa nulla (anche `conferma`) |
 | `coperte(giorno)` | portate già coperte dal piatto unico scelto |
 | `mancanti(giorno)` | array leggibile delle portate mancanti |
 | `oraConferma` | `{ [giorno]: isoString }`, quando è stata confermata la prenotazione — diverso da "per quale giorno", che è `giorno` stesso |
@@ -113,7 +113,7 @@ che prevedono quel pasto (`pastiDi(p)` in `data.js`).
 | Nome | Cosa |
 |---|---|
 | `variazioni` | seed `VARIAZIONI_INIZIALI`, forma sotto; le nuove in testa |
-| `inviaVariazione(dati)` | `dati` = campi tranne `id`, `creataIl`, `stato`, `presaInCarico*`. Senza testo, o senza paziente per Presenze e Dieta, avvisa e ritorna `null`; altrimenti numera `var-N`, normalizza pasto/tipo/giorno (0-6, da lunedì a domenica), conserva `presenza`/`presenzaPrima` o `dieta`/`dietaPrima` secondo il tipo, completa autore e ruolo dalla sessione, logga (`ordine`), avvisa e **ritorna l'id**. Applicare la variazione a presenze e righe trasmesse tocca al chiamante (`VariazioniComunita`) |
+| `inviaVariazione(dati)` | `dati` = campi tranne `id`, `creataIl`, `stato`, `presaInCarico*`. Senza testo, su un giorno chiuso di `GIORNI_COMUNITA`, o senza paziente per Presenze e Dieta, avvisa e ritorna `null`; altrimenti numera `var-N`, normalizza pasto/tipo/giorno (0-6, da lunedì a domenica), conserva `presenza`/`presenzaPrima` o `dieta`/`dietaPrima` secondo il tipo, completa autore e ruolo dalla sessione, logga (`ordine`), avvisa e **ritorna l'id**. Applicare la variazione a presenze e righe trasmesse tocca al chiamante (`VariazioniComunita`) |
 | `prendiInCaricoVariazione(id)` | lato MAVI: `stato: "presa_in_carico"`, `presaInCaricoIl` (ISO) e `presaInCaricoDa` (nome della sessione), logga (`approvazione`), avvisa; ritorna `false` se l'id non c'è o è già presa in carico (legge da una ref, niente doppioni con due clic) |
 
 ```js

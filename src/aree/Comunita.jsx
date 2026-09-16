@@ -1,7 +1,7 @@
 import React from "react";
 import {
   PAZIENTI_COMUNITA, GIORNI_COMUNITA, GIORNI_SETT, INDICE_DEMO_COMUNITA, PASTI_TIPO, PASTI_VARIAZIONE, PORTATE_DIETA, TIPI_VARIAZIONE,
-  daA, dietaEffettiva, etichettaGiorno, giorniAperti as apertiDi, presenzaVariata, splitPiatto, pastiDi, portateServite,
+  daA, dietaEffettiva, etichettaGiorno, giorniAperti as apertiDi, giorniSettimana, presenzaVariata, splitPiatto, pastiDi, portateServite,
   testoVariazioneDieta, testoVariazionePresenza,
 } from "../data.js";
 import { Icone, Intestazione, Velo } from "../ui.jsx";
@@ -640,7 +640,7 @@ function VariazioniComunita({ reparto }) {
       .filter(([, cambi]) => Object.keys(cambi).length > 0))
     : {};
 
-  const pronto = !!centro && giorniAperti.length > 0 && (
+  const pronto = !!centro && !GIORNI_COMUNITA[giorno]?.chiuso && (
     tipo === "altro" ? !!testo.trim()
       : tipo === "presenze" ? Object.keys(presenzeCambiate).length > 0
         : Object.keys(dieteCambiate).length > 0);
@@ -738,9 +738,17 @@ function VariazioniComunita({ reparto }) {
                 <div className="campo">
                   <label htmlFor="var-giorno">Giorno</label>
                   <select id="var-giorno" value={giorno} onChange={(e) => setGiorno(Number(e.target.value))} disabled={giorniAperti.length === 0}>
-                    {giorniAperti.length === 0 && <option value="">Nessun giorno ancora aperto</option>}
-                    {giorniAperti.map((g) => <option key={g.i} value={g.i}>{etichettaGiorno(g.i)}</option>)}
+                    {giorniSettimana(GIORNI_COMUNITA).map((g) => (
+                      <option key={g.i} value={g.i} disabled={g.chiuso}>
+                        {etichettaGiorno(g.i) + (g.chiuso ? " · chiuso" : "")}
+                      </option>
+                    ))}
                   </select>
+                  <p style={piccolo}>
+                    {giorniAperti.length === 0
+                      ? "Nessun giorno ancora aperto: le variazioni riprendono con la settimana successiva."
+                      : "I giorni chiusi non accettano più variazioni: gli ordini sono già in cucina."}
+                  </p>
                 </div>
                 <div className="campo">
                   <label htmlFor="var-centro">Centro</label>

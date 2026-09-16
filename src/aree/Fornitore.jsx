@@ -3,7 +3,7 @@ import {
   ALLERGENI, CATEGORIE, splitPiatto, COLORI, DIPENDENTI, ETICHETTA_ADESSO, ETICHETTE_PORTALE, GIORNI, GIORNI_COMUNITA, GIORNI_SETT, GIRI, INDICE_DOMANI,
   MARCATORI, METODI_PAGAMENTO, PASTI_TIPO, PAZIENTI_COMUNITA, PERMESSI, PIATTI,
   REGIMI_IVA, TERMINI_PAGAMENTO, catalogoPerCategoria, dietaEffettiva, etichettaGiorno, menuDelGiorno, metodoPagamento, presenzaVariata,
-  ordinaProforme, pastiDi, permessiDelPortale, portateServite, proformaValida, regimeIva, scadenzaPagamento, sostituisce, statoProforma,
+  ordinaProforme, pastiDi, permessiDelPortale, portateServite, primoAperto, proformaValida, regimeIva, scadenzaPagamento, sostituisce, statoProforma,
   terminiPagamento, testoCondizioni, totaliProforma,
 } from "../data.js";
 import {
@@ -855,8 +855,9 @@ function Produzione() {
               </div>
             </div>
           )}
-          {vista === "giorno" && giornoCorrente.chiuso && (
-            <span className="pastiglia p-att">ordini chiusi</span>
+          {vista === "giorno" && (giornoCorrente.chiuso
+            ? <span className="pastiglia p-att stato-chiuso"><Icone.lucchetto size={11} /> ordini chiusi</span>
+            : <span className="pastiglia p-ok">ordini aperti</span>
           )}
           <div className="commuta">
             <button className={filtro === "tutte" ? "on" : ""} onClick={() => setFiltro("tutte")}>Tutte</button>
@@ -1272,7 +1273,7 @@ function Produzione() {
 /* ==================== menu della settimana, editabile ==================== */
 function Settimana() {
   const st = usaStato();
-  const [giorno, setGiorno] = React.useState(0);
+  const [giorno, setGiorno] = React.useState(() => primoAperto(GIORNI));
   const [categoria, setCategoria] = React.useState("primo");
   const [cerca, setCerca] = React.useState("");
   const [stampa, setStampa] = React.useState(false);
@@ -1284,8 +1285,10 @@ function Settimana() {
   ];
   const [settimanaIdx, setSettimanaIdx] = React.useState(SETTIMANE.length - 1); // settimana coperta da GIORNI/menu reale
 
-  const puoModificare = st.puo("menu.modifica");
-  const puoFissi = st.puo("menu.fissi");
+  /* il menu di un giorno chiuso è quello già ordinato: si consulta, non si cambia */
+  const giornoChiuso = GIORNI[giorno].chiuso;
+  const puoModificare = st.puo("menu.modifica") && !giornoChiuso;
+  const puoFissi = st.puo("menu.fissi") && !giornoChiuso;
   const fissi = st.menu.fissi[categoria] || [];
   const delGiorno = (st.menu.variabili[giorno] || {})[categoria] || [];
   const cat = CATEGORIE.find((c) => c.id === categoria);
@@ -1309,13 +1312,13 @@ function Settimana() {
         titolo="Composizione del menu"
         sotto="Scegli il giorno, poi la portata. I piatti si aggiungono dal catalogo a destra."
         azioni={<>
-          {puoModificare && <button className="btn linea piccolo" onClick={st.ripristinaMenu}>Ripristina</button>}
+          {st.puo("menu.modifica") && <button className="btn linea piccolo" onClick={st.ripristinaMenu}>Ripristina</button>}
           {st.puo("menu.griglia") && (
             <button className="btn linea piccolo" onClick={() => setStampa(true)}>
               <Icone.calendario size={16} /> Griglia settimana
             </button>
           )}
-          {puoModificare && (
+          {st.puo("menu.modifica") && (
             <button className="btn piccolo" onClick={() => st.avvisa("Menu pubblicato, i dipendenti lo vedono da subito")}>
               Pubblica
             </button>
@@ -1330,11 +1333,21 @@ function Settimana() {
         </div>
         <div className="giorni-tab">
           {GIORNI.map((g, i) => (
-            <button key={g.n} className={i === giorno ? "on" : ""} onClick={() => setGiorno(i)}>
-              {g.n}<span>{g.d}</span>
+            <button key={g.n} className={(i === giorno ? "on" : "") + (g.chiuso ? " chiuso" : "")} onClick={() => setGiorno(i)}>
+              {g.chiuso && <Icone.lucchetto size={12} />}{g.n}<span>{g.chiuso ? "chiuso · " + g.breve : g.d}</span>
             </button>
           ))}
         </div>
+
+        {giornoChiuso && st.puo("menu.modifica") && (
+          <div className="avviso chiuso" style={{ marginBottom: 18 }}>
+            <Icone.lucchetto size={16} />
+            <span>
+              Gli ordini di {GIORNI[giorno].n.toLowerCase()} {GIORNI[giorno].d} sono chiusi: il menu è quello già
+              prenotato e resta in sola lettura. Si compone dai giorni ancora aperti.
+            </span>
+          </div>
+        )}
 
         <div className="compositore">
           <div>
@@ -2434,8 +2447,10 @@ function OrdiniAzienda({ pasti, giorniConfermati, nominativi, onManifesto }) {
         {GIORNI.map((g, i) => {
           const quanti = nominativi.filter((n) => n.indiceGiorno === i).length;
           return (
-            <button key={g.n} className={i === giorno ? "on" : ""} onClick={() => setGiorno(i)}>
-              {g.n}<span>{quanti ? quanti + (quanti === 1 ? " nominativo" : " nominativi") : "nessuno"}</span>
+            <button key={g.n} className={(i === giorno ? "on" : "") + (g.chiuso ? " chiuso" : "")} onClick={() => setGiorno(i)}
+              title={g.chiuso ? "Ordini chiusi: elenco definitivo" : "Ordini ancora aperti: l'elenco può cambiare"}>
+              {g.chiuso && <Icone.lucchetto size={12} />}{g.n}
+              <span>{(g.chiuso ? "chiuso · " : "aperto · ") + (quanti ? quanti + (quanti === 1 ? " nominativo" : " nominativi") : "nessuno")}</span>
             </button>
           );
         })}

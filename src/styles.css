@@ -5996,3 +5996,130 @@ tr.pz-neutro td:first-child { border-left: 3px solid var(--linea); }
 [data-tema="scuro"] .dist-dest-testa,
 [data-tema="scuro"] .dati tr.dist-riga-centro td,
 [data-tema="scuro"] .dati tfoot tr.dist-riga-totale td { background: var(--carta); border-color: var(--linea); }
+
+/* ============================ giorni chiusi ============================
+   Tutta la settimana resta visibile in ogni portale: i giorni con gli ordini
+   chiusi hanno il lucchetto, un tono spento e sono in sola lettura. */
+.giorno.chiuso:not(.on) {
+  background: var(--carta);
+  border-style: dashed;
+}
+.giorno.chiuso:not(.on) .gn,
+.giorno.chiuso:not(.on) .gd {
+  opacity: 0.62;
+}
+.giorni-tab button.chiuso:not(.on) {
+  color: var(--muto);
+  background: repeating-linear-gradient(135deg, transparent 0 6px, rgba(133, 123, 110, 0.07) 6px 12px);
+}
+.giorni-tab button.chiuso svg {
+  vertical-align: -1px;
+  margin-right: 5px;
+}
+.ms-g-chiuso {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+.stato-chiuso {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.dati tr.riga-chiusa td {
+  color: var(--muto);
+}
+.dati tr.riga-chiusa td + td + td .pastiglia + .pastiglia {
+  margin-left: 6px;
+}
+.avviso.chiuso svg {
+  flex: 0 0 auto;
+}
+[data-tema="scuro"] .avviso.chiuso {
+  border-color: #4a3e1c;
+  color: #e0bf62;
+}
+
+/* ============================ orologio ============================ */
+.orologio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 8px 9px;
+  margin-bottom: 4px;
+  border: 1px solid var(--linea);
+  border-radius: var(--r-m);
+  background:
+    radial-gradient(120% 90% at 50% 0%, var(--acc-tenue), transparent 70%),
+    var(--foglio);
+  user-select: none;
+}
+.orologio-ora {
+  font-family: var(--serif);
+  font-size: 27px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--inchiostro);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+.orologio-ora i {
+  font-style: normal;
+  color: var(--acc);
+  padding: 0 1px;
+  position: relative;
+  top: -2px;
+  animation: orologio-battito 1s steps(1, end) infinite;
+}
+.orologio-ora em {
+  font-style: normal;
+  font-size: 0.72em;
+  color: var(--acc);
+}
+.orologio-data {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muto);
+}
+@keyframes orologio-battito {
+  0% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.orologio.compatto {
+  display: none;
+}
+@media (max-width: 1040px) {
+  .nastro {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px 12px;
+    flex-wrap: wrap;
+  }
+  .orologio.compatto {
+    display: inline-flex;
+    padding: 1px 8px;
+    margin: 0;
+    border-color: rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .orologio.compatto .orologio-ora {
+    font-size: 13px;
+    color: #fff;
+  }
+  .orologio.compatto .orologio-ora i,
+  .orologio.compatto .orologio-ora em {
+    color: #f3c9a8;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .orologio-ora i { animation: none; }
+}

@@ -38,10 +38,19 @@ Il guscio di ogni portale. Props:
 ```
 
 Rende: nastro "prototipo dimostrativo" in alto, barra laterale con marchio,
-tag ruolo, menu di navigazione, toggle tema a tre stati e blocco utente con
-pulsante di uscita; il contenuto in `<main className="principale">`; e, sotto,
+tag ruolo, menu di navigazione, **orologio**, toggle tema a tre stati e blocco
+utente con pulsante di uscita; il contenuto in `<main className="principale">`; e, sotto,
 una barra di navigazione per il mobile che mostra solo la prima parola di ogni
 etichetta.
+
+### `Orologio` — aggiunto 16 settembre 2026
+
+Ora reale `HH:MM:SS` in Fraunces con cifre tabellari, due punti che pulsano e
+secondi nell'accento dell'area, data sotto ("mercoledì 16 settembre"). Sta in
+fondo alla barra laterale; sotto i 1040px, quando la barra sparisce, la
+variante `compatto` (solo l'ora) compare nel nastro in alto. Il timeout si
+riallinea al secondo pieno e ridisegna solo l'orologio. È l'ora vera, non
+`ADESSO_DEMO`.
 
 ### Modifica profilo — aggiunta 12 settembre 2026
 

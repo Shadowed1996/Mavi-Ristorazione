@@ -13,6 +13,20 @@ e il progetto adotta il [Versionamento Semantico](https://semver.org/lang/it/).
 
 ## [Non rilasciato]
 
+### Cambiato — 16 settembre 2026, settimana intera e orologio
+- **Tutta la settimana visibile in ogni portale**: lunedì, martedì e mercoledì
+  compaiono con il lucchetto e la dicitura "chiuso", giovedì e venerdì restano
+  prenotabili. Vale per dipendente (menu del giorno, menu della settimana, le
+  mie prenotazioni), referente aziendale (ordini del giorno), referente della
+  comunità (variazioni, giorni chiusi non selezionabili) e cucina (produzione,
+  ordini in arrivo, composizione del menu).
+- **I giorni chiusi sono in sola lettura ovunque**: non si sceglie, non si
+  conferma, non si disdice, non si prenota per conto di altri, non si mandano
+  promemoria né variazioni, e la cucina non ne cambia il menu. Il blocco è
+  anche nello stato condiviso, non solo nei pulsanti.
+- **Orologio HH:MM:SS** in fondo alla barra laterale di ogni portale, con la
+  data; su schermi stretti nel nastro in alto.
+
 ### Cambiato — 16 settembre 2026, manifesto con i riquadri
 - **Ogni dipendente dentro il suo riquadro** sul manifesto di consegna, sempre
   in colonna unica: testata con nome, reparto e matricola, le portate una per

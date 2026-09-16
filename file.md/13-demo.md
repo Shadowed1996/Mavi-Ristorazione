@@ -31,7 +31,9 @@ utente.
 
 1. **Apertura** — parte il preloader, il piatto che si compone.
 2. **Antonella Rossi** → Menu del giorno. "Adesso" è martedì 15 settembre alle
-   22:56: si vedono **solo giovedì e venerdì**, gli altri giorni sono chiusi.
+   22:56: si vede tutta la settimana, **lunedì, martedì e mercoledì chiusi** con
+   il lucchetto (provare a cliccare un piatto di mercoledì), giovedì e venerdì
+   aperti. In basso a sinistra l'orologio.
    Mostrare le tre colonne con i toggle Alternative, scegliere i piatti, far
    notare la faccina dell'equilibrio che cambia man mano.
 3. **Diete speciali** → selezionare Vegetariano → tornare al menu: i piatti con
@@ -39,9 +41,9 @@ utente.
 4. **Menu settimana** → griglia con navigazione settimane e filtro portata.
 5. **Conferma prenotazione.** Provare prima a confermare senza contorno: compare
    l'avviso che dice cosa manca e lascia decidere. Poi **Le mie prenotazioni**
-   → "Scarica riepilogo": solo il nome e, sotto giovedì e venerdì, il pasto.
-6. Uscire → **Roberto Manzi** → Cruscotto → "Ordini del giorno" (giovedì e
-   venerdì): "Prenota per lui" su un dipendente, scegliere i piatti, confermare:
+   → "Scarica riepilogo": solo il nome e, sotto ogni giorno, il pasto.
+6. Uscire → **Roberto Manzi** → Cruscotto → "Ordini del giorno" (tutta la settimana, prenotabili
+   giovedì e venerdì): "Prenota per lui" su un dipendente, scegliere i piatti, confermare:
    la riga compare nell'anteprima e il dipendente sparisce da "Chi non ha
    prenotato". Poi **Stampa riepilogo**: "Ordini di giovedì 17 settembre",
    tutti i dipendenti che hanno ordinato, ognuno con sotto il suo pasto, il

@@ -101,11 +101,14 @@ oraLimite)` dice se è passato l'orario limite del giorno prima:
 `ORA_LIMITE_AZIENDA = 14` e `ORA_LIMITE_COMUNITA = 16`, gli stessi di
 `cutoff` in `COMMITTENTI`. Il campo `chiuso` di `GIORNI` e `GIORNI_COMUNITA`
 viene da lì: lunedì, martedì e mercoledì chiusi, giovedì aperto.
-`giorniAperti(giorni)` dà i giorni aperti con il loro indice `i`: **a chi ordina
-(dipendente, referente aziendale, variazioni della comunità) si mostrano solo
-quelli**; la cucina vede tutta la settimana. `INDICE_DOMANI` (mercoledì 16) è
+`giorniSettimana(giorni)` dà tutti i giorni con il loro indice `i`,
+`giorniAperti(giorni)` solo quelli aperti e `primoAperto(giorni)` l'indice del
+primo aperto. Dal 16 settembre 2026 **ogni portale mostra la settimana intera**:
+i giorni chiusi hanno il lucchetto e sono in sola lettura, le pagine di chi
+ordina si aprono su `primoAperto` (giovedì 17). `INDICE_DOMANI` (mercoledì 16) è
 la giornata che la cucina prepara stanotte: apre la Produzione e porta il seed
-`ETICHETTE_AZIENDA_DEMO`. `st.scegli` rifiuta un giorno `chiuso`.
+`ETICHETTE_AZIENDA_DEMO`. `st.scegli`, `st.conferma` e `st.disdici` rifiutano un giorno `chiuso` di
+`GIORNI`, `st.inviaVariazione` uno di `GIORNI_COMUNITA`.
 
 **Le comunità mangiano sette giorni su sette** (Filippo, 15 settembre 2026):
 `GIORNI_COMUNITA` è `GIORNI` più sabato 19 e domenica 20, con gli stessi indici

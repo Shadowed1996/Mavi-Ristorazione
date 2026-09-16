@@ -2,11 +2,11 @@
 
 Documento vivo. Va riletto all'inizio di ogni nuova sessione e aggiornato alla fine di ogni task.
 
-**Ultimo aggiornamento**: 16 settembre 2026 — manifesto di consegna riscritto in colonna unica e aperto anche al cliente, con un riquadro per dipendente; etichette pasto ridotte all'essenziale (sezione 26).
+**Ultimo aggiornamento**: 16 settembre 2026, pomeriggio — tutta la settimana visibile in ogni portale, lunedì, martedì e mercoledì chiusi con il lucchetto e in sola lettura, giovedì e venerdì aperti; orologio HH:MM:SS nel telaio (sezione 27).
 
-**Precedente**: 15 settembre 2026, notte — stato delle proforma stampato sul documento (non pagata, pagata, annullata, stornata) con le azioni in Fatturazione, tolta la scheda Fatturazione a 30 giorni della Gestione portale, audit completo del sito nel browser (sezione 25).
+**Precedente**: 16 settembre 2026 — manifesto di consegna riscritto in colonna unica e aperto anche al cliente, con un riquadro per dipendente; etichette pasto ridotte all'essenziale (sezione 26).
 
-**Prima ancora**: 15 settembre 2026, ore 23 — "adesso" fissato a martedì 22:56 con giorni chiusi calcolati dagli orari limite (azienda: solo giovedì e venerdì; comunità da giovedì, presenze della demo su giovedì), riepilogo del dipendente ridotto all'ordine, manifesto della cucina dettagliato (sezione 24).
+**Prima ancora**: 15 settembre 2026, notte — stato delle proforma stampato sul documento (non pagata, pagata, annullata, stornata) con le azioni in Fatturazione, tolta la scheda Fatturazione a 30 giorni della Gestione portale, audit completo del sito nel browser (sezione 25).
 
 ---
 
@@ -1228,5 +1228,64 @@ Provato sulla build: manifesto generato con i dati demo (piatto unico e piatto
 fuori catalogo inclusi) e le due card etichetta viste nel portale cucina dopo
 una prenotazione confermata dal dipendente e le presenze trasmesse dalla
 comunità.
+
+---
+
+## 27. Settimana intera con i giorni chiusi, orologio — 16 settembre 2026
+
+Richiesta di Filippo: "lasciamo tutti i giorni di questa settimana ma lunedì,
+martedì, mercoledì li mettiamo come chiusi", in modo ricorsivo per fornitore,
+dipendenti, responsabile e il resto, "in modo che funzioni tutto"; giovedì e
+venerdì restano attivi. In più "un orologio con HH:MM:SS carino".
+
+**Da dove si partiva.** Il calcolo dei giorni chiusi c'era già (sezione 24,
+`ADESSO_DEMO` martedì 15 alle 22:56): con quell'ora lunedì, martedì e mercoledì
+risultano chiusi, giovedì e venerdì aperti. Ma chi ordina vedeva **solo** i
+giorni aperti: i chiusi erano nascosti. "Adesso" non cambia.
+
+**Dati** (`data.js`): `giorniSettimana(giorni)` (tutti i giorni con l'indice),
+`primoAperto(giorni)`; `giorniAperti` resta e si appoggia al primo.
+
+**Portale per portale:**
+- **Dipendente** — Menu del giorno con i cinque giorni: i chiusi hanno bordo
+  tratteggiato e lucchetto, un avviso sopra le colonne, il clic su un piatto
+  risponde che le prenotazioni sono chiuse, vassoio "Prenotazioni chiuse".
+  Menu settimana con cinque colonne e "chiuso" nelle intestazioni (solo nella
+  settimana in corso). Le mie prenotazioni e il riepilogo scaricato coprono la
+  settimana intera, con la pastiglia "chiuso".
+- **Referente aziendale** — Ordini del giorno su tutta la settimana, apertura
+  su giovedì; nei giorni chiusi l'elenco è quello definitivo, "Prenota per lui"
+  e "Invia promemoria" sono spenti.
+- **Referente della comunità** — Variazioni: il selettore elenca da lunedì a
+  domenica, i giorni chiusi sono "· chiuso" e non selezionabili.
+- **Responsabile amministrativa** — vede solo Resoconti e Fatture, che già
+  coprivano la settimana intera: nessun cambio necessario.
+- **Cucina MAVI** — Produzione con la pastiglia "ordini chiusi" (lucchetto) o
+  "ordini aperti"; Ordini in arrivo con "chiuso" / "aperto" su ogni giornata del
+  dettaglio nominativo; Composizione del menu con il lucchetto sui giorni
+  chiusi, apertura su giovedì, e il menu dei giorni chiusi **in sola lettura**
+  (niente catalogo, riordino o "Rendi fisso").
+
+**Blocco anche nello stato** (`store.jsx`), non solo nei pulsanti: oltre a
+`scegli`, ora anche `conferma` (compresa la prenotazione per conto del
+referente), `disdici` e `inviaVariazione` rifiutano un giorno chiuso con un
+avviso.
+
+**Orologio** (`ui.jsx`, `Orologio`): ora reale HH:MM:SS in Fraunces con cifre
+tabellari, due punti che pulsano, secondi nell'accento dell'area e la data
+sotto. In fondo alla barra laterale di tutti i portali; sotto i 1040px, dove la
+barra sparisce, una versione compatta nel nastro in alto. È l'ora vera, non
+"adesso" della demo. Si ridisegna solo lui, riallineato al secondo pieno.
+
+**Limite noto**: "Rendi fisso" da un giorno aperto aggiunge il piatto a tutta la
+settimana, quindi anche ai giorni chiusi, come prima. Per la demo va bene; in
+produzione i fissi dovranno valere dai giorni aperti in avanti.
+
+**Verifiche sulla build** (preview nel browser): dipendente con lun-mer chiusi
+e giovedì selezionato, clic su un piatto di mercoledì rifiutato con l'avviso;
+referente con le tab chiuse e giovedì attivo; comunità con lun-mer disabilitati
+e giovedì selezionato; responsabile invariata; cucina con compositore in sola
+lettura su mercoledì e catalogo presente su giovedì. Orologio che scatta, nessun
+errore in console.
 
 ---
