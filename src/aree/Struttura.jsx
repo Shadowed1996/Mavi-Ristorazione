@@ -117,9 +117,6 @@ const ICONE = { gente: Icone.gente, grafico: Icone.grafico, piatto: Icone.piatto
 export function SceltaRuolo({ cfg, onScegli, onIndietro }) {
   return (
     <div data-area={cfg.tema}>
-      <div className="nastro">
-        <b>Prototipo dimostrativo.</b> Dati di esempio, nessun salvataggio reale.
-      </div>
       <div className="ruoli-pagina">
         <button className="ruoli-indietro" onClick={onIndietro}>
           <Icone.sx size={16} /> Tutti i portali

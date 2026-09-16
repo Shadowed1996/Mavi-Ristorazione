@@ -50,10 +50,6 @@ export default function AccessoUnico({ avviso, onAvvisoLetto }) {
 
   return (
     <div data-area="fornitore">
-      <div className="nastro">
-        <b>Prototipo dimostrativo.</b> Dati di esempio, nessun salvataggio reale.
-      </div>
-
       <div className="accesso-unico">
         <div className="au-sinistra">
           <div className="au-marchio"><Marchio sotto="Ristorazione" /></div>

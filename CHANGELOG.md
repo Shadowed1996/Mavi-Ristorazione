@@ -25,7 +25,10 @@ e il progetto adotta il [Versionamento Semantico](https://semver.org/lang/it/).
   promemoria né variazioni, e la cucina non ne cambia il menu. Il blocco è
   anche nello stato condiviso, non solo nei pulsanti.
 - **Orologio HH:MM:SS** in fondo alla barra laterale di ogni portale, con la
-  data; su schermi stretti nel nastro in alto.
+  data (visibile dove c'è la barra laterale).
+- **Tolto il nastro nero "Prototipo dimostrativo"** in cima a tutte le pagine:
+  le pagine non scorrono più quando il contenuto sta nella finestra e la barra
+  laterale occupa l'altezza piena.
 
 ### Cambiato — 16 settembre 2026, manifesto con i riquadri
 - **Ogni dipendente dentro il suo riquadro** sul manifesto di consegna, sempre

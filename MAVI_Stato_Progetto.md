@@ -2,7 +2,7 @@
 
 Documento vivo. Va riletto all'inizio di ogni nuova sessione e aggiornato alla fine di ogni task.
 
-**Ultimo aggiornamento**: 16 settembre 2026, pomeriggio — tutta la settimana visibile in ogni portale, lunedì, martedì e mercoledì chiusi con il lucchetto e in sola lettura, giovedì e venerdì aperti; orologio HH:MM:SS nel telaio (sezione 27).
+**Ultimo aggiornamento**: 16 settembre 2026, pomeriggio — tutta la settimana visibile in ogni portale, lunedì, martedì e mercoledì chiusi con il lucchetto e in sola lettura, giovedì e venerdì aperti; orologio HH:MM:SS nel telaio; tolto il nastro nero "Prototipo dimostrativo" che faceva scorrere le pagine (sezione 27).
 
 **Precedente**: 16 settembre 2026 — manifesto di consegna riscritto in colonna unica e aperto anche al cliente, con un riquadro per dipendente; etichette pasto ridotte all'essenziale (sezione 26).
 
@@ -1273,9 +1273,18 @@ avviso.
 
 **Orologio** (`ui.jsx`, `Orologio`): ora reale HH:MM:SS in Fraunces con cifre
 tabellari, due punti che pulsano, secondi nell'accento dell'area e la data
-sotto. In fondo alla barra laterale di tutti i portali; sotto i 1040px, dove la
-barra sparisce, una versione compatta nel nastro in alto. È l'ora vera, non
+sotto. In fondo alla barra laterale di tutti i portali (sotto i 1040px la barra
+sparisce e l'orologio con lei). È l'ora vera, non
 "adesso" della demo. Si ridisegna solo lui, riallineato al secondo pieno.
+
+**Via il nastro "Prototipo dimostrativo"** (richiesta successiva di Filippo:
+"è quello che rompe tutto"). La riga nera stava sopra ogni pagina — telaio,
+accesso, scelta del ruolo, landing — mentre `.telaio` e `.fianco` erano alti
+`100dvh - 32px`: la pagina superava la finestra e scorreva anche quando il
+contenuto ci stava. Tolti il nastro da JSX e CSS (stampa compresa) e la
+variante compatta dell'orologio che ci viveva dentro; telaio e barra laterale
+ora `100dvh` pieni. Misurato nel browser: login e pagina Documenti alti
+esattamente quanto la finestra, barra laterale senza overflow.
 
 **Limite noto**: "Rendi fisso" da un giorno aperto aggiunge il piatto a tutta la
 settimana, quindi anche ai giorni chiusi, come prima. Per la demo va bene; in

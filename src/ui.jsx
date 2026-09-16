@@ -657,7 +657,7 @@ export function NessunPermesso({ onEsci }) {
    non il telaio intero. */
 const due = (n) => String(n).padStart(2, "0");
 
-export function Orologio({ compatto = false }) {
+export function Orologio() {
   const [adesso, setAdesso] = React.useState(() => new Date());
   React.useEffect(() => {
     let timer;
@@ -673,11 +673,11 @@ export function Orologio({ compatto = false }) {
   const ora = due(adesso.getHours()) + ":" + due(adesso.getMinutes()) + ":" + due(adesso.getSeconds());
   const data = adesso.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" });
   return (
-    <div className={"orologio" + (compatto ? " compatto" : "")} role="timer" aria-live="off" aria-label={"Sono le " + ora + ", " + data}>
+    <div className="orologio" role="timer" aria-live="off" aria-label={"Sono le " + ora + ", " + data}>
       <span className="orologio-ora">
         {due(adesso.getHours())}<i>:</i>{due(adesso.getMinutes())}<i>:</i><em>{due(adesso.getSeconds())}</em>
       </span>
-      {!compatto && <span className="orologio-data">{data}</span>}
+      <span className="orologio-data">{data}</span>
     </div>
   );
 }
@@ -693,10 +693,6 @@ export function Telaio({ area, marchio, ruolo, utente, chiaveUtente, voci, pagin
     : nomeVisto.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase();
   return (
     <div data-area={area}>
-      <div className="nastro">
-        <b>Prototipo dimostrativo.</b> Dati di esempio, nessun salvataggio reale.
-        <Orologio compatto />
-      </div>
       <div className="telaio">
         <aside className="fianco">
           <div className="marchio">
@@ -934,7 +930,6 @@ export function Accesso({ area, titolo, claim, punti, utente, password, onEntra,
   const [p, setP] = React.useState(password);
   return (
     <div data-area={area}>
-      <div className="nastro"><b>Prototipo dimostrativo.</b> Dati di esempio, nessun salvataggio reale.</div>
       <div className="accesso">
         <div className="accesso-sx">
           <button className="indietro" onClick={onIndietro}><Icone.sx size={16} /> Tutti i portali</button>

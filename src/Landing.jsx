@@ -44,10 +44,6 @@ const VETRINA = ["uni_ris", "sal_for", "ins_mis", "ris_fun", "ver_gri", "las_bol
 export default function Landing() {
   return (
     <>
-      <div className="nastro">
-        <b>Prototipo dimostrativo.</b> Dati di esempio, nessun salvataggio reale.
-      </div>
-
       <div className="home">
         <header className="home-testa">
           <div className="home-marchio">
