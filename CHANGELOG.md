@@ -20,6 +20,9 @@ e il progetto adotta il [Versionamento Semantico](https://semver.org/lang/it/).
   fra due pagine.
 - **Solo la data** nella giornata del manifesto, senza il giorno della
   settimana.
+- **Riquadri in testa al manifesto su una riga sola**, valori in maiuscolo e
+  centrati: il nome della struttura non va più a capo dentro il box. Gli altri
+  documenti tengono i riquadri di sempre.
 
 ### Cambiato — 16 settembre 2026, manifesto di consegna ed etichette
 - **Manifesto di consegna riscritto, in colonna unica**: via il "Totale per

@@ -71,6 +71,7 @@ export function generaManifestoConsegna({ struttura, indiceGiorno, pasto = "pran
       { etichetta: "Porzioni", valore: porzioni },
       { etichetta: "Con allergie dichiarate", valore: conAllergie },
     ],
+    metaUnaRiga: true,
     blocchi: [elenco || paragrafo("Nessun ordine nominativo per questa giornata.")],
     piede: "Da inserire nel cassone termico in consegna. Le etichette pasto in cucina restano anonime: "
       + "questo è il foglio nominativo che serve a distribuire i pasti in azienda. "

@@ -1216,7 +1216,9 @@ più a `Fornitore.jsx`.
 riquadro — testata con nome, reparto e matricola, portate una per riga,
 allergie su fascia in fondo — sempre in colonna unica, e il riquadro non si
 spezza fra due pagine. Della giornata si stampa solo la data, senza il giorno
-della settimana.
+della settimana, e i riquadri in testa stanno tutti su una fila, in maiuscolo
+e centrati (`metaUnaRiga` di `paginaDocumento`, solo per il manifesto: "Rossi
+Manifatture Spa" andava a capo dentro il box).
 
 Provata e scartata l'idea di farlo stare per forza su una pagina sola: con 28
 pasti servivano una riga per persona e caratteri da 8px, illeggibili in cucina.

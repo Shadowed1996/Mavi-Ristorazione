@@ -25,7 +25,7 @@ badge.
 | `eur(n)` | `1.234,56`, senza simbolo |
 | `campo(valore, segnaposto)` | valore escapato, oppure `<span class="ph">[segnaposto]</span>` |
 | `intestazioneMavi(datiAziendali)` | blocco mittente, già nella testata di `paginaDocumento` |
-| `paginaDocumento({ titolo, badge, sottotitolo, meta, blocchi, note, piede, datiAziendali })` | HTML completo; `meta` è `[{ etichetta, valore }]`, `blocchi` HTML già pronto |
+| `paginaDocumento({ titolo, badge, sottotitolo, meta, blocchi, note, piede, datiAziendali, metaUnaRiga })` | HTML completo; `meta` è `[{ etichetta, valore }]`, `blocchi` HTML già pronto. `metaUnaRiga` mette i valori dei riquadri in maiuscolo, centrati e su una riga sola, con il box che si allarga sul contenuto: la usa il solo manifesto di consegna |
 | `tabellaHtml({ colonne, righe, totale, vuota })` | `colonne: [{ titolo, allinea: "sx"\|"centro"\|"dx" }]`, `righe: [[cella, …]]`, `totale` ultima riga evidenziata |
 | `cellaConNota(principale, nota)` | cella su due righe, nota in grigio |
 | `riepilogoTotali([{ etichetta, valore, forte }])` | riquadro totali a destra |
@@ -112,7 +112,11 @@ colpo d'occhio dove finisce uno e comincia l'altro; il riquadro non si spezza
 mai fra due pagine (`page-break-inside`).
 
 Della giornata si stampa **solo la data** (`dataIt`), non il giorno della
-settimana: sul foglio di consegna era rumore. Con molti dipendenti il manifesto
+settimana: sul foglio di consegna era rumore. I riquadri in testa usano
+`metaUnaRiga`: valori in maiuscolo, centrati, su una riga sola e tutti sulla
+stessa fila (prima "Rossi Manifatture Spa" andava a capo dentro il suo box).
+La variante resta al manifesto, gli altri documenti tengono i riquadri di
+sempre. Con molti dipendenti il manifesto
 occupa più pagine, e va bene così: comprimerlo su una sola voleva dire una riga
 per persona a corpo 8, illeggibile in cucina.
 

@@ -213,6 +213,10 @@ body{font-family:'Segoe UI',Calibri,Arial,sans-serif;color:var(--scuro);font-siz
 .doc-meta-voce{flex:1 1 150px;background:var(--avorio-chiaro);border:1px solid var(--grigio);border-radius:6px;padding:11px 16px}
 .doc-meta-voce label{display:block;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muto);margin-bottom:4px}
 .doc-meta-voce span{font-size:14px;font-weight:700;color:var(--scuro)}
+.doc-meta.unariga{justify-content:center;gap:10px}
+.doc-meta.unariga .doc-meta-voce{flex:1 1 auto;max-width:100%;text-align:center;padding:9px 18px}
+.doc-meta.unariga .doc-meta-voce label{font-size:8.5px;margin-bottom:3px}
+.doc-meta.unariga .doc-meta-voce span{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
 .doc-blocco{margin-bottom:24px}
 .doc-blocco h2,.doc-note h2{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--terracotta);font-weight:700;margin-bottom:9px;padding-bottom:5px;border-bottom:1px solid var(--grigio);page-break-after:avoid}
 .doc-testo{font-size:12.5px;line-height:1.75;color:var(--testo)}
@@ -280,13 +284,17 @@ table.doc-tabella{width:100%;border-collapse:collapse;margin-bottom:22px;font-si
 /* pagina A4 completa: testata MAVI con mittente e badge, titolo, riquadri
    `meta`, `blocchi` (HTML già pronto), note e piede.
    meta:    [{ etichetta, valore }] — `valore` è una cella
+   metaUnaRiga: riquadri con il valore in maiuscolo, centrato e su una riga
+            sola, con il box che si allarga sul contenuto invece di avere una
+            base fissa. La usa il manifesto di consegna: "Rossi Manifatture
+            Spa" andava a capo dentro il riquadro
    blocchi: [stringa HTML]
    note:    stringa o array di stringhe, un capoverso ciascuna
    timbro:  { testo, sotto, tono: "ok" | "attesa" | "neutro" | "errore" }, facoltativo:
             un timbro inclinato accanto al titolo, che resta anche in stampa */
-export function paginaDocumento({ titolo, badge, sottotitolo, meta = [], blocchi = [], note, piede, datiAziendali, timbro }) {
+export function paginaDocumento({ titolo, badge, sottotitolo, meta = [], blocchi = [], note, piede, datiAziendali, timbro, metaUnaRiga }) {
   const riquadri = meta.length
-    ? `<div class="doc-meta">${meta.map((m) =>
+    ? `<div class="doc-meta${metaUnaRiga ? " unariga" : ""}">${meta.map((m) =>
       `<div class="doc-meta-voce"><label>${testoHtml(m.etichetta)}</label><span>${cella(m.valore)}</span></div>`
     ).join("")}</div>`
     : "";
