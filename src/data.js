@@ -1183,6 +1183,12 @@ export const TIPI_VARIAZIONE = [
   { id: "presenze", nome: "Presenze" },
   { id: "altro", nome: "Altro" },
 ];
+/* "dieta_base" non si sceglie dal modulo Variazioni: la genera la scheda del
+   paziente quando la dieta cambia per tutte le settimane, per avvisare MAVI */
+export const NOMI_TIPO_VARIAZIONE = {
+  ...Object.fromEntries(TIPI_VARIAZIONE.map((t) => [t.id, t.nome])),
+  dieta_base: "Dieta di base",
+};
 export const PASTI_VARIAZIONE = [
   { id: "pranzo", nome: "Pranzo" },
   { id: "cena", nome: "Cena" },
@@ -1217,9 +1223,57 @@ export function presenzaVariata(variazioni, pazienteId, indiceGiorno, pasto) {
   return v ? v.presenza[pasto] : null;
 }
 
+/* Dieta di base di un giorno della settimana in corso. Se è cambiata "per tutte
+   le settimane" quando quel giorno era già chiuso, questa settimana resta
+   quella di prima (`dietaCongelata`): la cucina l'ha già preparata. */
+export function dietaDiBase(paziente, indiceGiorno, pasto) {
+  const giorno = GIORNI_SETT[indiceGiorno];
+  const congelata = paziente?.dietaCongelata?.[giorno]?.[pasto];
+  if (congelata && GIORNI_COMUNITA[indiceGiorno]?.chiuso) return congelata;
+  return paziente?.dieta?.[giorno]?.[pasto] || null;
+}
+
+/* Cambia la dieta di base, per tutte le settimane. `cambi` è
+   { giorno: { pasto: { portata: piatto } } } con i giorni di GIORNI_SETT. Nei
+   giorni già chiusi della settimana in corso la dieta di prima si congela per
+   questa settimana. Ritorna solo ciò che è cambiato davvero:
+   { giorno: { pasto: { prima, dopo } } }, `dopo` con le sole portate cambiate. */
+export function cambiaDietaDiBase(paziente, cambi) {
+  const cambiati = {};
+  Object.entries(cambi || {}).forEach(([giorno, pasti]) => {
+    const indice = GIORNI_SETT.indexOf(giorno);
+    Object.entries(pasti || {}).forEach(([pasto, portate]) => {
+      const attuale = paziente.dieta?.[giorno]?.[pasto] || {};
+      const diverse = Object.entries(portate || {})
+        .map(([portata, valore]) => [portata, String(valore || "").trim()])
+        .filter(([portata, valore]) => valore && valore !== (attuale[portata] || ""));
+      if (!diverse.length) return;
+      if (GIORNI_COMUNITA[indice]?.chiuso && !paziente.dietaCongelata?.[giorno]?.[pasto]) {
+        paziente.dietaCongelata = {
+          ...(paziente.dietaCongelata || {}),
+          [giorno]: { ...(paziente.dietaCongelata?.[giorno] || {}), [pasto]: { ...attuale } },
+        };
+      }
+      if (!paziente.dieta) paziente.dieta = {};
+      paziente.dieta[giorno] = { ...(paziente.dieta[giorno] || {}), [pasto]: { ...attuale, ...Object.fromEntries(diverse) } };
+      if (!cambiati[giorno]) cambiati[giorno] = {};
+      cambiati[giorno][pasto] = { prima: { ...attuale }, dopo: Object.fromEntries(diverse) };
+    });
+  });
+  return cambiati;
+}
+
+/* "Giovedì 17 settembre"; per la dieta di base "Ogni domenica, da domenica
+   20 settembre" o "Tutta la settimana, dalla prossima settimana" */
+export function quandoVariazione(v) {
+  if (v.tipo !== "dieta_base") return etichettaGiorno(v.indiceGiorno);
+  const da = v.dallaProssimaSettimana ? "dalla prossima settimana" : "da " + etichettaGiorno(v.indiceGiorno).toLowerCase();
+  return (v.settimanaIntera ? "Tutta la settimana" : "Ogni " + GIORNI_SETT[v.indiceGiorno]) + ", " + da;
+}
+
 /* dieta del giorno e pasto con applicata l'ultima variazione di dieta */
 export function dietaEffettiva(paziente, indiceGiorno, pasto, variazioni) {
-  const base = ((paziente && paziente.dieta) || {})[GIORNI_SETT[indiceGiorno]]?.[pasto] || null;
+  const base = dietaDiBase(paziente, indiceGiorno, pasto);
   const v = ultimaVariazione(variazioni, paziente && paziente.id, indiceGiorno, pasto, "dieta");
   return v ? { ...(base || {}), ...v.dieta[pasto] } : base;
 }

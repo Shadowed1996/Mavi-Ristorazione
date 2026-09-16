@@ -2,7 +2,7 @@
 
 Documento vivo. Va riletto all'inizio di ogni nuova sessione e aggiornato alla fine di ogni task.
 
-**Ultimo aggiornamento**: 16 settembre 2026, pomeriggio — tema scuro corretto in tutti i portali con verifica automatica del contrasto (sezione 28); tutta la settimana visibile in ogni portale, lunedì, martedì e mercoledì chiusi con il lucchetto e in sola lettura, giovedì e venerdì aperti; orologio HH:MM:SS nel telaio; tolto il nastro nero "Prototipo dimostrativo" che faceva scorrere le pagine; Menu del giorno del dipendente a schermata fissa su desktop (sezione 27).
+**Ultimo aggiornamento**: 16 settembre 2026, pomeriggio — cambi di dieta dalla scheda paziente con scelta "solo quel giorno / tutte le settimane" e avviso sempre a MAVI (sezione 29); tema scuro corretto in tutti i portali con verifica automatica del contrasto (sezione 28); tutta la settimana visibile in ogni portale, lunedì, martedì e mercoledì chiusi con il lucchetto e in sola lettura, giovedì e venerdì aperti; orologio HH:MM:SS nel telaio; tolto il nastro nero "Prototipo dimostrativo" che faceva scorrere le pagine; Menu del giorno del dipendente a schermata fissa su desktop (sezione 27).
 
 **Precedente**: 16 settembre 2026 — manifesto di consegna riscritto in colonna unica e aperto anche al cliente, con un riquadro per dipendente; etichette pasto ridotte all'essenziale (sezione 26).
 
@@ -1355,5 +1355,55 @@ scheda piatto e scheda paziente. Prima della correzione il solo referente
 aveva 15 segnalazioni, con la voce attiva e l'icona dei documenti sotto 3:1;
 dopo, nessuna. Esclusi di proposito: elementi disattivati o spenti (giorni
 chiusi, documenti non disponibili) e i due punti dell'orologio, che pulsano.
+
+---
+
+## 29. Cambi di dieta dalla scheda paziente — 16 settembre 2026
+
+Domanda di Filippo: se dalla scheda di un paziente si cambia la dieta di
+domenica da piatto X a piatto Y, parte un avviso al fornitore che solo per
+quel giorno, solo per questa settimana, il paziente è variato?
+
+**Com'era: no.** "Modifica dieta" riscriveva `paziente.dieta` in memoria:
+cambio **permanente** (ogni domenica), **nessuna variazione** a MAVI, nessuna
+riga nel log, nessun controllo sui giorni chiusi; la cucina vedeva il piatto
+nuovo in Produzione solo se la pagina si ridisegnava per altri motivi. "Carica
+dieta" da Excel aveva lo stesso buco su tutta la settimana. Il percorso giusto
+per un solo giorno esisteva già (Variazioni › Dieta) ma dalla scheda non si
+raggiungeva. (La dieta la modifica il referente, non il responsabile, che vede
+solo fatture e resoconti.)
+
+Filippo: "procedi nel modo che ritieni più valido secondo logica".
+
+**Come funziona ora.** Ogni piatto cambiato dalla scheda apre una scelta:
+- **Solo [giorno e data]** — variazione di tipo Dieta per quel giorno, identica
+  a quella della pagina Variazioni: MAVI la riceve, le quantità di quel giorno
+  si aggiornano, la dieta settimanale non cambia. Disattivata sui giorni chiusi.
+- **Tutte le settimane** — cambia la dieta di base e manda a MAVI una variazione
+  **Dieta di base** ("Ogni domenica, da domenica 20 settembre"). Se il giorno
+  questa settimana è già chiuso vale **dalla prossima settimana**: la dieta di
+  prima resta congelata per questa settimana, perché la cucina l'ha già
+  preparata.
+
+La griglia della scheda mostra cosa si serve questa settimana, con il
+lucchetto sui giorni chiusi e le note "solo questa settimana · di base X" e
+"dalla prossima settimana: Y". "Carica dieta" applica solo i piatti diversi con
+la stessa regola e manda un solo avviso con il riepilogo.
+
+**Codice.** `data.js`: `dietaDiBase` (dieta congelata sui giorni chiusi),
+`cambiaDietaDiBase`, `quandoVariazione`, `NOMI_TIPO_VARIAZIONE`;
+`dietaEffettiva` parte da `dietaDiBase`. `store.jsx`: tipo `dieta_base`,
+ammesso anche sui giorni chiusi, con log "Dieta di base modificata, avviso a
+MAVI". `Comunita.jsx`: scelta nella scheda, `applicaImport`,
+`aggiornaRigheTrasmesse` condivisa con Variazioni. `Fornitore.jsx`: tipo e
+"per quando" delle variazioni in Ordini in arrivo, Produzione ed Excel.
+
+**Provato nel browser** con Beatrice Comi: venerdì "solo questo giorno"
+(Filetto → Merluzzo), giovedì "tutte le settimane" (Pasta alla norma → Pasta al
+pomodoro), lunedì chiuso "tutte le settimane" (Patate arrosto → Zucchine
+trifolate, con "solo questo giorno" disattivato). In Ordini in arrivo tre voci
+con tipo e "per quando" giusti, nel log tre righe; in Produzione lunedì resta 4
+Patate arrosto e nessuna zucchina, giovedì Pasta al pomodoro al posto della
+norma, venerdì 1 filetto (l'altro paziente) e 1 merluzzo.
 
 ---

@@ -94,13 +94,25 @@ una nota di preparazione mostrata con il triangolo di attenzione.
 
 ### Modifica dieta
 
-Con `pazienti.dieta` (il referente). Il bottone "Modifica dieta" accende `modalitaModifica`:
-i campi diventano cliccabili con bordo tratteggiato, al clic si aprono in input
-inline. Si salva con Invio o uscendo dal campo, si annulla con Esc.
+Con `pazienti.dieta` (il referente). "Modifica dieta" rende i piatti cliccabili
+(input inline, Invio o uscita dal campo, Esc annulla). La griglia mostra **cosa
+si serve questa settimana** (`dietaEffettiva`), con lucchetto sui giorni chiusi
+e due note: "solo questa settimana · di base X" e "dalla prossima settimana: Y".
 
-**La modifica muta direttamente `paziente.dieta`**, cioè l'oggetto importato
-da `data.js`. Funziona perché il modale si ridisegna, ma è la stessa scorciatoia
-usata per il catalogo piatti: non replicarla in codice nuovo.
+**Ogni piatto cambiato chiede per quando vale** (16 settembre 2026: prima
+riscriveva la dieta settimanale senza avvisare nessuno):
+- **Solo quel giorno**: `inviaVariazione` tipo `dieta`, come dalla pagina
+  Variazioni; disattivato sui giorni chiusi;
+- **Tutte le settimane**: `cambiaDietaDiBase` e variazione `dieta_base`
+  ("Dieta di base" in cucina). Su un giorno chiuso vale dalla prossima
+  settimana: la dieta di questa settimana resta congelata (`dietaCongelata`).
+In tutti e due i casi MAVI la trova in Ordini in arrivo, le quantità di
+Produzione si aggiornano e, nella giornata della demo, anche le righe già
+trasmesse (`aggiornaRigheTrasmesse`).
+
+La dieta di base resta sull'oggetto condiviso di `PAZIENTI_COMUNITA` (la scheda
+lo recupera per id anche se riceve una copia): è la scorciatoia del catalogo
+piatti, non replicarla altrove.
 
 ### Carica dieta
 
@@ -108,8 +120,10 @@ Con `pazienti.dieta`. File picker limitato a `.xlsx`/`.xls`, poi:
 
 1. `import("../diete.js")` dinamico e `parsaDietaExcel(file)`;
 2. modale di anteprima con la dieta letta, giorno per giorno;
-3. "Approva e applica" fa `Object.assign(paziente.dieta, importPreview.dieta)`
-   e scrive nel log; "Annulla" scarta tutto.
+3. "Approva e applica" (`applicaImport`) passa da `cambiaDietaDiBase`: solo i
+   piatti davvero diversi, giorni chiusi congelati per questa settimana, **un
+   avviso "Dieta di base" a MAVI** con il riepilogo e una riga nel log.
+   "Annulla" scarta tutto.
 
 **Niente viene applicato prima dell'approvazione.** In caso di errore di
 lettura compare un avviso con il messaggio dell'eccezione.

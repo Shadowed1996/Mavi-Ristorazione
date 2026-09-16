@@ -2,7 +2,7 @@ import React from "react";
 import {
   PIATTI, GIORNI, GIORNI_COMUNITA, INDICE_DEMO_COMUNITA, MENU_INIZIALE, COMMITTENTI, ORDINI_UNITA, PAZIENTI_COMUNITA,
   ETICHETTE_AZIENDA_DEMO, PROFORME_INIZIALI, RUOLI_INIZIALI, UTENTI, VARIAZIONI_INIZIALI,
-  anagraficaAzienda, etichettaGiorno, presenzaVariata, regimeIva, scadenzaPagamento,
+  anagraficaAzienda, etichettaGiorno, presenzaVariata, quandoVariazione, regimeIva, scadenzaPagamento,
 } from "./data.js";
 
 const Ctx = React.createContext(null);
@@ -12,7 +12,7 @@ let contatore = 0;
 /* numerazione delle variazioni: prosegue dal seed (var-1, var-2, ...) */
 let contatoreVariazioni = VARIAZIONI_INIZIALI.length;
 const PASTI_AMMESSI = ["pranzo", "cena", "entrambi"];
-const TIPI_AMMESSI = ["dieta", "presenze", "altro"];
+const TIPI_AMMESSI = ["dieta", "presenze", "altro", "dieta_base"];
 
 function nowHM() {
   const d = new Date();
@@ -324,11 +324,13 @@ export function Provider({ children }) {
       avvisa("Scrivi il testo della variazione prima di inviarla");
       return null;
     }
-    if (GIORNI_COMUNITA[Number(dati.indiceGiorno)]?.chiuso) {
+    const tipo = TIPI_AMMESSI.includes(dati.tipo) ? dati.tipo : "altro";
+    /* la dieta di base su un giorno chiuso vale dalla settimana dopo: è un
+       avviso, non tocca il giorno già chiuso */
+    if (tipo !== "dieta_base" && GIORNI_COMUNITA[Number(dati.indiceGiorno)]?.chiuso) {
       avvisa("Gli ordini di questo giorno sono chiusi, la variazione non si può più inviare");
       return null;
     }
-    const tipo = TIPI_AMMESSI.includes(dati.tipo) ? dati.tipo : "altro";
     if (tipo !== "altro" && !dati.pazienteId) {
       avvisa("Scegli il paziente della variazione");
       return null;
@@ -347,7 +349,8 @@ export function Provider({ children }) {
       pazienteNome: dati.pazienteId ? dati.pazienteNome || null : null,
       tipo,
       ...(tipo === "presenze" ? { presenza: { ...dati.presenza }, presenzaPrima: { ...dati.presenzaPrima } } : {}),
-      ...(tipo === "dieta" ? { dieta: { ...dati.dieta }, dietaPrima: { ...dati.dietaPrima } } : {}),
+      ...(tipo === "dieta" || tipo === "dieta_base" ? { dieta: { ...dati.dieta }, dietaPrima: { ...dati.dietaPrima } } : {}),
+      ...(tipo === "dieta_base" ? { dallaProssimaSettimana: !!dati.dallaProssimaSettimana, settimanaIntera: !!dati.settimanaIntera } : {}),
       testo,
       creataIl: new Date().toISOString(),
       stato: "inviata",
@@ -356,10 +359,11 @@ export function Provider({ children }) {
     };
     setVariazioni((prec) => [record, ...prec]);
     const pasto = record.pasto === "entrambi" ? "pranzo e cena" : record.pasto;
-    loggaSessione("Variazione inviata a MAVI",
-      [record.reparto, etichettaGiorno(record.indiceGiorno) + ", " + pasto, record.pazienteNome || "tutto il centro"].filter(Boolean).join(" · "),
+    const base = tipo === "dieta_base";
+    loggaSessione(base ? "Dieta di base modificata, avviso a MAVI" : "Variazione inviata a MAVI",
+      [record.reparto, (base ? quandoVariazione(record) : etichettaGiorno(record.indiceGiorno)) + ", " + pasto, record.pazienteNome || "tutto il centro"].filter(Boolean).join(" · "),
       "ordine");
-    avvisa("Variazione inviata a MAVI");
+    avvisa(base ? "Dieta di base aggiornata, MAVI ha ricevuto l'avviso" : "Variazione inviata a MAVI");
     return id;
   }, [sessione, ruoloSessione, loggaSessione, avvisa]);
 

@@ -113,7 +113,7 @@ che prevedono quel pasto (`pastiDi(p)` in `data.js`).
 | Nome | Cosa |
 |---|---|
 | `variazioni` | seed `VARIAZIONI_INIZIALI`, forma sotto; le nuove in testa |
-| `inviaVariazione(dati)` | `dati` = campi tranne `id`, `creataIl`, `stato`, `presaInCarico*`. Senza testo, su un giorno chiuso di `GIORNI_COMUNITA`, o senza paziente per Presenze e Dieta, avvisa e ritorna `null`; altrimenti numera `var-N`, normalizza pasto/tipo/giorno (0-6, da lunedì a domenica), conserva `presenza`/`presenzaPrima` o `dieta`/`dietaPrima` secondo il tipo, completa autore e ruolo dalla sessione, logga (`ordine`), avvisa e **ritorna l'id**. Applicare la variazione a presenze e righe trasmesse tocca al chiamante (`VariazioniComunita`) |
+| `inviaVariazione(dati)` | `dati` = campi tranne `id`, `creataIl`, `stato`, `presaInCarico*`. Tipi: `dieta`, `presenze`, `altro` e `dieta_base` (dalla scheda paziente, con `dieta`/`dietaPrima`, `dallaProssimaSettimana`, `settimanaIntera`). Senza testo, su un giorno chiuso di `GIORNI_COMUNITA` (salvo `dieta_base`), o senza paziente per Presenze e Dieta, avvisa e ritorna `null`; altrimenti numera `var-N`, normalizza pasto/tipo/giorno (0-6, da lunedì a domenica), conserva `presenza`/`presenzaPrima` o `dieta`/`dietaPrima` secondo il tipo, completa autore e ruolo dalla sessione, logga (`ordine`), avvisa e **ritorna l'id**. Applicare la variazione a presenze e righe trasmesse tocca al chiamante (`VariazioniComunita`) |
 | `prendiInCaricoVariazione(id)` | lato MAVI: `stato: "presa_in_carico"`, `presaInCaricoIl` (ISO) e `presaInCaricoDa` (nome della sessione), logga (`approvazione`), avvisa; ritorna `false` se l'id non c'è o è già presa in carico (legge da una ref, niente doppioni con due clic) |
 
 ```js

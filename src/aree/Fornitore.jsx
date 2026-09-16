@@ -3,7 +3,7 @@ import {
   ALLERGENI, CATEGORIE, splitPiatto, COLORI, DIPENDENTI, ETICHETTA_ADESSO, ETICHETTE_PORTALE, GIORNI, GIORNI_COMUNITA, GIORNI_SETT, GIRI, INDICE_DOMANI,
   MARCATORI, METODI_PAGAMENTO, PASTI_TIPO, PAZIENTI_COMUNITA, PERMESSI, PIATTI,
   REGIMI_IVA, TERMINI_PAGAMENTO, catalogoPerCategoria, dietaEffettiva, etichettaGiorno, menuDelGiorno, metodoPagamento, presenzaVariata,
-  ordinaProforme, pastiDi, permessiDelPortale, portateServite, primoAperto, proformaValida, regimeIva, scadenzaPagamento, sostituisce, statoProforma,
+  NOMI_TIPO_VARIAZIONE, ordinaProforme, pastiDi, permessiDelPortale, portateServite, primoAperto, proformaValida, quandoVariazione, regimeIva, scadenzaPagamento, sostituisce, statoProforma,
   terminiPagamento, testoCondizioni, totaliProforma,
 } from "../data.js";
 import {
@@ -123,7 +123,7 @@ const ETICHETTA_SETTIMANA = "Settimana dal " + dataIt(GIORNI_COMUNITA[0].data).s
    confermati: 7 conferme su 28 previsti fanno 7 + 21, non 7 + 28. */
 const COPERTI_STIMA_AZIENDA = [26, 24, 28, 25, 22];
 const ETICHETTA_PASTO = { pranzo: "Pranzo", cena: "Cena", entrambi: "Pranzo e cena" };
-const ETICHETTA_TIPO_VARIAZIONE = { dieta: "Dieta", presenze: "Presenze", altro: "Altro" };
+const ETICHETTA_TIPO_VARIAZIONE = NOMI_TIPO_VARIAZIONE;
 
 /* Peso di scelta per posizione nel menu del giorno: il primo piatto in elenco è
    il più richiesto. I pesi si normalizzano sul numero di piatti realmente a
@@ -517,7 +517,7 @@ function Produzione() {
       id: v.id,
       committenteId: v.committenteId,
       reparto: v.reparto,
-      giorno: etichettaGiorno(v.indiceGiorno),
+      giorno: quandoVariazione(v),
       committente: nomeCommittente(v.committenteId),
       centro: v.reparto || "—",
       pasto: ETICHETTA_PASTO[v.pasto] || v.pasto,
@@ -1223,7 +1223,7 @@ function Produzione() {
           </div>
           <div className="pannello-piede">
             Le scrive il referente. Quelle di <b>presenza e dieta di un paziente sono già conteggiate nelle
-            quantità</b> di quel giorno; quelle <b>Altro</b> (ospiti in più, avvisi generali) la cucina le applica a
+            quantità</b> di quel giorno, come i cambi di <b>Dieta di base</b> (valgono per tutte le settimane); quelle <b>Altro</b> (ospiti in più, avvisi generali) la cucina le applica a
             mano, dopo averle prese in carico da Ordini in arrivo. Compaiono anche nella stampa e
             nell'Excel della distinta.
           </div>
@@ -2549,7 +2549,7 @@ function OrdiniComunita({ righe, variazioni = [], onPrendiInCarico }) {
                         {v.autore}
                         <small className="dist-dest-portata">{[v.ruoloAutore, formattaQuando(v.creataIl)].filter(Boolean).join(" · ")}</small>
                       </td>
-                      <td style={{ whiteSpace: "nowrap" }}>{etichettaGiorno(v.indiceGiorno)}</td>
+                      <td style={{ whiteSpace: v.tipo === "dieta_base" ? "normal" : "nowrap", minWidth: 120 }}>{quandoVariazione(v)}</td>
                       <td>{ETICHETTA_PASTO[v.pasto] || v.pasto}</td>
                       <td>{v.pazienteNome || "Tutto il centro"}</td>
                       <td className="dist-testo-variazione">

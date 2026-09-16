@@ -6286,3 +6286,66 @@ tr.pz-neutro td:first-child { border-left: 3px solid var(--linea); }
 [data-tema="scuro"] .giorno.on .gd { color: rgba(255, 255, 255, 0.9); }
 [data-tema="scuro"] .giorno.on .gs { color: #fff; }
 [data-tema="scuro"] .col3-toggle em { opacity: 0.85; }
+
+/* ===================== cambio di dieta dalla scheda paziente ===================== */
+.dieta-cambio {
+  display: block;
+  margin-top: 2px;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--acc);
+}
+.dieta-giorno-chiuso {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muto);
+}
+.menu-sett-giorno-testa:has(.dieta-giorno-chiuso) {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.dieta-scelte {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+  padding: 4px 24px 18px;
+}
+.dieta-scelta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  padding: 14px 16px;
+  border: 1.5px solid var(--linea);
+  border-radius: var(--r-m);
+  background: var(--foglio);
+  color: var(--inchiostro);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.dieta-scelta b {
+  font-family: var(--serif);
+  font-size: 16px;
+  font-weight: 600;
+}
+.dieta-scelta span {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--muto);
+}
+.dieta-scelta:hover:not(:disabled) {
+  border-color: var(--acc);
+  background: var(--acc-tenue);
+}
+.dieta-scelta:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
