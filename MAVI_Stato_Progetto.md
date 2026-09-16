@@ -2,7 +2,7 @@
 
 Documento vivo. Va riletto all'inizio di ogni nuova sessione e aggiornato alla fine di ogni task.
 
-**Ultimo aggiornamento**: 16 settembre 2026, pomeriggio — cambi di dieta: la scheda paziente cambia la dieta settimanale con avviso a MAVI, le eccezioni del giorno solo da Variazioni (sezione 29); tema scuro corretto in tutti i portali con verifica automatica del contrasto (sezione 28); tutta la settimana visibile in ogni portale, lunedì, martedì e mercoledì chiusi con il lucchetto e in sola lettura, giovedì e venerdì aperti; orologio HH:MM:SS nel telaio; tolto il nastro nero "Prototipo dimostrativo" che faceva scorrere le pagine; Menu del giorno del dipendente a schermata fissa su desktop (sezione 27).
+**Ultimo aggiornamento**: 16 settembre 2026, pomeriggio — considerazioni tecniche per la produzione in `file.md/14` e `14b` (sezione 30); cambi di dieta: la scheda paziente cambia la dieta settimanale con avviso a MAVI, le eccezioni del giorno solo da Variazioni (sezione 29); tema scuro corretto in tutti i portali con verifica automatica del contrasto (sezione 28); tutta la settimana visibile in ogni portale, lunedì, martedì e mercoledì chiusi con il lucchetto e in sola lettura, giovedì e venerdì aperti; orologio HH:MM:SS nel telaio; tolto il nastro nero "Prototipo dimostrativo" che faceva scorrere le pagine; Menu del giorno del dipendente a schermata fissa su desktop (sezione 27).
 
 **Precedente**: 16 settembre 2026 — manifesto di consegna riscritto in colonna unica e aperto anche al cliente, con un riquadro per dipendente; etichette pasto ridotte all'essenziale (sezione 26).
 
@@ -1432,5 +1432,29 @@ Provato nel browser: venerdì Filetto → Merluzzo e lunedì chiuso Patate arros
 Comi già scelta; variazione di venerdì Merluzzo → Orata al cartoccio inviata a
 MAVI; tornando alla scheda venerdì mostra "Orata al cartoccio · solo questa
 settimana · di base Merluzzo al vapore".
+
+---
+
+## 30. Considerazioni tecniche per la produzione — 16 settembre 2026
+
+Domanda di Filippo alla vigilia della demo: se MAVI accetta, cosa serve per
+avere il sistema davvero in produzione. Dopo una risposta a voce su tecnica,
+obblighi e aspetti economici, la richiesta: un file con **solo le
+considerazioni tecniche**, senza la parte commerciale, e stamparlo.
+
+Scritto in due documenti tematici, per restare sotto le 200 righe ciascuno:
+- `file.md/14-verso-la-produzione.md`: cosa si riusa e cosa no, architettura
+  (frontend riusato, API, PostgreSQL, tempo reale, lavori pianificati, ambienti,
+  hosting UE), modello dati con menu per data e diete storicizzate al posto di
+  `dietaCongelata`, orari limite decisi dal server con fuso Europe/Rome e
+  congelamento della distinta, accesso e permessi applicati dal server con
+  perimetro nel database, requisiti tecnici per i dati sanitari;
+- `file.md/14b-verso-la-produzione.md`: notifiche, PDF lato server, etichette
+  termiche, import con validazione, fatturazione elettronica via gestionale,
+  test e integrazione continua, monitoraggio, pulizia del codice demo, ordine
+  tecnico dei lavori e informazioni da raccogliere prima di iniziare.
+
+Stampato sulla stampante predefinita (Olivetti d-COPIA 4513MF KX): PDF A4 di 5
+pagine generato da questi due file.
 
 ---

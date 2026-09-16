@@ -90,6 +90,13 @@ prossima demo, decisioni ancora aperte con il cliente.
 Credenziali, sequenza consigliata della presentazione, punti da mostrare in
 riunione e cosa può andare storto.
 
+### 14 e 14b — Verso la produzione
+`14-verso-la-produzione.md`, `14b-verso-la-produzione.md`
+Considerazioni tecniche per passare dal prototipo a un sistema reale: cosa si
+riusa, architettura, modello dati storicizzato, orari limite lato server,
+accesso e permessi, dati sanitari; poi notifiche, documenti e stampa,
+integrazioni, qualità, pulizia del codice demo e ordine dei lavori.
+
 ## Come tenere aggiornata questa documentazione
 
 Quando una modifica cambia un comportamento descritto qui, aggiornare il file

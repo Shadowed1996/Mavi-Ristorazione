@@ -141,6 +141,7 @@ quello che serve al task in corso.
 | `file.md/11-convenzioni.md` | regole di stile del codice, trappole note |
 | `file.md/12-stato-e-todo.md` | cosa manca, decisioni aperte con il cliente |
 | `file.md/13-demo.md` | sequenza della presentazione, credenziali |
+| `file.md/14-verso-la-produzione.md`, `14b` | considerazioni tecniche per la messa in produzione |
 
 ## 5. Regole di lavoro
 
