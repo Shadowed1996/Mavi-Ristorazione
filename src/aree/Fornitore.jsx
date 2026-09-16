@@ -3239,7 +3239,7 @@ function EtichettePasto() {
           </div>
           <div className="scelta-piede modulo-piede">
             <button className="btn linea" onClick={() => setConferma(null)}>Annulla</button>
-            <button className="btn" style={{ background: "#d9534f", color: "#fff" }} onClick={() => rimuovi(conferma.chiave)}>Rimuovi</button>
+            <button className="btn" style={{ background: "var(--rosso-pieno)", color: "#fff" }} onClick={() => rimuovi(conferma.chiave)}>Rimuovi</button>
           </div>
         </Velo>
       )}
@@ -3382,7 +3382,7 @@ function ModaleUtente({ utente, ruoli, strutture, committenti, repartiComunita, 
         </p>
       </div>
       {errore && (
-        <div className="avviso info" style={{ margin: "0 24px 12px", background: "#fdf0e6", border: "1px solid #e8c9a8" }}>
+        <div className="avviso info avviso-attenzione" style={{ margin: "0 24px 12px" }}>
           <Icone.attenzione size={16} /><span>{errore}</span>
         </div>
       )}
@@ -3565,7 +3565,7 @@ function RuoliPermessi() {
           </div>
           <div className="scelta-piede modulo-piede">
             <button className="btn linea" onClick={() => setDaEliminare(null)}>Annulla</button>
-            <button className="btn" style={{ background: "#d9534f", color: "#fff" }}
+            <button className="btn" style={{ background: "var(--rosso-pieno)", color: "#fff" }}
               onClick={() => { if (st.eliminaRuolo(daEliminare.id)) st.avvisa("Ruolo eliminato"); setDaEliminare(null); }}>
               Elimina
             </button>
@@ -3633,7 +3633,7 @@ function GestionePortale() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--linea)" }}>
         <span style={{ fontSize: 13 }}>{label}</span>
         <button className={"btn piccolo" + (st.notifiche[chiave] ? "" : " linea")}
-          style={st.notifiche[chiave] ? { background: "var(--ok)", color: "#fff", minWidth: 70 } : { minWidth: 70 }}
+          style={st.notifiche[chiave] ? { background: "var(--ok-pieno, var(--ok))", color: "#fff", minWidth: 70 } : { minWidth: 70 }}
           onClick={() => st.setNotifiche((n) => ({ ...n, [chiave]: !n[chiave] }))}>
           {st.notifiche[chiave] ? "Attiva" : "Off"}
         </button>
@@ -3727,7 +3727,7 @@ function GestionePortale() {
                         <div style={{ display: "flex", gap: 6 }}>
                           <button className="btn linea piccolo" onClick={() => setEditUtente({ ...u })}>Modifica</button>
                           <button className={"btn piccolo" + (u.attivo !== false ? " linea" : "")}
-                            style={u.attivo !== false ? { color: "#d9534f" } : { background: "#5cb85c", color: "#fff" }}
+                            style={u.attivo !== false ? { color: "var(--rosso-azione)" } : { background: "var(--verde-pieno)", color: "#fff" }}
                             onClick={() => st.commutaAttivoUtente(u.id)}>
                             {u.attivo !== false ? "Disattiva" : "Riattiva"}
                           </button>
@@ -3793,7 +3793,7 @@ function GestionePortale() {
                 <button className="btn linea" onClick={() => st.avvisa("Export completo: funzione dimostrativa. In produzione genera un archivio con DB + file")}>
                   Export completo
                 </button>
-                <button className="btn linea" style={{ color: "#d9534f" }} onClick={() => st.avvisa("Ripristino: funzione dimostrativa. In produzione si seleziona il backup da ripristinare")}>
+                <button className="btn linea" style={{ color: "var(--rosso-azione)" }} onClick={() => st.avvisa("Ripristino: funzione dimostrativa. In produzione si seleziona il backup da ripristinare")}>
                   Ripristina da backup
                 </button>
               </div>

@@ -2,7 +2,7 @@
 
 Documento vivo. Va riletto all'inizio di ogni nuova sessione e aggiornato alla fine di ogni task.
 
-**Ultimo aggiornamento**: 16 settembre 2026, pomeriggio — tutta la settimana visibile in ogni portale, lunedì, martedì e mercoledì chiusi con il lucchetto e in sola lettura, giovedì e venerdì aperti; orologio HH:MM:SS nel telaio; tolto il nastro nero "Prototipo dimostrativo" che faceva scorrere le pagine; Menu del giorno del dipendente a schermata fissa su desktop (sezione 27).
+**Ultimo aggiornamento**: 16 settembre 2026, pomeriggio — tema scuro corretto in tutti i portali con verifica automatica del contrasto (sezione 28); tutta la settimana visibile in ogni portale, lunedì, martedì e mercoledì chiusi con il lucchetto e in sola lettura, giovedì e venerdì aperti; orologio HH:MM:SS nel telaio; tolto il nastro nero "Prototipo dimostrativo" che faceva scorrere le pagine; Menu del giorno del dipendente a schermata fissa su desktop (sezione 27).
 
 **Precedente**: 16 settembre 2026 — manifesto di consegna riscritto in colonna unica e aperto anche al cliente, con un riquadro per dipendente; etichette pasto ridotte all'essenziale (sezione 26).
 
@@ -1314,5 +1314,46 @@ referente con le tab chiuse e giovedì attivo; comunità con lun-mer disabilitat
 e giovedì selezionato; responsabile invariata; cucina con compositore in sola
 lettura su mercoledì e catalogo presente su giovedì. Orologio che scatta, nessun
 errore in console.
+
+---
+
+## 28. Tema scuro, accenti e contrasto — 16 settembre 2026
+
+Segnalazione di Filippo, portale del referente aziendale in tema scuro:
+"qualcosa che non va con l'highlight dei colori, è blu su bianco e non si
+vede", con la richiesta di verificare tutto il CSS del tema scuro.
+
+**Causa.** Nel tema scuro le aree ridefinivano solo `--acc-tenue` e
+`--acc-bordo`: `--acc` e `--acc-scuro` restavano quelli del chiaro. Per il
+referente `#34408c` e `#27306c` su fondo quasi nero: la voce di menu attiva
+(testo `--acc-scuro` su `--acc-tenue`) non si leggeva, come i secondi
+dell'orologio e la luna del selettore del tema. Stesso problema per la
+comunità (prugna) e la cucina (verde); un secondo blocco scuro imponeva a
+tutte le aree le tinte terracotta del dipendente.
+
+**Correzione** (`styles.css`, in fondo):
+- per ogni area due toni nel tema scuro: `--acc` chiaro per testi, bordi e
+  voci attive (≥6:1 sul fondo) e `--acc-pieno` per i fondi con testo bianco
+  (≥5:1), con `--acc-pieno-hover`; `--acc-scuro` diventa la variante più
+  chiara. I 19 `background: var(--acc)` sono ora
+  `var(--acc-pieno, var(--acc))`: nel tema chiaro `--acc-pieno` non esiste e
+  non cambia nulla;
+- `--muto` del tema scuro da `#8a8279` a `#a39b90` (i testi secondari erano
+  fra 4,1 e 4,5:1);
+- colori scritti nei componenti trasformati in classi o variabili con la
+  versione scura: banner del centro assegnato e dei pazienti esclusi, avvisi
+  d'importazione, numeri Presenti e Assenti, bottoni rossi e verdi
+  (`--rosso-azione`, `--rosso-pieno`, `--verde-pieno`, `--ok-pieno`);
+- date e stati del giorno selezionato, contatori delle alternative e date
+  delle tab più leggibili; occhiello della pagina di accesso più chiaro.
+
+**Verifica.** Controllo automatico nel browser: per ogni testo visibile colore
+e fondo effettivi (trasparenze e opacità comprese) e rapporto di contrasto
+WCAG, soglia 4,5:1 (3:1 per testo grande), in tema scuro su tutte le pagine
+dei cinque profili, la pagina di accesso e le finestre "Prenota per lui",
+scheda piatto e scheda paziente. Prima della correzione il solo referente
+aveva 15 segnalazioni, con la voce attiva e l'icona dei documenti sotto 3:1;
+dopo, nessuna. Esclusi di proposito: elementi disattivati o spenti (giorni
+chiusi, documenti non disponibili) e i due punti dell'orologio, che pulsano.
 
 ---

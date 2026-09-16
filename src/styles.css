@@ -60,7 +60,7 @@
   --sfondo: #1a1816;
   --inchiostro: #ede8df;
   --inchiostro-2: #c4bdb2;
-  --muto: #8a8279;
+  --muto: #a39b90;
   --linea: #3a3632;
   --linea-forte: #4a453e;
   --ok: #4caf6a;
@@ -110,20 +110,20 @@
 [data-tema="scuro"] .numeri .numero { background: #262422; border-color: #3a3632; }
 [data-tema="scuro"] .btn.linea { border-color: #4a453e; color: #c4bdb2; }
 [data-tema="scuro"] .btn.linea:hover { border-color: #8a8279; color: #ede8df; }
-[data-tema="scuro"] .btn-rimuovi-et { background: #1e1c1a; border-color: #3a3632; color: #8a8279; }
+[data-tema="scuro"] .btn-rimuovi-et { background: #1e1c1a; border-color: #3a3632; color: #a39b90; }
 [data-tema="scuro"] .commuta { border-color: #4a453e; background: #1e1c1a; }
-[data-tema="scuro"] .commuta button { color: #8a8279; }
+[data-tema="scuro"] .commuta button { color: #a39b90; }
 [data-tema="scuro"] .commuta button.on { background: #c4bdb2; color: #1e1c1a; }
 [data-tema="scuro"] .giorni { background: #262422; border-color: #3a3632; }
 [data-tema="scuro"] .giorno { background: #1e1c1a; border-color: #3a3632; color: #c4bdb2; }
-[data-tema="scuro"] .giorno.on { background: var(--acc); color: #fff; }
+[data-tema="scuro"] .giorno.on { background: var(--acc-pieno, var(--acc)); color: #fff; }
 [data-tema="scuro"] .pastiglia { border-color: #4a453e; }
 [data-tema="scuro"] .p-ok { background: #1a2e22; border-color: #2a4e32; color: #6bc48a; }
 [data-tema="scuro"] .p-att { background: #2a2410; border-color: #4a3e20; color: #d4a030; }
 [data-tema="scuro"] .p-err { background: #2e1a18; border-color: #5a3028; color: #e06050; }
-[data-tema="scuro"] .p-neu { background: #1e1c1a; border-color: #3a3632; color: #8a8279; }
+[data-tema="scuro"] .p-neu { background: #1e1c1a; border-color: #3a3632; color: #a39b90; }
 [data-tema="scuro"] .intestazione { color: #ede8df; }
-[data-tema="scuro"] .pannello-piede { color: #8a8279; border-color: #3a3632; }
+[data-tema="scuro"] .pannello-piede { color: #a39b90; border-color: #3a3632; }
 [data-tema="scuro"] .pannello-testa { border-color: #3a3632; }
 [data-tema="scuro"] .scorri { color: #c4bdb2; }
 [data-tema="scuro"] .nota-prep { background: #2e2018; border-color: #4a3828; color: #d4a060; }
@@ -408,7 +408,7 @@ h4 {
   position: absolute;
   inset: 0 0 auto 0;
   height: 3px;
-  background: var(--acc);
+  background: var(--acc-pieno, var(--acc));
   transform: scaleX(0.18);
   transform-origin: left;
   transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1);
@@ -546,7 +546,7 @@ h4 {
 .accesso-sx::before {
   width: 400px;
   height: 400px;
-  background: var(--acc);
+  background: var(--acc-pieno, var(--acc));
   opacity: 0.35;
   top: -140px;
   left: -120px;
@@ -739,7 +739,7 @@ input::placeholder {
   width: 34px;
   height: 34px;
   border-radius: 8px;
-  background: var(--acc);
+  background: var(--acc-pieno, var(--acc));
   color: #fff;
   display: grid;
   place-items: center;
@@ -818,7 +818,7 @@ input::placeholder {
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  background: var(--acc);
+  background: var(--acc-pieno, var(--acc));
   color: #fff;
   display: grid;
   place-items: center;
@@ -890,13 +890,13 @@ input::placeholder {
   padding: 12px 20px;
   font-size: 14.5px;
   font-weight: 600;
-  background: var(--acc);
+  background: var(--acc-pieno, var(--acc));
   color: #fff;
   transition: background 0.15s, transform 0.1s;
   white-space: nowrap;
 }
 .btn:hover {
-  background: var(--acc-scuro);
+  background: var(--acc-pieno-hover, var(--acc-scuro));
 }
 .btn:active {
   transform: translateY(1px);
@@ -1139,7 +1139,7 @@ input::placeholder {
   flex: 0 0 auto;
 }
 .voce-info:hover {
-  background: var(--acc);
+  background: var(--acc-pieno, var(--acc));
   border-color: var(--acc);
   color: #fff;
 }
@@ -1154,7 +1154,7 @@ input::placeholder {
   flex: 0 0 auto;
 }
 .voce.on .voce-spunta {
-  background: var(--acc);
+  background: var(--acc-pieno, var(--acc));
   border-color: var(--acc);
   color: #fff;
 }
@@ -1491,7 +1491,7 @@ input::placeholder {
 .progresso i {
   display: block;
   height: 100%;
-  background: var(--acc);
+  background: var(--acc-pieno, var(--acc));
   border-radius: 3px;
 }
 
@@ -2222,7 +2222,7 @@ table.settimanale td.cella {
   background: var(--carta);
 }
 .giorni-tab button.on {
-  background: var(--acc);
+  background: var(--acc-pieno, var(--acc));
   color: #fff;
 }
 .giorni-tab button span {
@@ -2788,7 +2788,7 @@ table.settimanale td.cella {
 .catalogo-lista::-webkit-scrollbar-thumb:hover,
 .scelta-lista::-webkit-scrollbar-thumb:hover,
 .modulo::-webkit-scrollbar-thumb:hover {
-  background: var(--acc);
+  background: var(--acc-pieno, var(--acc));
 }
 /* sfumatura in coda, per far capire che l'elenco continua */
 .sezione {
@@ -3196,7 +3196,7 @@ table.settimanale td.cella {
   background: var(--acc-tenue);
 }
 .struttura.on::before {
-  background: var(--acc);
+  background: var(--acc-pieno, var(--acc));
 }
 .struttura b {
   display: block;
@@ -3298,7 +3298,7 @@ table.settimanale td.cella {
   position: absolute;
   inset: 0 0 auto 0;
   height: 3px;
-  background: var(--acc);
+  background: var(--acc-pieno, var(--acc));
 }
 .modello[data-modello="unita"]::before {
   background: #a06a2a;
@@ -3478,7 +3478,7 @@ table.settimanale td.cella {
   position: absolute;
   inset: 0 0 auto 0;
   height: 3px;
-  background: var(--acc);
+  background: var(--acc-pieno, var(--acc));
   transform: scaleX(0.2);
   transform-origin: left;
   transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1);
@@ -3624,7 +3624,7 @@ table.settimanale td.cella {
   position: relative;
 }
 .au-claim .occhiello {
-  color: rgba(242, 236, 225, 0.45);
+  color: rgba(242, 236, 225, 0.62);
   display: inline-block;
   margin-bottom: 20px;
   padding: 5px 14px;
@@ -3783,7 +3783,7 @@ table.settimanale td.cella {
   width: 34px;
   height: 34px;
   border-radius: 7px;
-  background: var(--acc);
+  background: var(--acc-pieno, var(--acc));
   color: #fff;
   display: grid;
   place-items: center;
@@ -4019,7 +4019,7 @@ table.settimanale td.cella {
 }
 .filtro-pill:hover { border-color: var(--acc-bordo); }
 .filtro-pill.on {
-  background: var(--acc);
+  background: var(--acc-pieno, var(--acc));
   border-color: var(--acc);
   color: #fff;
 }
@@ -4463,7 +4463,7 @@ table.settimanale td.cella {
   flex: 0 0 auto;
 }
 .ciclico-voce.in\ vigore .ciclico-num {
-  background: var(--acc);
+  background: var(--acc-pieno, var(--acc));
   color: #fff;
 }
 .ciclico-voce > div {
@@ -5042,7 +5042,7 @@ tr.pz-neutro td:first-child { border-left: 3px solid var(--linea); }
   --sfondo: #151311;
   --inchiostro: #ede6db;
   --inchiostro-2: #c8bfb2;
-  --muto: #8a8279;
+  --muto: #a39b90;
   --linea: #333028;
   --linea-forte: #44403a;
   --acc-tenue: rgba(176,84,58,0.15);
@@ -5055,7 +5055,7 @@ tr.pz-neutro td:first-child { border-left: 3px solid var(--linea); }
 [data-tema="scuro"] .ms-grid { border-color: var(--linea); }
 [data-tema="scuro"] .ms-cella { border-color: var(--linea); }
 [data-tema="scuro"] .ms-piatto:hover { background: rgba(255,255,255,0.05); }
-[data-tema="scuro"] .btn { background: var(--acc); }
+[data-tema="scuro"] .btn { background: var(--acc-pieno, var(--acc)); }
 [data-tema="scuro"] .btn.linea { background: transparent; border-color: var(--linea-forte); color: var(--inchiostro-2); }
 [data-tema="scuro"] input, [data-tema="scuro"] select, [data-tema="scuro"] textarea {
   background: var(--carta); color: var(--inchiostro); border-color: var(--linea-forte);
@@ -5406,7 +5406,7 @@ tr.pz-neutro td:first-child { border-left: 3px solid var(--linea); }
 .rot-lab { font-size: 13px; font-weight: 600; }
 .rot-stato { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muto); font-weight: 700; }
 .rot-step.attiva { border-color: var(--acc); background: var(--acc-tenue); }
-.rot-step.attiva .rot-n { background: var(--acc); color: #fff; }
+.rot-step.attiva .rot-n { background: var(--acc-pieno, var(--acc)); color: #fff; }
 .rot-step.attiva .rot-stato { color: var(--acc); }
 .rot-step.prossima { border-color: var(--linea-forte); }
 .rot-step.prossima .rot-n { background: var(--linea); color: var(--inchiostro-2); }
@@ -6196,3 +6196,93 @@ tr.pz-neutro td:first-child { border-left: 3px solid var(--linea); }
     margin-bottom: 8px;
   }
 }
+
+/* ===================== accenti del tema scuro, per area =====================
+   Nel tema chiaro ogni area ha un accento scuro, pensato per la carta avorio.
+   Sul fondo scuro quegli stessi colori spariscono (blu, prugna e verde erano
+   sotto 2,5:1 come testo). L'accento si usa in due modi e nel tema scuro
+   servono due toni:
+   - --acc, chiaro: testi, bordi, icone e voci attive, almeno 6:1 sul fondo;
+   - --acc-pieno, pieno: fondi con il testo bianco sopra (bottoni, tab e
+     giorni selezionati, iniziali), almeno 5:1 con il bianco; --acc-pieno-hover
+     è il suo hover. Nel tema chiaro non sono definite e ricadono su --acc e
+     --acc-scuro, quindi lì non cambia nulla.
+   --acc-scuro, che nel chiaro è il testo su --acc-tenue, qui è la variante più
+   chiara. Sta in fondo al file per vincere sulle regole scure più generiche. */
+[data-tema="scuro"] [data-area="dipendente"],
+[data-tema="scuro"] [data-area="azienda"] {
+  --acc: #e39063;
+  --acc-pieno: #a0481a;
+  --acc-pieno-hover: #853b14;
+  --acc-scuro: #f0b896;
+  --acc-tenue: rgba(227, 144, 99, 0.15);
+  --acc-bordo: rgba(227, 144, 99, 0.36);
+}
+[data-tema="scuro"] [data-area="cliente"],
+[data-tema="scuro"] [data-area="scuola"] {
+  --acc: #9ba7f2;
+  --acc-pieno: #4b59c2;
+  --acc-pieno-hover: #3c49a8;
+  --acc-scuro: #c3cbf7;
+  --acc-tenue: rgba(155, 167, 242, 0.14);
+  --acc-bordo: rgba(155, 167, 242, 0.36);
+}
+[data-tema="scuro"] [data-area="fornitore"] {
+  --acc: #7cc49c;
+  --acc-pieno: #2f7550;
+  --acc-pieno-hover: #245e40;
+  --acc-scuro: #a8dcbd;
+  --acc-tenue: rgba(124, 196, 156, 0.13);
+  --acc-bordo: rgba(124, 196, 156, 0.34);
+}
+[data-tema="scuro"] [data-area="comunita"] {
+  --acc: #cf9bd3;
+  --acc-pieno: #86478a;
+  --acc-pieno-hover: #6f3a73;
+  --acc-scuro: #e4c3e7;
+  --acc-tenue: rgba(207, 155, 211, 0.14);
+  --acc-bordo: rgba(207, 155, 211, 0.36);
+}
+[data-tema="scuro"] [data-area="rsa"] {
+  --acc: #7cc2c3;
+  --acc-pieno: #2f6f70;
+  --acc-pieno-hover: #255859;
+  --acc-scuro: #a9d9da;
+  --acc-tenue: rgba(124, 194, 195, 0.13);
+  --acc-bordo: rgba(124, 194, 195, 0.34);
+}
+
+/* ====== colori di stato scritti prima direttamente nei componenti ======
+   Nel tema chiaro hanno gli stessi valori di prima; nel tema scuro una
+   variante leggibile sul fondo scuro. */
+:root {
+  --rosso-azione: #d9534f;
+  --rosso-pieno: #d9534f;
+  --verde-pieno: #5cb85c;
+}
+[data-tema="scuro"] {
+  --rosso-azione: #f08a86;
+  --rosso-pieno: #b8403c;
+  --verde-pieno: #2f7a52;
+  --ok-pieno: #2f7a52;
+}
+.banner-dieta.banner-attenzione { background: #fdf0e6; border-color: #e8c9a8; color: #7a4a17; }
+.banner-dieta.banner-info { background: #eef3fa; border-color: #b8cce0; color: #2c4a6c; }
+.banner-dieta.banner-prugna { background: #f4f0f6; border-color: #d8c8e0; color: #5a3a68; }
+.avviso.avviso-attenzione { background: #fef3e8; border-color: #e8d2b0; }
+.n-val.n-presenti { color: #2d6a2d; }
+.n-val.n-assenti { color: #8b2020; }
+
+[data-tema="scuro"] .banner-dieta.banner-attenzione { background: rgba(232, 160, 90, 0.12); border-color: rgba(232, 160, 90, 0.34); color: #f0c08e; }
+[data-tema="scuro"] .banner-dieta.banner-info { background: rgba(120, 160, 220, 0.12); border-color: rgba(120, 160, 220, 0.34); color: #a9c6ec; }
+[data-tema="scuro"] .banner-dieta.banner-prugna { background: rgba(190, 140, 210, 0.12); border-color: rgba(190, 140, 210, 0.34); color: #d8b8e6; }
+[data-tema="scuro"] .avviso.avviso-attenzione { background: rgba(232, 160, 90, 0.12); border-color: rgba(232, 160, 90, 0.34); color: #f0c08e; }
+[data-tema="scuro"] .n-val.n-presenti { color: #7dca8f; }
+[data-tema="scuro"] .n-val.n-assenti { color: #ef8a80; }
+
+/* testi secondari dentro i controlli selezionati e le tab: nel tema scuro
+   l'opacità che li attenuava li rendeva illeggibili */
+[data-tema="scuro"] .giorni-tab button span { opacity: 0.9; }
+[data-tema="scuro"] .giorno.on .gd { color: rgba(255, 255, 255, 0.9); }
+[data-tema="scuro"] .giorno.on .gs { color: #fff; }
+[data-tema="scuro"] .col3-toggle em { opacity: 0.85; }

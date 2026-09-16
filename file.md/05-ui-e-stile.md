@@ -153,6 +153,7 @@ Definite su `:root`. Le principali:
 | `--inchiostro`, `--inchiostro-2`, `--muto` | testo, tre livelli |
 | `--linea`, `--linea-forte` | bordi |
 | `--acc`, `--acc-scuro`, `--acc-tenue`, `--acc-bordo` | accento, cambia per area |
+| `--acc-pieno`, `--acc-pieno-hover` | fondo pieno con testo bianco; definite solo nel tema scuro, nel chiaro ricadono su `--acc` e `--acc-scuro` |
 | `--ok`, `--avv`, `--err` e le versioni `-tenue` | semantica di stato |
 | `--r-s`…`--r-xl` | raggi, tutti fra 3 e 5 px: il progetto è volutamente squadrato |
 | `--o-1`…`--o-3` | ombre; le prime due sono `none` di proposito |
@@ -177,14 +178,18 @@ tema scuro e il cambio di area funzionano da soli.
 
 ### Tema scuro
 
-Attivato dall'attributo `data-tema="scuro"` su `<html>`, scritto dallo store.
-Il blocco `[data-tema="scuro"]` ridefinisce le variabili base, poi seguono
-override espliciti per: pastiglie (`.p-ok`, `.p-att`, `.p-err`, `.p-neu`),
-tag dieta (terapeutica, base, sanitaria, etica), toggle presenza, righe
-presenza, card, modali, tabelle, input, login, vassoio, commutatori.
-
-Aggiungendo un componente con un fondo proprio va aggiunto anche l'override
-scuro, altrimenti resta chiaro su chiaro.
+Attivato da `data-tema="scuro"` su `<html>`, scritto dallo store. Il blocco
+`[data-tema="scuro"]` ridefinisce le variabili base (`--muto` `#a39b90`), poi
+override per pastiglie, tag dieta, presenze, card, modali, tabelle, input,
+login, vassoio, commutatori. **Accenti per area** in fondo a `styles.css`
+(16 settembre 2026): nel chiaro l'accento è scuro e sul fondo scuro spariva
+(blu del referente 2:1). Nel scuro `--acc` è chiaro (testi, bordi, voci
+attive, ≥6:1) e `--acc-pieno` è il tono pieno per i fondi con testo bianco
+(≥5:1): ogni `background: var(--acc)` è scritto
+`var(--acc-pieno, var(--acc))`. `--rosso-azione`, `--rosso-pieno`,
+`--verde-pieno` sostituiscono i rossi e verdi prima scritti nei componenti.
+Con un fondo proprio va aggiunto l'override scuro; un fondo pieno con testo
+bianco usa `--acc-pieno`, un testo in accento `--acc`.
 
 ### Nomi delle classi
 

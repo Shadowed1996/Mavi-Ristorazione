@@ -57,7 +57,9 @@ riga. Vanno rispettate, non allungate:
 - Lo stile inline è ammesso per aggiustamenti puntuali (margini, larghezze), ed
   è usato spesso nel codice esistente. Per tutto ciò che si ripete, una classe.
 - Aggiungendo un componente con fondo proprio, aggiungere anche l'override
-  `[data-tema="scuro"]`.
+  `[data-tema="scuro"]`. Fondo in accento con testo bianco:
+  `var(--acc-pieno, var(--acc))`, mai `var(--acc)` da solo, che nel tema
+  scuro è il tono chiaro per i testi.
 
 ## Trappole note
 

@@ -271,7 +271,7 @@ function Cruscotto({ utente }) {
                       return (
                         <button key={id}
                           className={"btn piccolo" + (scelto ? "" : " linea")}
-                          style={scelto ? { background: "var(--acc)", color: "#fff" } : {}}
+                          style={scelto ? { background: "var(--acc-pieno, var(--acc))", color: "#fff" } : {}}
                           onClick={() => setScelte((prev) => {
                             const n = { ...prev };
                             if (n[catId] === id) { delete n[catId]; }

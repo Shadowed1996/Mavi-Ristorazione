@@ -398,7 +398,7 @@ export function ModelliServizio() {
                 <span style={{ flex: 1 }}>Prezzo, cutoff e condizioni di fatturazione si modificano da Impostazioni per committente.</span>
                 {st.puo("modelli.attivo") && <>
                   <button className="btn linea piccolo" onClick={() => { st.setCommittente(c.id); st.avvisa(c.nome + " impostato come committente attivo"); }}>Imposta attivo</button>
-                  <button className="btn piccolo" style={attivo ? { color: "#d9534f", background: "transparent", border: "1px solid #d9534f" } : { background: "#5cb85c" }}
+                  <button className="btn piccolo" style={attivo ? { color: "var(--rosso-azione)", background: "transparent", border: "1px solid var(--rosso-azione)" } : { background: "var(--verde-pieno)" }}
                     onClick={() => { st.aggiornaCommittente(c.id, { attivo: !attivo }); st.avvisa(c.nome + (attivo ? " sospeso" : " riattivato")); }}>
                     {attivo ? "Sospendi servizio" : "Riattiva servizio"}
                   </button>

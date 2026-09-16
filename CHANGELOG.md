@@ -13,6 +13,18 @@ e il progetto adotta il [Versionamento Semantico](https://semver.org/lang/it/).
 
 ## [Non rilasciato]
 
+### Corretto — 16 settembre 2026, tema scuro
+- **Accenti leggibili nel tema scuro in ogni portale**: il blu del referente,
+  la prugna della comunità e il verde della cucina restavano quelli del tema
+  chiaro e sul fondo scuro non si leggevano (voce di menu attiva, secondi
+  dell'orologio, selettore del tema, icone dei documenti). Ogni area ha ora un
+  tono chiaro per i testi e uno pieno per bottoni e tab selezionate.
+- **Testi secondari più chiari** nel tema scuro, e date e stati dei giorni
+  selezionati leggibili.
+- **Riquadri e numeri che restavano chiari** nel tema scuro (centro assegnato,
+  pazienti esclusi, errori d'importazione, Presenti e Assenti, bottoni rossi e
+  verdi) ora seguono il tema.
+
 ### Cambiato — 16 settembre 2026, settimana intera e orologio
 - **Tutta la settimana visibile in ogni portale**: lunedì, martedì e mercoledì
   compaiono con il lucchetto e la dicitura "chiuso", giovedì e venerdì restano

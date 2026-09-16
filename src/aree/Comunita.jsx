@@ -26,7 +26,7 @@ function BannerReparto({ reparto, margine }) {
   const stile = margine ? { marginBottom: 16 } : null;
   if (!reparto)
     return (
-      <div className="banner-dieta" style={{ background: "#fdf0e6", borderColor: "#e8c9a8", color: "#7a4a17", ...stile }}>
+      <div className="banner-dieta banner-attenzione" style={stile}>
         <Icone.attenzione size={15} />
         <span>
           Al tuo profilo non è assegnato nessun centro, quindi non vedi nessun paziente. Chiedi a MAVI
@@ -35,7 +35,7 @@ function BannerReparto({ reparto, margine }) {
       </div>
     );
   return (
-    <div className="banner-dieta" style={{ background: "#eef3fa", borderColor: "#b8cce0", color: "#2c4a6c", ...stile }}>
+    <div className="banner-dieta banner-info" style={stile}>
       <Icone.attenzione size={15} />
       <span>Stai vedendo solo il centro <b>{reparto}</b>, quello assegnato alla tua utenza in Gestione portale.</span>
     </div>
@@ -266,7 +266,7 @@ function SchedaPaziente({ paziente, onChiudi, onModifica, onElimina, soloLettura
       </div>
 
       <div className="scelta-piede" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-        {!soloLettura && <button className="btn linea" style={{ color: "#d9534f" }} onClick={onElimina}>Elimina</button>}
+        {!soloLettura && <button className="btn linea" style={{ color: "var(--rosso-azione)" }} onClick={onElimina}>Elimina</button>}
         {!soloLettura && <button className="btn linea" onClick={onModifica}>Modifica anagrafica</button>}
         {puoDieta && <>
           <input type="file" accept=".xlsx,.xls" ref={fileRef} style={{ display: "none" }} onChange={async (e) => {
@@ -297,7 +297,7 @@ function SchedaPaziente({ paziente, onChiudi, onModifica, onElimina, soloLettura
       </div>
 
       {importError && (
-        <div className="avviso info" style={{ margin: "12px 24px", background: "#fef3e8", border: "1px solid #e8d2b0" }}>
+        <div className="avviso info avviso-attenzione" style={{ margin: "12px 24px" }}>
           <Icone.attenzione size={16} />
           <span>{importError}</span>
         </div>
@@ -497,14 +497,14 @@ function PresenzeComunita({ reparto }) {
           <button className={pasto === "cena" ? "on" : ""} onClick={() => setPasto("cena")}>Cena</button>
         </div>
         <div className="numeri">
-          <div className="numero"><div className="n-lab">Presenti</div><div className="n-val" style={{ color: "#2d6a2d" }}>{totPresenti}</div><div className="n-nota">{pasto === "pranzo" ? "pranzi" : "cene"} da preparare</div></div>
-          <div className="numero"><div className="n-lab">Assenti</div><div className="n-val" style={{ color: "#8b2020" }}>{totAssenti}</div><div className="n-nota">nessun pasto</div></div>
+          <div className="numero"><div className="n-lab">Presenti</div><div className="n-val n-presenti">{totPresenti}</div><div className="n-nota">{pasto === "pranzo" ? "pranzi" : "cene"} da preparare</div></div>
+          <div className="numero"><div className="n-lab">Assenti</div><div className="n-val n-assenti">{totAssenti}</div><div className="n-nota">nessun pasto</div></div>
           <div className="numero"><div className="n-lab">Da segnare</div><div className="n-val">{totNonSegnati}</div><div className="n-nota">non ancora segnati, solo {pasto}</div></div>
           <div className="numero"><div className="n-lab">Etichette</div><div className="n-val">{totEtichette}</div><div className="n-nota">una per portata prevista</div></div>
         </div>
 
         {esclusi > 0 && (
-          <div className="banner-dieta" style={{ background: "#f4f0f6", borderColor: "#d8c8e0", color: "#5a3a68" }}>
+          <div className="banner-dieta banner-prugna">
             <Icone.attenzione size={15} />
             {esclusi === 1 ? "Un paziente non è" : esclusi + " pazienti non sono"} in elenco: non {esclusi === 1 ? "prevede" : "prevedono"} <b>{pasto === "pranzo" ? "il pranzo" : "la cena"}</b>. I pasti previsti si impostano dall'anagrafica del paziente.
           </div>
