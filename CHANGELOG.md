@@ -13,6 +13,15 @@ e il progetto adotta il [Versionamento Semantico](https://semver.org/lang/it/).
 
 ## [Non rilasciato]
 
+### Corretto — 17 settembre 2026, nomi dei piatti
+- **Un piatto, un nome**: gli ordini demo e il resoconto di agosto dell'azienda
+  usano i nomi del catalogo, quindi manifesto, etichette e resoconti non
+  mostrano più lo stesso piatto con due nomi ("Pasta al pomodoro" e "Penne al
+  pomodoro e basilico").
+- Nelle diete della comunità i sinonimi sono unificati (Patate arrosto → Patate
+  al forno, Insalata fresca → Insalata mista) e corretto "Fuselli di pollo" in
+  "Fusi di pollo".
+
 ### Corretto — 16 settembre 2026, cambi di dieta dalla scheda paziente
 - **La scheda del paziente cambia la dieta settimanale e avvisa la cucina**:
   prima la modifica riscriveva la dieta di tutte le settimane **senza avvisare

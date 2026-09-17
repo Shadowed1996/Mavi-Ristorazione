@@ -1458,3 +1458,37 @@ Stampato sulla stampante predefinita (Olivetti d-COPIA 4513MF KX): PDF A4 di 5
 pagine generato da questi due file.
 
 ---
+
+## 31. Nomi dei piatti unificati — 17 settembre 2026
+
+Richiesta di Filippo il giorno della presentazione: togliere i piatti con nome
+doppio o quasi uguale e scriverli tutti allo stesso modo.
+
+Il problema vero: gli ordini demo di domani (`ETICHETTE_AZIENDA_DEMO`) e il
+resoconto di agosto (`RESOCONTO_MENSILE`) usavano nomi brevi ("Pasta al
+pomodoro", "Pollo grigliato"), mentre una prenotazione fatta in demo scrive il
+nome del catalogo (`PIATTI[id].n`). Manifesto ed etichette mostravano così lo
+stesso piatto due volte con due nomi.
+
+- Azienda, in `data.js`: i nomi brevi diventano quelli del catalogo (Penne al
+  pomodoro e basilico, Petto di pollo alla griglia, Risotto ai funghi porcini,
+  Salmone al forno con erbe, Vellutata di zucca e carote, Tofu alla piastra con
+  verdure, Fagiolini al vapore, Polpette di manzo al sugo, Insalata di farro e
+  verdure, Piatto di formaggi misti, Pasta integrale al pesto).
+- Diete della comunità, sinonimi dello stesso piatto: Patate arrosto → Patate
+  al forno, Insalata fresca → Insalata mista, Pasta pomodoro e basilico → Penne
+  al pomodoro e basilico, e il refuso Fuselli → Fusi di pollo al forno.
+- `INGREDIENTI_DIETE` allineato alle nuove chiavi, tolto il doppione Patate
+  arrosto.
+
+Lasciate **volutamente diverse** le coppie che distinguono una dieta: Pasta
+alla norma (senza ricotta, per l'intolleranza al lattosio di Beatrice Comi) e
+con ricotta, Spinaci all'olio EVO e al Padano, Pasta zucchine (niente pomodoro
+per l'esofagite di Carmelo Aronica) e zucchine e pomodori, Pasta al pesto e
+integrale al pesto, Petto di pollo al forno e alla griglia (è il cambio della
+variazione demo di Zied Dridi), Patate e Patatine al forno.
+
+Verificato con uno script: nessun nome degli ordini e del resoconto azienda è
+fuori catalogo. `dist/` ricompilata.
+
+---

@@ -85,12 +85,12 @@ dalla tabella senza bisogno di una decisione separata.
 - **"Rendi fisso" tocca anche i giorni chiusi**: il menu dei giorni chiusi è in
   sola lettura, ma un piatto reso fisso da un giorno aperto entra in tutta la
   settimana. In produzione i fissi dovranno valere dai giorni aperti in avanti.
-  - Piatti quasi omonimi segnalati in Produzione: sono lo stesso piatto?
-    Risotto ai funghi / ai funghi porcini, Pasta al pomodoro / Penne al
-    pomodoro e basilico, Salmone al forno / con erbe, Pollo grigliato / Petto
-    di pollo alla griglia, Polpette al sugo / di manzo al sugo, Fagiolini a
-    vapore / al vapore; nelle diete Pasta alla norma / con ricotta, Pasta
-    zucchine / zucchine e pomodori, Pasta al pesto / integrale al pesto.
+  - Piatti quasi omonimi: dal 17 settembre 2026 i doppioni dell'azienda usano
+    il nome del catalogo e nelle diete Patate arrosto / Insalata fresca sono
+    Patate al forno / Insalata mista. Restano da confermare le coppie delle
+    diete lasciate distinte: Pasta alla norma / con ricotta, Pasta zucchine /
+    zucchine e pomodori, Pasta al pesto / integrale al pesto, Spinaci all'olio
+    EVO / al Padano, Petto di pollo al forno / alla griglia.
   - Coperti previsti dell'azienda per giorno (26, 24, 28, 25, 22): sono il
     numero giusto da cui togliere le prenotazioni confermate?
   - In cucina serve davvero una scheda per centro su pagina separata?
